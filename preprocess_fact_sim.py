@@ -37,7 +37,7 @@ for path in file_paths:
     with gzip.open(path) as file:
         # Gamma=True, Proton=False
         label = True if 'gamma' in path else False
-
+        print(path)
         for line in file:
             try:
                 event_photons = json.loads(line.decode('utf-8'))['PhotonArrivals_500ps']
