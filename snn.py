@@ -10,4 +10,3 @@ from keras.regularizers import l2
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard
 
-
