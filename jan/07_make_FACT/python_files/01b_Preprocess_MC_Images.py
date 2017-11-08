@@ -10,9 +10,12 @@ import os
 #First input: Path to the raw mc_folder
 #Second input: Path to the 'hexagonal_to_quadratic_mapping_dict.p'
 #Third input: Path to the 'mc_preprocessed_images.h5'
-path_raw_mc_folder = sys.argv[1]
-path_store_mapping_dict = sys.argv[2]
-path_mc_images = sys.argv[3]
+#path_raw_mc_folder = sys.argv[1]
+path_raw_mc_folder = "/run/media/jbieker/WDRed8Tb1/sim/"
+#path_store_mapping_dict = sys.argv[2]
+path_store_mapping_dict = "/run/media/jbieker/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
+#path_mc_images = sys.argv[3]
+path_mc_images = "/run/media/jbieker/WDRed8Tb1/00_MC_Images.h5"
 
 
 def getMetadata():
@@ -42,6 +45,7 @@ def batchYielder(file_paths):
     for path in file_paths:
         with gzip.open(path) as file:            
             event = []
+            print(path)
 
             for line in file:
                 event_photons = json.loads(line.decode('utf-8'))['PhotonArrivals_500ps']

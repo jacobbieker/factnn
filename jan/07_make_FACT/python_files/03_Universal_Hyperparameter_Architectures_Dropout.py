@@ -15,8 +15,8 @@ import sys
 import os
 
 
-path_mc_images = sys.argv[1]
-save_model_path = sys.argv[2]
+path_mc_images = "/run/media/jbieker/WDRed8Tb1/00_MC_Images.h5"
+save_model_path = "/run/media/jbieker/SSD/Development/thesis/jan/hyperModels/"
 
 model_names = ['ccccccffff']*9
 dropout_position = [[True if i==j else False for i in range(9)] for j in range(9)]
@@ -188,7 +188,7 @@ for i, (model_name, d_pos) in enumerate(zip(model_names, dropout_position)):
             # Measuring the loop-time
             start = time.time()
             # Path to logfiles and correct file name
-            LOGDIR = '/fhgfs/users/jbehnken/tf_logs/small_logs'
+            LOGDIR = '/run/media/jbieker/WDRed8Tb1/cnn_logs'
             # Getting the right count-number for the new logfiles
             logcount = str(len(os.listdir(LOGDIR)))
             hparams = '_bs={}_ps={}_d={}_nh={}_ns={}'.format(batch_size, patch_size, depth, num_hidden, num_steps)

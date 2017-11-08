@@ -15,8 +15,8 @@ import sys
 import os
 
 
-path_mc_images = sys.argv[1]
-save_model_path = sys.argv[2]
+path_mc_images = "/run/media/jbieker/WDRed8Tb1/00_MC_Images.h5"
+save_model_path = "/run/media/jbieker/SSD/Development/thesis/jan/hyperModels/"
 
 model_names = ['cf' 'cff' 'cfff' 'cffff' 'cfffff' 'ccf' 'ccff' 'ccfff' 'ccffff' 'ccfffff' 'cccf' 'cccff' 'cccfff' 'cccffff' 'cccfffff' 'ccccf' 'ccccff' 'ccccfff' 'ccccffff' 'ccccfffff' 'cccccf' 'cccccff' 'cccccfff' 'cccccffff' 'cccccfffff' 'ccccccf' 'ccccccff' 'ccccccfff' 'ccccccffff' 'ccccccfffff']
 
@@ -182,7 +182,7 @@ for model_name in model_names:
             # Measuring the loop-time
             start = time.time()
             # Path to logfiles and correct file name
-            LOGDIR = '/fhgfs/users/jbehnken/tf_logs/small_logs'
+            LOGDIR = '/run/media/jbieker/WDRed8Tb1/cnn_logs'
             # Getting the right count-number for the new logfiles
             logcount = str(len(os.listdir(LOGDIR)))
             hparams = '_bs={}_ps={}_d={}_nh={}_ns={}'.format(batch_size, patch_size, depth, num_hidden, num_steps)

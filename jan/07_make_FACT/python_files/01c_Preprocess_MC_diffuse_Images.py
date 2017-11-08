@@ -11,10 +11,17 @@ import os
 #Second input: Path to the raw_mc_diffuse_folder
 #Third input: Path to the 'hexagonal_to_quadratic_mapping_dict.p'
 #Fourth input: Path to the 'mc_preprocessed_images.h5'
-path_raw_mc_proton_folder = sys.argv[1]
-path_raw_mc_gamma_folder = sys.argv[2]
-path_store_mapping_dict = sys.argv[3]
-path_mc_diffuse_images = sys.argv[4]
+#path_raw_mc_proton_folder = sys.argv[1]
+#path_raw_mc_gamma_folder = sys.argv[2]
+#path_store_mapping_dict = sys.argv[3]
+#path_mc_diffuse_images = sys.argv[4]
+
+path_raw_mc_proton_folder = "/run/media/jbieker/WDRed8Tb1/sim/"
+path_raw_mc_gamma_folder = "/run/media/jbieker/WDRed8Tb1/sim/"
+#path_store_mapping_dict = sys.argv[2]
+path_store_mapping_dict = "/run/media/jbieker/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
+#path_mc_images = sys.argv[3]
+path_mc_diffuse_images = "/run/media/jbieker/WDRed8Tb1/00_MC_Diffuse_Images.h5"
 
 
 def getMetadata(path_folder):

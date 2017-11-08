@@ -10,11 +10,17 @@ import sys
 #Second input: Path to the list of runs to use 'Crab1314_runs_to_use.csv'
 #Third input: Path to the 'hexagonal_to_quadratic_mapping_dict.p'
 #Fourth input: Path to the 'crab1314_preprocessed_images.h5'
-path_raw_crab_folder = sys.argv[1]
-path_runs_to_use = sys.argv[2]
-path_store_mapping_dict = sys.argv[3]
-path_crab_images = sys.argv[4]
+#path_raw_crab_folder = sys.argv[1]
+#path_runs_to_use = sys.argv[2]
+#path_store_mapping_dict = sys.argv[3]
+#path_crab_images = sys.argv[4]
 
+path_raw_crab_folder = "/run/media/jbieker/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/"
+#path_store_mapping_dict = sys.argv[2]
+path_runs_to_use = "/run/media/jbieker/SSD/Development/thesis/jan/07_make_FACT/Crab1314_runs_to_use.csv"
+path_store_mapping_dict = "/run/media/jbieker/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
+#path_mc_images = sys.argv[3]
+path_crab_images = "/run/media/jbieker/WDRed8Tb1/00_crab1314_preprocessed_images.h5"
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):

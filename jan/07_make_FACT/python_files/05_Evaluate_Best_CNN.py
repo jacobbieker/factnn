@@ -9,7 +9,7 @@ import os
 
 batch_size = 10000
 
-path = '/fhgfs/users/jbehnken/crap/'
+path = '/run/media/jbieker/HDD/'
 file = sorted(os.listdir(path))[-1]
 path_loading = os.path.join(path, file)
 print('Loading-File:', file)
