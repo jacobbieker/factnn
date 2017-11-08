@@ -9,10 +9,10 @@ import json
 import os
 
 # Important variables
-mc_data_path = '/run/media/jbieker/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/'
+mc_data_path = '/run/media/jbieker/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/2015'
 id_position_path = '/run/media/jbieker/SSD/Development/CNN_Classification_with_FACT_images/position_dict.p'
-temporary_path = '/run/media/jbieker/Seagate/D_test'
-processed_data_path = '/run/media/jbieker/Seagate/C_test'
+temporary_path = '/run/media/jbieker/Seagate/A_test'
+processed_data_path = '/run/media/jbieker/Seagate/B_test'
 
 def getMetadata():
     '''
@@ -37,37 +37,41 @@ for path in file_paths:
     with gzip.open(path) as file:
         # Gamma=True, Proton=False
         label = True if 'gamma' in path else False
-        print(path)
-        for line in file:
-            try:
-                event_photons = json.loads(line.decode('utf-8'))['PhotonArrivals_500ps']
+        try:
+            for line in file:
+                try:
+                    event_photons = json.loads(line.decode('utf-8'))['PhotonArrivals_500ps']
 
-                event = []
-                input_matrix = np.zeros([46,45,100])
-                for i in range(1440):
-                    event.extend(event_photons[i])
+                    event = []
+                    input_matrix = np.zeros([46,45,100])
+                    for i in range(1440):
+                        event.extend(event_photons[i])
 
-                    x, y = id_position[i]
-                    for value in event_photons[i]:
-                        input_matrix[int(x)][int(y)][value-30] += 1
+                        x, y = id_position[i]
+                        for value in event_photons[i]:
+                            input_matrix[int(x)][int(y)][value-30] += 1
 
-                input_matrix = np.sum(input_matrix[:,:,10:30], axis=2)
-                data.append([input_matrix, label])
+                    input_matrix = np.sum(input_matrix[:,:,10:30], axis=2)
+                    data.append([input_matrix, label])
 
 
 
-                if len(data)%1000 == 0 and len(data)!=0:
-                    pic, lab = zip(*data)
-                    pic, lab = reformat(np.array(pic), np.array(lab))
-                    data_dict={'Image':pic, 'Label':lab}
+                    if len(data)%1000 == 0 and len(data)!=0:
+                        pic, lab = zip(*data)
+                        pic, lab = reformat(np.array(pic), np.array(lab))
+                        data_dict={'Image':pic, 'Label':lab}
 
-                    with gzip.open( temporary_path + "/PhotonArrivals_500ps_"+str(num)+".p", "wb" ) as data_file:
-                        pickle.dump(data_dict, data_file)
-                    data = []
-                    num += 1
+                        with gzip.open( temporary_path + "/PhotonArrivals_500ps_"+str(num)+".p", "wb" ) as data_file:
+                            pickle.dump(data_dict, data_file)
+                        data = []
+                        num += 1
 
-            except:
-                pass
+                except:
+                    pass
+        except:
+            print(path)
+            print(file)
+            pass
 
 # Load pickled data and split it into pictures and labels
 def load_data(file):

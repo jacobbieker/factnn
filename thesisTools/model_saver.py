@@ -12,7 +12,7 @@ import time
 from keras.callbacks import ModelCheckpoint
 
 # Constants
-MODEL_DIR = '/fhgfs/users/wmartin/models/'    # Path to model directory
+MODEL_DIR = '/run/media/jbieker/Seagate/A_test'    # Path to model directory
 MODEL_SUMMARY = 'model_summary.csv'           # CSV summary of models
 
 class ModelSaver(ModelCheckpoint):
