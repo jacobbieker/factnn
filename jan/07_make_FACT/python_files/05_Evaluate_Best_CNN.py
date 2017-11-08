@@ -9,7 +9,7 @@ import os
 
 batch_size = 10000
 
-path = '/run/media/jbieker/HDD/'
+path = '/run/media/jbieker/SSD/Development/thesis/jan/hyperModels'
 file = sorted(os.listdir(path))[-1]
 path_loading = os.path.join(path, file)
 print('Loading-File:', file)
@@ -18,7 +18,7 @@ load_weights, load_biases = pickle.load(open(path_loading, 'rb'))
 
 
 def batchYielder(name):
-    file_path = '/fhgfs/users/jbehnken/make_Data/MC_preprocessed_images.h5'
+    file_path = '/run/media/jbieker/WDRed8Tb1/00_MC_Images.h5'
     #file_path = '/fhgfs/users/jbehnken/make_Data/MC_diffuse_preprocessed_images.h5'
     #file_path = '/fhgfs/users/jbehnken/make_Data/MC_diffuse_flat_preprocessed_images.h5'
     with h5py.File(file_path, 'r') as hdf:
@@ -173,7 +173,7 @@ print('Auc:', stop_auc)
 
 
 import matplotlib.pyplot as plt
-path_build = '/home/jbehnken/07_make_FACT/build/'
+path_build = '/run/media/jbieker/SSD/Development/thesis/jan/07_make_FACT/build/'
 
 plt.style.use('ggplot')
 bins = np.arange(0,1.01,0.01)

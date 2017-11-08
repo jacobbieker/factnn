@@ -193,8 +193,8 @@ def getSessConf(per_process_gpu_memory_fraction = 0.3, op_parallelism_threads = 
 #path_mc_images = sys.argv[1]
 #save_model_path = sys.argv[2]
 
-path_mc_images = '/run/media/jbieker/WDRed8Tb2/MC_diffuse_flat_preprocessed_images.h5'
-save_model_path = '/run/media/jbieker/WDRed8Tb1/00_MC_Images_pretrained.h5'
+path_mc_images = '/run/media/jbieker/WDRed8Tb1/00_MC_Images.h5'
+save_model_path = '/run/media/jbieker/SSD/Development/thesis/jan/hyperModels'
 
 csv_path = '/run/media/jbieker/Seagate/pretraining.csv'
 pickle_path = '/run/media/jbieker/HDD/Pickle_{}.p'
