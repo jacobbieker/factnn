@@ -15,8 +15,8 @@ import sys
 import os
 
 
-path_mc_images = "/run/media/jbieker/WDRed8Tb1/00_MC_Images.h5"
-save_model_path = "/run/media/jbieker/SSD/Development/thesis/jan/hyperModels/"
+path_mc_images = "/tree/tf/00_MC_Images.h5"
+save_model_path = "/notebooks/thesis/jan/hyperModels/"
 
 model_names = ['ccccccffff']*9
 dropout_position = [[True if i==j else False for i in range(9)] for j in range(9)]
@@ -188,14 +188,14 @@ for i, (model_name, d_pos) in enumerate(zip(model_names, dropout_position)):
             # Measuring the loop-time
             start = time.time()
             # Path to logfiles and correct file name
-            LOGDIR = '/run/media/jbieker/WDRed8Tb1/cnn_logs'
+            LOGDIR = '/tree/tf/cnn_logs'
             # Getting the right count-number for the new logfiles
             logcount = str(len(os.listdir(LOGDIR)))
             hparams = '_bs={}_ps={}_d={}_nh={}_ns={}'.format(batch_size, patch_size, depth, num_hidden, num_steps)
 
 
             # Setting the restrictions for tensorflow to not consume every resource it can find
-            gpu_config = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.4)
+            gpu_config = tf.GPUOptions(allocator_type='BFC')
             session_conf = tf.ConfigProto(gpu_options=gpu_config, intra_op_parallelism_threads=18, inter_op_parallelism_threads=18)
             tf.reset_default_graph()
             sess = tf.Session(config=session_conf)

@@ -7,9 +7,9 @@ import os
 
 
 batch_size = 10000
-prediction_save_path = '/run/media/jbieker/SSD/Development/thesis/jan/hyperModels/crab1314_prediction.csv'
+prediction_save_path = '/notebooks/thesis/jan/hyperModels/crab1314_prediction.csv'
 
-path = '/run/media/jbieker/SSD/Development/thesis/jan/hyperModels/'
+path = '/notebooks/thesis/jan/hyperModels/'
 file = sorted(os.listdir(path))[-1]
 path_loading = os.path.join(path, file)
 print('Loading-File:', file)
@@ -19,7 +19,7 @@ load_weights, load_biases = pickle.load(open(path_loading, 'rb'))
 
 
 def batchYielder():
-    with h5py.File('/run/media/jbieker/SSD/Development/thesis/jan/hyperModels/Crab1314_Images.h5', 'r') as hdf:
+    with h5py.File('/notebooks/jan/hyperModels/Crab1314_Images.h5', 'r') as hdf:
         items = list(hdf.items())[0][1].shape[0]
         i = 0
 
@@ -35,7 +35,7 @@ def batchYielder():
             
             
             
-gpu_config = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.5)
+gpu_config = tf.GPUOptions(allocator_type='BFC')
 session_conf = tf.ConfigProto(gpu_options=gpu_config, intra_op_parallelism_threads=18, inter_op_parallelism_threads=18)
 
 
@@ -141,7 +141,7 @@ df.to_csv(prediction_save_path, index=False)
 
 
 import matplotlib.pyplot as plt
-path_build = '/run/media/jbieker/SSD/Development/thesis/jan/07_make_FACT/build/'
+path_build = '/notebooks/thesis/jan/07_make_FACT/build/'
 
 plt.style.use('ggplot')
 df.hist(['Gamma'], bins=100, color=(118/255, 157/255, 6/255), figsize=(5, 3))

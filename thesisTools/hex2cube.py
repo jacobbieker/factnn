@@ -24,13 +24,21 @@ def oddr_to_cube(hex):
     y = -x-z
     return [x, y, z]
 
+from fact.instrument import get_pixel_coords, get_pixel_dataframe
+
 position_dict = {}
 x = []
 y = []
 z = []
 
-for id, values in enumerate(df.values):
-    hex = [values[0], values[1]]
+#plt.show()
+
+pm = get_pixel_dataframe()
+
+print(pm)
+
+for id, values in enumerate(pm):
+    hex = [values["x"], values["y"]]
     position_dict[id] = oddr_to_cube(hex)
     print(oddr_to_cube(hex))
     x.append(oddr_to_cube(hex)[0])
@@ -42,7 +50,7 @@ from mpl_toolkits.mplot3d import Axes3D
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
-ax.scatter(x, y, z, c='r', marker='o')
+ax.scatter(x, y, z, c='r', marker='h')
 
 ax.set_xlabel('X Label')
 ax.set_ylabel('Y Label')
@@ -51,3 +59,6 @@ ax.set_zlabel('Z Label')
 plt.show()
 
 
+#TODO Need to convert the pixel corrdinates to the hexagon coordinates first, then hexagon to cubes
+
+Haveto convert the  coordinates toe hexagonal

@@ -181,7 +181,7 @@ def getHyperparameter(architecture, number_of_nets):
 
 
 def getSessConf(per_process_gpu_memory_fraction = 0.3, op_parallelism_threads = 18):
-    gpu_config = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=per_process_gpu_memory_fraction)
+    gpu_config = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=per_process_gpu_memory_fraction, allocator_type='BFC')
     session_conf = tf.ConfigProto(gpu_options=gpu_config, intra_op_parallelism_threads=op_parallelism_threads, inter_op_parallelism_threads=op_parallelism_threads)
     
     return session_conf
@@ -193,12 +193,12 @@ def getSessConf(per_process_gpu_memory_fraction = 0.3, op_parallelism_threads = 
 #path_mc_images = sys.argv[1]
 #save_model_path = sys.argv[2]
 
-path_mc_images = '/run/media/jbieker/WDRed8Tb1/00_MC_Images.h5'
-save_model_path = '/run/media/jbieker/SSD/Development/thesis/jan/hyperModels'
+path_mc_images = '/tree/tf/00_MC_Images.h5'
+save_model_path = '/tree/tf/thesis/jan/hyperModels'
 
-csv_path = '/run/media/jbieker/Seagate/pretraining.csv'
-pickle_path = '/run/media/jbieker/HDD/Pickle_{}.p'
-if 'pretraining.csv' not in os.listdir('/run/media/jbieker/Seagate/'):
+csv_path = '/tree/tf/pretraining.csv'
+pickle_path = '/tree/tf/Pickle_{}.p'
+if 'pretraining.csv' not in os.listdir('/tree/tf/'):
     with open(csv_path, 'w') as f:
         writer = csv.writer(f)
         writer.writerow(['Accuracy', 'Auc', 'Pretraining'])
@@ -300,7 +300,7 @@ for architecture in test_architectures:
                 # Measuring the loop-time
                 start = time.time()
                 # Path to logfiles and correct file name
-                LOGDIR = '/run/media/jbieker/WDRed8Tb1/cnn_logs'
+                LOGDIR = '/tree/tf/cnn_logs'
                 # Getting the right count-number for the new logfiles
                 logcount = str(len(os.listdir(LOGDIR)))
                 hparams = '_bs={}_ps={}_d={}_nh={}_ns={}'.format(batch_size, patch_size, depth, num_hidden, num_steps)
