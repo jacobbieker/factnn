@@ -181,7 +181,7 @@ def getHyperparameter(architecture, number_of_nets):
 
 
 def getSessConf(per_process_gpu_memory_fraction = 0.3, op_parallelism_threads = 18):
-    gpu_config = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=per_process_gpu_memory_fraction, allocator_type='BFC')
+    gpu_config = tf.GPUOptions(allocator_type='BFC')
     session_conf = tf.ConfigProto(gpu_options=gpu_config, intra_op_parallelism_threads=op_parallelism_threads, inter_op_parallelism_threads=op_parallelism_threads)
     
     return session_conf

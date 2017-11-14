@@ -1,4 +1,7 @@
 import tensorflow as tf
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import pickle
@@ -19,7 +22,7 @@ load_weights, load_biases = pickle.load(open(path_loading, 'rb'))
 
 
 def batchYielder():
-    with h5py.File('/notebooks/jan/hyperModels/Crab1314_Images.h5', 'r') as hdf:
+    with h5py.File('/tree/tf/00_crab1314_preprocessed_images.h5', 'r') as hdf:
         items = list(hdf.items())[0][1].shape[0]
         i = 0
 
@@ -138,9 +141,6 @@ data = list(zip(nights, runs, events, preds_1, preds_2))
 df = pd.DataFrame(data, columns=['Night', 'Run','Event', 'Proton', 'Gamma'])
 df.to_csv(prediction_save_path, index=False)
 
-
-
-import matplotlib.pyplot as plt
 path_build = '/notebooks/thesis/jan/07_make_FACT/build/'
 
 plt.style.use('ggplot')

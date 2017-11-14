@@ -9,7 +9,7 @@ import os
 
 batch_size = 10000
 
-path = '/notebooks/thesis/jan/hyperModels'
+path = '/run/media/jbieker/SSD/Development/thesis/jan/07_make_FACT/models_folder'
 file = sorted(os.listdir(path))[-1]
 path_loading = os.path.join(path, file)
 print('Loading-File:', file)
@@ -18,7 +18,7 @@ load_weights, load_biases = pickle.load(open(path_loading, 'rb'))
 
 
 def batchYielder(name):
-    file_path = '/tree/tf/00_MC_Images.h5'
+    file_path = '/run/media/jbieker/WDRed8Tb1/00_MC_Images.h5'
     #file_path = '/fhgfs/users/jbehnken/make_Data/MC_diffuse_preprocessed_images.h5'
     #file_path = '/fhgfs/users/jbehnken/make_Data/MC_diffuse_flat_preprocessed_images.h5'
     with h5py.File(file_path, 'r') as hdf:
@@ -35,8 +35,8 @@ def batchYielder(name):
             
             
             
-gpu_config = tf.GPUOptions(allocator_type='BFC')
-session_conf = tf.ConfigProto(gpu_options=gpu_config, intra_op_parallelism_threads=12, inter_op_parallelism_threads=12)
+gpu_config = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.5)
+session_conf = tf.ConfigProto(gpu_options=gpu_config, intra_op_parallelism_threads=18, inter_op_parallelism_threads=18)
 
 
 with tf.Session(config=session_conf) as sess:
@@ -171,9 +171,8 @@ stop_auc = roc_auc_score(df['Real'].values, df['Gamma'].values)
 print('Auc:', stop_auc)
 
 
-
 import matplotlib.pyplot as plt
-path_build = '/notebooks/thesis/jan/07_make_FACT/build/'
+path_build = '/run/media/jbieker/SSD/Development/thesis/jan/07_make_FACT/build/'
 
 plt.style.use('ggplot')
 bins = np.arange(0,1.01,0.01)
