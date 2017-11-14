@@ -10,6 +10,8 @@ from keras.regularizers import l2
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard
 
+from thesisTools import kerasTools
+
 params={
            'lr': 0.001,
            'conv_dr': 0.,
@@ -19,7 +21,7 @@ params={
            'steps_per_epoch': 100,
            'dp_prob': 0.5,
            'batch_norm': False,
-           'regularise': 0.0,
+           'regularize': 0.0,
            'decay': 0.0
        },
 
@@ -33,26 +35,26 @@ K.set_session(sess)
 model = Sequential()
 
 # Set up regulariser
-regularizer = l2(params['regularize'])
+regularizer = l2(0.0)
 
-model.add(Dense(1024, input_shape=[45,46]), activation='selu', kernel_regularizer=regularizer)
-model.add(AlphaDropout(params['fc_dr']))
+model.add(Dense(1024, input_shape=([45,46]), activation='selu', kernel_regularizer=regularizer))
+model.add(AlphaDropout(0.1))
 model.add(Dense(1024, activation='selu', kernel_regularizer=regularizer))
-model.add(AlphaDropout(params['fc_dr']))
+model.add(AlphaDropout(0.1))
 model.add(Dense(1024, activation='selu', kernel_regularizer=regularizer))
-model.add(AlphaDropout(params['fc_dr']))
+model.add(AlphaDropout(0.1))
 model.add(Dense(64, activation='selu', kernel_regularizer=regularizer))
-model.add(AlphaDropout(params['fc_dr']))
+model.add(AlphaDropout(0.1))
 model.add(Dense(2, activation='softmax'))
 
 # Set up optimizer
-optimizer = Adam(lr=params['lr'])
+optimizer = Adam(lr=0.001)
 
 #Create Model
 model.compile(
     optimizer=optimizer,
-    loss='catagorical_crossentropy',
-    metrics=['accuracy', 'precision', 'recall', 'f1', 'class_balance']
+    loss='categorical_crossentropy',
+    metrics=['accuracy', kerasTools.precision, kerasTools.recall, kerasTools.f1, kerasTools.class_balance]
 )
 
 # Need to load data
