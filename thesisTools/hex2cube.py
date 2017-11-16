@@ -130,10 +130,6 @@ class HexTile(object):
         self.radius = radius
         self.tile_id = tile_id
 
-
-# Need size to be the radius, so the PIXEL_SPACING_MM
-size = 1
-
 # These are the vectors for moving from any hex to one of its neighbors.
 
 def cube_to_oddr(cube):
@@ -176,15 +172,31 @@ for hexagon in all_hexes:
     y.append(hexagon.cube_coordinates[0][1])
     z.append(hexagon.cube_coordinates[0][2])
 
+# Get the largest and smallest values in every direction
+start_y = np.min(y)
+end_y = np.max(y)
+start_x = np.min(x)
+end_x = np.max(x)
+start_z = np.min(z)
+end_z = np.max(z)
+
+x_box = np.linspace(start_y, end_y, 5)
+y_box = np.linspace(start_x, end_x, 5)
+z_box = np.linspace(start_z, end_z, 5)
+xx, yy, zz = np.meshgrid(x_box, y_box, z_box)
+
 from mpl_toolkits.mplot3d import Axes3D
 fig = plt.figure()
+fig.suptitle("FACT Camera in Cubic coordinates")
 ax = fig.add_subplot(111, projection='3d')
 
-ax.scatter(x, y, z, c='r', marker='h')
+ax.scatter(xx, yy, zz, c='g')
+mapping = np.arange(0, 1440, 1)
+ax.scatter(x, y, z, c=mapping, cmap=plt.cm.Reds, marker='h')
 
-ax.set_xlabel('X Label')
-ax.set_ylabel('Y Label')
-ax.set_zlabel('Z Label')
+ax.set_xlabel('X Position')
+ax.set_ylabel('Y Position')
+ax.set_zlabel('Z Position')
 
 plt.show()
 
