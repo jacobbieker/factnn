@@ -114,7 +114,7 @@ def axial_round(axial):
     :param axial: A location in axial form. nx2
     :return: The location of the center of the nearest hex in axial coordinates.
     """
-    return cube_to_axial(axial_to_cube(axial))
+    return cube_to_axial(cube_round(axial_to_cube(axial)))
 
 class HexTile(object):
     """
@@ -250,3 +250,22 @@ plt.title('FACT Camera skewed to quadratic pixels')
 
 plt.savefig("Skewed_Quadratic_Pixels.png")
 plt.clf()
+
+# Now need to add zeros to pad out the 3D image into an actual cube.
+# A ton more 0s than what was used for the 2D convolution
+
+# We have the mapping to a 3D space, so actually, don't need to make a cube of 0s here
+# Only need to have a 3D volume large enough to work, and the current mapping will work
+
+# To keep the mapping correct, need the CHID -> cube
+# Also need to know the volume of the cube to reshape data into
+
+# CHID is the index, then just have the cube_coordinates placed
+mapping_from_hexagon_to_cube = []
+path_to_save_mapping = ""
+for hexagon in all_hexes:
+    # Should be the mapping for CHID
+    mapping_from_hexagon_to_cube.append(hexagon.cube_coordinates)
+
+pickle.dump(mapping_from_hexagon_to_cube, open(path_to_save_mapping, 'wb'))
+
