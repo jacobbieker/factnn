@@ -19,14 +19,120 @@ NE = np.array((0, -1, 1))
 E = np.array((1, -1, 0))
 ALL_DIRECTIONS = np.array([NW, NE, E, SE, SW, W, ])
 
+# Conversion Functions ######
+
+def cube_to_axial(cube):
+    """
+    Convert cube to axial coordinates.
+    :param cube: A coordinate in cube form. nx3
+    :return: `cube` in axial form.
+    """
+    return np.vstack((cube[:, 0], cube[:, 2])).T
 
 
+def axial_to_cube(axial):
+    """
+    Convert axial to cube coordinates.
+    :param axial: A coordinate in axial form.
+    :return: `axial` in cube form.
+    """
+    x = axial[:, 0]
+    z = axial[:, 1]
+    y = -x - z
+    cube_coords = np.vstack((x, y, z)).T
+    return cube_coords
+
+
+def axial_to_pixel(axial, radius):
+    """
+    Converts the location of a hex in axial form to pixel coordinates.
+    :param axial: The location of a hex in axial form. nx3
+    :param radius: Radius of all hexagons.
+    :return: `axial` in pixel coordinates.
+    """
+    pos = radius * axial_to_pixel_mat.dot(axial.T)
+    return pos.T
+
+
+def cube_to_pixel(cube, radius):
+    """
+    Converts the location of a hex in cube form to pixel coordinates.
+    :param cube: The location of a hex in cube form. nx3
+    :param radius: Radius of all hexagons.
+    :return: `cube` in pixel coordinates.
+    """
+    in_axial_form = cube_to_axial(cube)
+    return axial_to_pixel(in_axial_form, radius)
+
+
+def pixel_to_cube(pixel, radius):
+    """
+    Converts the location of a hex in pixel coordinates to cube form.
+    :param pixel: The location of a hex in pixel coordinates. nx2
+    :param radius: Radius of all hexagons.
+    :return: `pixel` in cube coordinates.
+    """
+    axial = pixel_to_axial_mat.dot(pixel.T) / radius
+    return axial_to_cube(axial.T)
+
+
+def pixel_to_axial(pixel, radius):
+    """
+    Converts the location of a hex in pixel coordinates to axial form.
+    :param pixel: The location of a hex in pixel coordinates. nx2
+    :param radius: Radius of all hexagons.
+    :return: `pixel` in axial coordinates.
+    """
+    cube = pixel_to_cube(pixel, radius)
+    return cube_to_axial(cube)
+
+
+def cube_round(cubes):
+    """
+    Rounds a location in cube coordinates to the center of the nearest hex.
+    :param cubes: Locations in cube form. nx3
+    :return: The location of the center of the nearest hex in cube coordinates.
+    """
+    rounded = np.zeros((cubes.shape[0], 3))
+    rounded_cubes = np.round(cubes)
+    for i, cube in enumerate(rounded_cubes):
+        (rx, ry, rz) = cube
+        xdiff, ydiff, zdiff = np.abs(cube-cubes[i])
+        if xdiff > ydiff and xdiff > zdiff:
+            rx = -ry - rz
+        elif ydiff > zdiff:
+            ry = -rx - rz
+        else:
+            rz = -rx - ry
+        rounded[i] = (rx, ry, rz)
+    return rounded
+
+
+def axial_round(axial):
+    """
+    Rounds a location in axial coordinates to the center of the nearest hex.
+    :param axial: A location in axial form. nx2
+    :return: The location of the center of the nearest hex in axial coordinates.
+    """
+    return cube_to_axial(axial_to_cube(axial))
+
+class HexTile(object):
+    """
+    Base Hex class. Doesn't do anything. Ideally, you want to store instances of
+    a subclass of this tile in a HexMap object.
+    """
+
+    def __init__(self, axial_coordinates, radius, tile_id):
+        super(HexTile, self).__init__()
+        self.axial_coordinates = np.array([axial_coordinates])
+        self.cube_coordinates = axial_to_cube(self.axial_coordinates)
+        self.position = axial_to_pixel(self.axial_coordinates, radius)
+        self.radius = radius
+        self.tile_id = tile_id
+
+
+# Need size to be the radius, so the PIXEL_SPACING_MM
 size = 1
-df = pd.read_csv("/run/media/jbieker/SSD/Development/thesis/camera_bild.csv")
-print(len(df))
-
-#df.plot.scatter(x='x', y='y', c='data', cmap=plt.cm.Reds, marker='h')
-#plt.show()
 
 # These are the vectors for moving from any hex to one of its neighbors.
 
@@ -41,8 +147,9 @@ def oddr_to_cube(hex):
     y = -x-z
     return [x, y, z]
 
-from fact.instrument import get_pixel_coords, get_pixel_dataframe
+from fact.instrument import get_pixel_coords, get_pixel_dataframe, constants
 
+PIXEL_RADIUS = constants.PIXEL_SPACING_IN_MM / 2
 position_dict = {}
 x = []
 y = []
@@ -51,16 +158,23 @@ z = []
 #plt.show()
 
 pm = get_pixel_dataframe()
+print(pm)
 
-for id, values in enumerate(pm['x']):
-    print(id)
-    hex = [pm['x'][id], pm['y'][id]]
-    position_dict[id] = oddr_to_cube(hex)
-    print(oddr_to_cube(hex))
-    x.append(oddr_to_cube(hex)[0])
-    y.append(oddr_to_cube(hex)[1])
-    z.append(oddr_to_cube(hex)[2])
-    print(oddr_to_cube(hex)[0] + oddr_to_cube(hex)[1] + oddr_to_cube(hex)[2])
+axial_x_cor = pm['pos_X'].values
+axial_y_cor = pm['pos_Y'].values
+chids = pm['CHID'].values
+
+all_hexes = []
+
+for element in chids:
+    hex = HexTile((axial_x_cor[element], axial_y_cor[element]), PIXEL_RADIUS, element)
+    all_hexes.append(hex)
+
+
+for hexagon in all_hexes:
+    x.append(hexagon.cube_coordinates[0][0])
+    y.append(hexagon.cube_coordinates[0][1])
+    z.append(hexagon.cube_coordinates[0][2])
 
 from mpl_toolkits.mplot3d import Axes3D
 fig = plt.figure()
@@ -74,12 +188,47 @@ ax.set_zlabel('Z Label')
 
 plt.show()
 
+flat_x = []
+flat_y = []
+for hexagon in all_hexes:
+    flat_x.append(hexagon.position[0][0])
+    flat_y.append(hexagon.position[0][1])
+    print(hexagon.position[0])
+
+plt.scatter(flat_x, flat_y, marker='h')
+plt.title('Raw Position Coordinates')
+plt.show()
+
+flat_x = []
+flat_y = []
+for hexagon in all_hexes:
+    flat_x.append(hexagon.axial_coordinates[0][0])
+    flat_y.append(hexagon.axial_coordinates[0][1])
+
+plt.scatter(flat_x, flat_y, marker='h')
+plt.title('Axial Coordinates')
+plt.show()
+
+flat_x = []
+flat_y = []
+for hexagon in all_hexes:
+    flat_x.append(hexagon.position[0][0])
+    flat_y.append(hexagon.position[0][1])
+    print(hexagon.position[0])
+
+flat_x = np.asarray(flat_x)
+flat_y = np.asarray(flat_y)
+
 x_cor, y_cor = get_pixel_coords()
 
-y_cor=np.round(y_cor/8.2175,0)
-x_cor=x_cor/4.75+y_cor
+plt.scatter(x_cor, y_cor, marker='h')
+plt.title('Raw Pixel Coordinates')
+plt.show()
+
+flat_y=np.round(flat_y/8.2175,0)
+flat_x=flat_x/4.75+flat_y
 mapping = np.arange(0, 1440, 1)
-plt.scatter(x_cor, y_cor, c=mapping, cmap=plt.cm.Reds, marker='s')
+plt.scatter(flat_x, flat_y, c=mapping, cmap=plt.cm.Reds, marker='h')
 plt.xlabel('X Position')
 plt.ylabel('Y Position')
 plt.title('FACT Camera skewed to quadratic pixels')
