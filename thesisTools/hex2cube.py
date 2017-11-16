@@ -144,9 +144,8 @@ def oddr_to_cube(hex):
     return [x, y, z]
 
 from fact.instrument import get_pixel_coords, get_pixel_dataframe, constants
+PIXEL_RADIUS = constants.PIXEL_SPACING_MM / 2.
 
-PIXEL_RADIUS = constants.PIXEL_SPACING_IN_MM / 2
-position_dict = {}
 x = []
 y = []
 z = []
@@ -198,7 +197,8 @@ ax.set_xlabel('X Position')
 ax.set_ylabel('Y Position')
 ax.set_zlabel('Z Position')
 
-plt.show()
+plt.savefig("Cubic_Coordinate_FACT.png")
+plt.clf()
 
 flat_x = []
 flat_y = []
@@ -209,7 +209,8 @@ for hexagon in all_hexes:
 
 plt.scatter(flat_x, flat_y, marker='h')
 plt.title('Raw Position Coordinates')
-plt.show()
+plt.savefig("Raw_Position_Coordinates.png")
+plt.clf()
 
 flat_x = []
 flat_y = []
@@ -219,7 +220,8 @@ for hexagon in all_hexes:
 
 plt.scatter(flat_x, flat_y, marker='h')
 plt.title('Axial Coordinates')
-plt.show()
+plt.savefig("Axial_Coordinates.png")
+plt.clf()
 
 flat_x = []
 flat_y = []
@@ -235,7 +237,8 @@ x_cor, y_cor = get_pixel_coords()
 
 plt.scatter(x_cor, y_cor, marker='h')
 plt.title('Raw Pixel Coordinates')
-plt.show()
+plt.savefig("Raw_Pixel_Coordinates.png")
+plt.clf()
 
 flat_y=np.round(flat_y/8.2175,0)
 flat_x=flat_x/4.75+flat_y
@@ -245,9 +248,5 @@ plt.xlabel('X Position')
 plt.ylabel('Y Position')
 plt.title('FACT Camera skewed to quadratic pixels')
 
-plt.show()
-
-
-#TODO Need to convert the pixel corrdinates to the hexagon coordinates first, then hexagon to cubes
-
-#Haveto convert the  coordinates toe hexagonal
+plt.savefig("Skewed_Quadratic_Pixels.png")
+plt.clf()
