@@ -27,8 +27,8 @@ import os
 
 from thesisTools import kerasTools
 
-path_mc_images = "/run/media/jbieker/WDRed8Tb1/00_MC_Diffuse_flat_Images.h5"
-save_model_path = "/run/media/jbieker/SSD/Development/thesis/jan/hyperModels/"
+path_mc_images = "/tree/tf/00_MC_Diffuse_flat_Images.h5"
+save_model_path = "/notebooks/thesis/jan/hyperModels/"
 
 batch_size = 10000
 
@@ -43,7 +43,7 @@ params={
            'batch_norm': False,
            'regularize': 0.0,
            'decay': 0.0
-       },
+       }
 
 config = tf.ConfigProto(gpu_options=tf.GPUOptions(allocator_type='BFC'))
 
@@ -57,20 +57,21 @@ model = Sequential()
 # Set up regulariser
 regularizer = l2(0.0)
 
-model.add(Dense(1024, input_shape=(46,45,1), activation='selu', kernel_regularizer=regularizer))
-model.add(AlphaDropout(0.1))
-model.add(Dense(1024, activation='selu', kernel_regularizer=regularizer))
-model.add(AlphaDropout(0.1))
-model.add(Dense(1024, activation='selu', kernel_regularizer=regularizer))
-model.add(AlphaDropout(0.1))
-model.add(Dense(1024, activation='selu', kernel_regularizer=regularizer))
-model.add(AlphaDropout(0.1))
-model.add(Dense(1024, activation='selu', kernel_regularizer=regularizer))
-model.add(AlphaDropout(0.1))
-model.add(Dense(1024, activation='selu', kernel_regularizer=regularizer))
+model.add(Dense(64, input_shape=(46,45,1), activation='selu', kernel_regularizer=regularizer))
 model.add(AlphaDropout(0.1))
 model.add(Dense(64, activation='selu', kernel_regularizer=regularizer))
 model.add(AlphaDropout(0.1))
+model.add(Dense(64, activation='selu', kernel_regularizer=regularizer))
+model.add(AlphaDropout(0.1))
+model.add(Dense(64, activation='selu', kernel_regularizer=regularizer))
+model.add(AlphaDropout(0.1))
+model.add(Dense(64, activation='selu', kernel_regularizer=regularizer))
+model.add(AlphaDropout(0.1))
+model.add(Dense(64, activation='selu', kernel_regularizer=regularizer))
+model.add(AlphaDropout(0.1))
+model.add(Dense(32, activation='selu', kernel_regularizer=regularizer))
+model.add(AlphaDropout(0.1))
+model.add(Flatten())
 model.add(Dense(2, activation='softmax'))
 
 # Set up optimizer
@@ -84,6 +85,7 @@ model.compile(
 )
 
 print(model.output_shape)
+print(model.summary())
 
 # Need to load data
 
