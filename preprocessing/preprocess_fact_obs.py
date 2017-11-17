@@ -7,114 +7,111 @@ import pickle
 import gzip
 import json
 import os
+import h5py
+import matplotlib.pyplot as plt
 
 # Important variables
-mc_data_path = '/run/media/jbieker/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/2015'
-id_position_path = '/run/media/jbieker/SSD/Development/CNN_Classification_with_FACT_images/position_dict.p'
-temporary_path = '/run/media/jbieker/Seagate/A_test'
-processed_data_path = '/run/media/jbieker/Seagate/B_test'
+mc_data_path = '/run/media/jbieker/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/sim/'
+id_position_path = '/run/media/jbieker/SSD/Development/thesis/thesisTools/output/hexagon_to_cube_mapping.p'
+path_mc_images = '/run/media/jbieker/Seagate/MC_Cube_Images.h5'
 
 def getMetadata():
     '''
     Gathers the file paths of the training data
     '''
     # Iterate over every file in the subdirs and check if it has the right file extension
-    file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(os.path.expanduser(mc_data_path)) for file in fileName if '.json' in file]
+    file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(os.path.expanduser(mc_data_path)) for file in fileName if 'phs.json' in file]
     return file_paths
 
 
-def reformat(dataset, labels):
-    dataset = dataset.reshape((-1, 46, 45, 1)).astype(np.float32)
-    labels = (np.arange(2) == labels[:,None]).astype(np.float32)
-    return dataset, labels
+def reformat(dataset):
+    #Reformat to fit into tensorflow
+    dataset = np.array(dataset).reshape((-1, 40, 56, 40)).astype(np.float32)
+    return dataset
 
 file_paths = getMetadata()
 id_position = pickle.load(open(id_position_path, "rb"))
 
-data = []
-num = 0
+path_mc_gammas = [path for path in file_paths if 'gamma' in path]
+path_mc_hadrons = [path for path in file_paths if 'gamma' not in path]
+
+'''
 for path in file_paths:
-    with gzip.open(path) as file:
         # Gamma=True, Proton=False
         label = True if 'gamma' in path else False
         try:
-            for line in file:
-                try:
-                    event_photons = json.loads(line.decode('utf-8'))['PhotonArrivals_500ps']
-
-                    event = []
-                    input_matrix = np.zeros([46,45,100])
-                    for i in range(1440):
-                        event.extend(event_photons[i])
-
-                        x, y = id_position[i]
-                        for value in event_photons[i]:
-                            input_matrix[int(x)][int(y)][value-30] += 1
-
-                    input_matrix = np.sum(input_matrix[:,:,10:30], axis=2)
-                    data.append([input_matrix, label])
-
-
-
-                    if len(data)%1000 == 0 and len(data)!=0:
-                        pic, lab = zip(*data)
-                        pic, lab = reformat(np.array(pic), np.array(lab))
-                        data_dict={'Image':pic, 'Label':lab}
-
-                        with gzip.open( temporary_path + "/PhotonArrivals_500ps_"+str(num)+".p", "wb" ) as data_file:
-                            pickle.dump(data_dict, data_file)
-                        data = []
-                        num += 1
-
-                except:
-                    pass
+            reader = ps.EventListReader(path)
+            # Now iterate through the Event List
+            event = next(reader)
+            while event:
+                print(path)
+                print(event.photon_stream.point_cloud)
+                print(ps.PhotonStream.list_of_lists)
+                ps.plot.event(event)
+                plt.show()
+                event = next(reader)
+                # In the loop, map photons to the position in the detector space
         except:
             print(path)
-            print(file)
             pass
+'''
 
-# Load pickled data and split it into pictures and labels
-def load_data(file):
-    with gzip.open(temporary_path+'/'+file, 'rb') as f:
-        data_dict = pickle.load(f)
-    pic = data_dict['Image']
-    lab = data_dict['Label']
-    return (pic, lab)
+def batchYielder(file_paths):
+    for path in file_paths:
+        label = True if 'gamma' in path else False
+        with gzip.open(path) as file:
+            event = []
+            print(path)
 
-# Pool-load pickled data and split it into pictures and labels (list)
-p = Pool()
-data = p.map(load_data, os.listdir(temporary_path))
-pics, labs = zip(*data)
-del data, p
+            for line in file:
+                event_photons = json.loads(line.decode('utf-8'))['PhotonArrivals_500ps']
 
-# Concatenate the data to a single np.array
-pic = np.concatenate(pics)
-lab = np.concatenate(labs)
-del pics, labs
+                input_matrix = np.zeros([40,56,40]) #x, y, z +2ish
+                for i in range(1440):
+                    x, y, z = id_position[i][0]
+                    # Adds length of the event photons for a line, so the number of photons per pixel for one event
+                    # Each line is an event
+                    input_matrix[int(x)][int(y)][int(z)] = len(event_photons[i])
 
+                event.append(input_matrix)
 
-# Values to standardize the data
-mean = np.mean(pic)
-std = np.std(pic)
-print(mean, std)
+            event = reformat(event)
 
-
-# Randomize and split the data into train/validation/test dataset
-p = np.random.permutation(len(pic))
-all_pics = pic[p]
-all_labels = lab[p]
-del p, pic, lab
-
-def save_data(i):
-    pics_batch = all_pics[(i-1)*1000:i*1000]
-    labels_batch = all_labels[(i-1)*1000:i*1000]
-
-    data_dict={'Image':(pics_batch-mean)/std, 'Label':labels_batch}
-    with gzip.open(processed_data_path + '/PhotonArrivals_500ps_{}.p'.format(i), 'wb') as f:
-        pickle.dump(data_dict, f)
-
-num_files = len(os.listdir(temporary_path))
-p = Pool()
-data = p.map(save_data, range(1,num_files+1))
+            yield event
 
 
+# Use the batchYielder to concatenate every batch and store it into one h5 file
+gamma_gen = batchYielder(path_mc_gammas)
+gamma = next(gamma_gen)
+gamma_row_count = gamma.shape[0]
+
+with h5py.File(path_mc_images, 'w') as hdf:
+    maxshape_gamma = (None,) + gamma.shape[1:]
+    dset_gamma = hdf.create_dataset('Gamma', shape=gamma.shape, maxshape=maxshape_gamma, chunks=gamma.shape, dtype=gamma.dtype)
+
+    dset_gamma[:] = gamma
+
+    for gamma in gamma_gen:
+        dset_gamma.resize(gamma_row_count + gamma.shape[0], axis=0)
+        dset_gamma[gamma_row_count:] = gamma
+
+        gamma_row_count += gamma.shape[0]
+
+
+
+    # Use the batchYielder to concatenate every batch and store it into one h5 file
+hadron_gen = batchYielder(path_mc_hadrons)
+hadron = next(hadron_gen)
+hadron_row_count = hadron.shape[0]
+
+with h5py.File(path_mc_images, 'a') as hdf:
+    maxshape_hadron = (None,) + hadron.shape[1:]
+    dset_hadron = hdf.create_dataset('Hadron', shape=hadron.shape, maxshape=maxshape_hadron, chunks=hadron.shape, dtype=hadron.dtype)
+
+    dset_hadron[:] = hadron
+
+    for hadron in hadron_gen:
+        dset_hadron.resize(hadron_row_count + hadron.shape[0], axis=0)
+        dset_hadron[hadron_row_count:] = hadron
+
+        hadron_row_count += hadron.shape[0]

@@ -13,9 +13,9 @@ import os
 #path_raw_mc_folder = sys.argv[1]
 path_raw_mc_folder = "/run/media/jbieker/WDRed8Tb1/sim/"
 #path_store_mapping_dict = sys.argv[2]
-path_store_mapping_dict = "/run/media/jbieker/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
+path_store_mapping_dict = "/run/media/jbieker/SSD/Development/thesis/thesisTools/output/hexagon_to_cube_mapping.p"
 #path_mc_images = sys.argv[3]
-path_mc_images = "/run/media/jbieker/WDRed8Tb1/00_MC_Images.h5"
+path_mc_images = "/run/media/jbieker/WDRed8Tb1/MC_Cube_Images.h5"
 
 
 def getMetadata():

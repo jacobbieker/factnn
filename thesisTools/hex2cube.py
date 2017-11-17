@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 import pandas as pd
 import sys
+import os
 import matplotlib.pyplot as plt
 
 # Matrix for converting axial coordinates to pixel coordinates
@@ -144,13 +145,13 @@ def oddr_to_cube(hex):
     return [x, y, z]
 
 from fact.instrument import get_pixel_coords, get_pixel_dataframe, constants
-PIXEL_RADIUS = constants.PIXEL_SPACING_MM / 2.
+
+PIXEL_RADIUS = constants.PIXEL_SPACING_IN_MM / 2.
 
 x = []
 y = []
 z = []
 
-#plt.show()
 
 pm = get_pixel_dataframe()
 print(pm)
@@ -262,10 +263,18 @@ plt.clf()
 
 # CHID is the index, then just have the cube_coordinates placed
 mapping_from_hexagon_to_cube = []
-path_to_save_mapping = ""
+path_to_save_mapping = os.path.join("output", "hexagon_to_cube_mapping.p")
 for hexagon in all_hexes:
     # Should be the mapping for CHID
     mapping_from_hexagon_to_cube.append(hexagon.cube_coordinates)
 
 pickle.dump(mapping_from_hexagon_to_cube, open(path_to_save_mapping, 'wb'))
-
+print("Y: ")
+print(start_y)
+print(end_y)
+print("X: ")
+print(start_x)
+print(end_x)
+print("Z: ")
+print(start_z)
+print(end_z)
