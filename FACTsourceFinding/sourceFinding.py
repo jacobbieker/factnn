@@ -38,14 +38,14 @@ def on_off_loss(on_events, off_events):
     return on_events / np.sqrt(off_events*0.2)
 
 
-crab_sample = read_h5py("/home/jacob/Development/thesis/open_crab_sample_facttools_dl2.hdf5", "events")
+crab_sample = read_h5py("../open_crab_sample_facttools_dl2.hdf5", "events")
 # print(crab_sample)
-on_crab_events, off_crab_events = split_on_off_source_independent(crab_sample, theta2_cut=0.8)
-print(len(on_crab_events))
-print(len(off_crab_events))
+#on_crab_events, off_crab_events = split_on_off_source_independent(crab_sample, theta2_cut=0.8)
+#print(len(on_crab_events))
+#print(len(off_crab_events))
 
-print(on_off_loss(len(on_crab_events), len(off_crab_events)))
-print(on_off_loss(len(off_crab_events)*0.2, len(off_crab_events)))
+#print(on_off_loss(len(on_crab_events), len(off_crab_events)))
+#print(on_off_loss(len(off_crab_events)*0.2, len(off_crab_events)))
 
 
 # Now simple CNN to minimize the on_off loss
