@@ -45,11 +45,11 @@ sim_sample = read_h5py("../open_sim__train.hdf5", "events")
 #gamma_diffuse_sample = read_h5py("../gamma_simulations_diffuse_facttools_dl2.hdf5", "events")
 
 # print(crab_sample)
-on_crab_events, off_crab_events = split_on_off_source_independent(crab_sample, theta2_cut=0.1)
-on_sim_events, off_sim_events = split_on_off_source_independent(sim_sample, theta2_cut=0.1)
+#on_crab_events, off_crab_events = split_on_off_source_independent(crab_sample, theta2_cut=0.1)
+on_crab_events, off_crab_events = split_on_off_source_independent(sim_sample, theta2_cut=0.1)
 
-binned_sim_events = bin_runs(crab_sample)
-print(binned_sim_events)
+#binned_sim_events = bin_runs(crab_sample)
+#print(binned_sim_events)
 # Write separated events
 #to_h5py("../on_train_crab_events_facttools_dl2_thetaOne.hdf5", df=on_crab_events, key="events")
 #to_h5py("../off_train_crab_events_facttools_dl2_thetaOne.hdf5", df=off_crab_events, key="events")
@@ -57,8 +57,8 @@ print(binned_sim_events)
 #to_h5py("../off_train_sim_events_facttools_dl2_thetaOne.hdf5", df=off_sim_events, key="events")
 
 
-#print(len(on_crab_events))
-#print(len(off_crab_events))
+print(len(on_crab_events))
+print(len(off_crab_events)*0.2)
 
 print(on_off_loss(len(on_crab_events), len(off_crab_events)*0.2))
 print(on_off_loss(len(off_crab_events)*0.2, len(off_crab_events)*0.2))
@@ -77,6 +77,8 @@ print(on_off_loss(len(off_crab_events)*0.2, len(off_crab_events)*0.2))
 # so have to modify the CNN to do the loss over multiple flattend events at the same time?
 # Probably why my test one didn't make much sense
 #
+
+num_classes = 2
 
 model = Sequential()
 model.add(Conv2D(32, kernel_size=(5, 5), strides=(1, 1),
