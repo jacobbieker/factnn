@@ -41,24 +41,50 @@ def on_off_loss(on_events, off_events):
 
 crab_sample = read_h5py("../open_crab__train.hdf5", "events")
 sim_sample = read_h5py("../open_sim__train.hdf5", "events")
-#proton_sample = read_h5py("../proton_simulations_facttools_dl2.hdf5", "events")
-#gamma_diffuse_sample = read_h5py("../gamma_simulations_diffuse_facttools_dl2.hdf5", "events")
+proton_sample = read_h5py("../proton_simulations_facttools_dl2.hdf5", "events")
+gamma_diffuse_sample = read_h5py("../gamma_simulations_diffuse_facttools_dl2.hdf5", "events")
+
+combined_proton_gamma = sim_sample + proton_sample
+
+to_h5py(filename="../combine_proton_gamma.hdf5", df=combined_proton_gamma, key="events")
+
+
+# For loop to produce the different cuts
+
+start_point = 0.1
+end_point = 1.0
+number_steps = 10
+i = 1
+j = 1
+
+while start_point * i < end_point:
+    theta_value_one = start_point * i
+    # Get the initial equal splits of data
+    on_crab_events, off_crab_events = split_on_off_source_independent(crab_sample, theta2_cut=theta_value_one)
+    on_sim_events, off_sim_events = split_on_off_source_independent(sim_sample, theta2_cut=theta_value_one)
+
+    to_h5py(filename="../on_train_crab_events_facttools_dl2_theta" + str(theta_value_one) + ".hdf5", df=on_crab_events, key="events")
+    to_h5py(filename="../off_train_crab_events_facttools_dl2_theta" + str(theta_value_one) + ".hdf5", df=off_crab_events, key="events")
+    to_h5py(filename="../on_train_sim_events_facttools_dl2_theta" + str(theta_value_one) + ".hdf5", df=on_sim_events, key="events")
+    to_h5py(filename="../off_train_sim_events_facttools_dl2_theta" + str(theta_value_one) + ".hdf5", df=off_sim_events, key="events")
+
+    while start_point * j < end_point:
+        theta_value_two = start_point * j
+
+        # now go through, getting all the necessary permutations to use to compare to the default
+
+
+        j += 1
+
+    i += 1 # Add one to increment
+
+
 
 # print(crab_sample)
-#on_crab_events, off_crab_events = split_on_off_source_independent(crab_sample, theta2_cut=0.1)
-on_crab_events, off_crab_events = split_on_off_source_independent(sim_sample, theta2_cut=0.1)
 
 #binned_sim_events = bin_runs(crab_sample)
 #print(binned_sim_events)
 # Write separated events
-#to_h5py("../on_train_crab_events_facttools_dl2_thetaOne.hdf5", df=on_crab_events, key="events")
-#to_h5py("../off_train_crab_events_facttools_dl2_thetaOne.hdf5", df=off_crab_events, key="events")
-#to_h5py("../on_train_sim_events_facttools_dl2_thetaOne.hdf5", df=on_sim_events, key="events")
-#to_h5py("../off_train_sim_events_facttools_dl2_thetaOne.hdf5", df=off_sim_events, key="events")
-
-
-print(len(on_crab_events))
-print(len(off_crab_events)*0.2)
 
 print(on_off_loss(len(on_crab_events), len(off_crab_events)*0.2))
 print(on_off_loss(len(off_crab_events)*0.2, len(off_crab_events)*0.2))
