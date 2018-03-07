@@ -5,9 +5,9 @@ import numpy as np
 import h5py
 import sys
 
-path_raw_crab_folder = "/run/media/jbieker/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/"
+path_raw_crab_folder = "/run/media/jacob/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/"
 #path_store_mapping_dict = sys.argv[2]
-path_runs_to_use = "/run/media/jbieker/SSD/Development/thesis/jan/07_make_FACT/Crab1314_runs_to_use.csv"
+path_runs_to_use = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/Crab1314_runs_to_use.csv"
 path_store_mapping_dict = "/run/media/jbieker/SSD/Development/thesis/thesisTools/output/hexagon_to_cube_mapping.p"
 #path_mc_images = sys.argv[3]
 path_crab_images = "/run/media/jbieker/WDRed8Tb1/Cube_crab1314_preprocessed_images.h5"

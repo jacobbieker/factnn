@@ -13,10 +13,10 @@ import yaml
 
 
 # Important variables
-mc_data_path = '/run/media/jbieker/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/'
-id_position_path = '/run/media/jbieker/SSD/Development/CNN_Classification_with_FACT_images/position_dict.p'
-temporary_path = '/run/media/jbieker/Seagate/D_test'
-processed_data_path = '/run/media/jbieker/Seagate/C_test'
+mc_data_path = '/run/media/jacob/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/'
+id_position_path = '/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p'
+temporary_path = '/run/media/jacob/Seagate/D_test'
+processed_data_path = '/run/media/jacob/Seagate/C_test'
 
 is_sim = False
 
@@ -80,8 +80,8 @@ if is_sim == False:
 
 
 sim_reader = ps.SimulationReader(
-    photon_stream_path="/run/media/jbieker/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/sim/gamma/gustav/010910.phs.jsonl.gz",
-    mmcs_corsika_path="/run/media/jbieker/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/sim/gamma/gustav/010910.ch.gz"
+    photon_stream_path="/run/media/jacob/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/sim/gamma/gustav/010910.phs.jsonl.gz",
+    mmcs_corsika_path="/run/media/jacob/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/sim/gamma/gustav/010910.ch.gz"
 )
 
 for event in sim_reader:

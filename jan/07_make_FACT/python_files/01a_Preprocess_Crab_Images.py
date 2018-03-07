@@ -15,12 +15,12 @@ import sys
 #path_store_mapping_dict = sys.argv[3]
 #path_crab_images = sys.argv[4]
 
-path_raw_crab_folder = "/run/media/jbieker/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/"
+path_raw_crab_folder = "/run/media/jacob/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/"
 #path_store_mapping_dict = sys.argv[2]
-path_runs_to_use = "/run/media/jbieker/SSD/Development/thesis/jan/07_make_FACT/Crab1314_runs_to_use.csv"
-path_store_mapping_dict = "/run/media/jbieker/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
+path_runs_to_use = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/Crab1314_runs_to_use.csv"
+path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
 #path_mc_images = sys.argv[3]
-path_crab_images = "/run/media/jbieker/WDRed8Tb1/00_crab1314_preprocessed_images.h5"
+path_crab_images = "/run/media/jacob/WDRed8Tb1/00_crab1314_preprocessed_images.h5"
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
@@ -37,12 +37,15 @@ def batchYielder():
             path = path_raw_crab_folder + l[0][:4]+'/' + l[0][4:6]+'/' + l[0][6:8]+'/' + l[0][:4]+l[0][4:6]+l[0][6:8]+'_'+l[1].strip()+'.phs.jsonl.gz'
             paths.append(path)
 
+    print(paths)
+
     # Load mapping-dict to switch from hexagonal to matrix
     id_position = pickle.load(open(path_store_mapping_dict, "rb"))
 
     for file in paths:
         try:
             with gzip.open(file) as f:
+                print(file)
                 data = []
 
                 for line in f:

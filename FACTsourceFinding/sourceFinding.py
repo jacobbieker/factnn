@@ -16,6 +16,7 @@ from fact.io import read_h5py, to_h5py
 import h5py
 import pandas as pd
 
+
 batch_size = 128
 num_classes = 10
 epochs = 12
@@ -41,35 +42,75 @@ def on_off_loss(on_events, off_events):
     return on_events / np.sqrt(off_events * 0.2)
 
 
-crab_sample = read_h5py("../dl2/crab.hdf5", "events")
-sim_sample = read_h5py("../dl2/gamma.hdf5", "events")
-proton_sample = read_h5py("../dl2/proton.hdf5", "events")
-gamma_diffuse_sample = read_h5py("../dl2/gamma_diffuse.hdf5", "events")
+def li_ma_significance_loss(on_events, off_events):
+    # Derivative of Li and Ma with respect to N_on
+    return np.log((2*on_events)/(on_events + off_events))/(np.sqrt(2)*np.sqrt(on_events*np.log((2*on_events)/(on_events + off_events)) + off_events*np.log((2*off_events)/(on_events + off_events))))
 
 
-sim_sample['is_gamma'] = 1
-proton_sample['is_gamma'] = 0
-gamma_diffuse_sample['is_gamma'] = 2
 
-print(isinstance(sim_sample, pd.DataFrame))
+# Input is the flattened Eventlist format, point is to try to find the source in the flattened format
+# Once it identifies the central point, that event can be matched back up with the pointing and theta to have the course?
+# Use the li-ma or 1/root(n) to find the center, since it has a gradient?
+# The flat eventlist gives the intensity from each event, which is what we want
+# The intensity from each event can be used to get significance, and then binned,
+# giving the different bins used for the significance
+# This results in the sharp fall off from theta^2 for the source, hopefully
+# Need to calculate loss function batchwise, since sigificance only makes sense in batches
+# so have to modify the CNN to do the loss over multiple flattend events at the same time?
+# Probably why my test one didn't make much sense
+#
 
-combined_proton_gamma = pd.concat([sim_sample, proton_sample], ignore_index=True)
+#crab_df = read_h5py("/run/media/jacob/WDRed8Tb1/00_crab1314_preprocessed_images.h5", key='events')
+gamma_df = read_h5py("/run/media/jacob/WDRed8Tb1/MC_2D_Images.h5", key="events")
 
-print(isinstance(combined_proton_gamma, pd.DataFrame))
+print(gamma_df.columns.values)
 
-combined_all_sim = pd.concat([sim_sample, proton_sample, gamma_diffuse_sample], ignore_index=True)
+num_classes = 2
+
+model = Sequential()
+model.add(Conv2D(32, kernel_size=(5, 5), strides=(1, 1),
+                 activation='relu',
+                 input_shape=(46, 45, 1)))
+model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+model.add(Conv2D(64, (5, 5), activation='relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Flatten())
+model.add(Dense(1000, activation='relu'))
+model.add(Dense(num_classes, activation='softmax'))
+
+
+
+#crab_sample = read_h5py("../dl2/crab.hdf5", "events")
+#sim_sample = read_h5py("../dl2/gamma.hdf5", "events")
+#proton_sample = read_h5py("../dl2/proton.hdf5", "events")
+#gamma_diffuse_sample = read_h5py("../dl2/gamma_diffuse.hdf5", "events")
+
+
+#sim_sample['is_gamma'] = 1
+#proton_sample['is_gamma'] = 0
+#gamma_diffuse_sample['is_gamma'] = 2
+
+#combined_proton_gamma = pd.concat([sim_sample, proton_sample], ignore_index=True)
+
+#combined_all_sim = pd.concat([sim_sample, proton_sample, gamma_diffuse_sample], ignore_index=True)
+
+#crab_proton_diffuse = pd.concat([crab_sample, proton_sample, gamma_diffuse_sample], ignore_index=True)
+
+#crab_proton = pd.concat([crab_sample, sim_sample], ignore_index=True)
+
+#to_h5py(filename="//run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/crab_proton_diffuse.hdf5", df=crab_proton_diffuse, key="events")
+#to_h5py(filename="/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/crab_gamma.hdf5", df=crab_proton, key="events")
 
 #to_h5py(filename="../combine_proton_gamma.hdf5", df=combined_proton_gamma, key="events")
 #to_h5py(filename="../combine_all_sim.hdf5", df=combined_all_sim, key="events")
 
-print("Finished combined")
-
 # For loop to produce the different cuts
 
-start_point = 0.7
+'''
+start_point = 0.05
 end_point = 1.0
 number_steps = 10
-step_size = 0.1
+step_size = 0.05
 i = 3
 j = 1
 
@@ -98,47 +139,23 @@ while start_point + (step_size * i) <= end_point:
     to_h5py(filename="/run/media/jacob/WDRed8Tb1/dl2_theta/off_train_sim_proton_events_facttools_dl2_theta" + str(np.round(theta_value_one, decimals=1)) + ".hdf5", df=off_sim_proton_events,
             key="events")
 
-    while start_point * j < end_point:
-        theta_value_two = start_point * j
+    while start_point + (step_size * j) <= end_point:
+        theta_value_two = start_point +(step_size * j)
 
         # now go through, getting all the necessary permutations to use to compare to the default
 
         j += 1
 
-    i += 1  # Add one to increment
+    # remove DF of splits so it doesn't run out of memory
+    del on_crab_events, off_crab_events
+    del on_sim_events, off_sim_events
+    del on_sim_all_events, off_sim_all_events
+    del on_sim_proton_events, off_sim_proton_events
 
+    i += 1  # Add one to increment
+'''
 # print(crab_sample)
 
 # binned_sim_events = bin_runs(crab_sample)
 # print(binned_sim_events)
 # Write separated events
-
-print(on_off_loss(len(on_crab_events), len(off_crab_events) * 0.2))
-print(on_off_loss(len(off_crab_events) * 0.2, len(off_crab_events) * 0.2))
-
-# Now simple CNN to minimize the on_off loss
-
-# Input is the flattened Eventlist format, point is to try to find the source in the flattened format
-# Once it identifies the central point, that event can be matched back up with the pointing and theta to have the course?
-# Use the li-ma or 1/root(n) to find the center, since it has a gradient?
-# The flat eventlist gives the intensity from each event, which is what we want
-# The intensity from each event can be used to get significance, and then binned,
-# giving the different bins used for the significance
-# This results in the sharp fall off from theta^2 for the source, hopefully
-# Need to calculate loss function batchwise, since sigificance only makes sense in batches
-# so have to modify the CNN to do the loss over multiple flattend events at the same time?
-# Probably why my test one didn't make much sense
-#
-
-num_classes = 2
-
-model = Sequential()
-model.add(Conv2D(32, kernel_size=(5, 5), strides=(1, 1),
-                 activation='relu',
-                 input_shape=(46, 45, 1)))
-model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-model.add(Conv2D(64, (5, 5), activation='relu'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Flatten())
-model.add(Dense(1000, activation='relu'))
-model.add(Dense(num_classes, activation='softmax'))
