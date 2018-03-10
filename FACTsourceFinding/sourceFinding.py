@@ -24,6 +24,21 @@ epochs = 12
 # Image dimensions
 img_rows, img_cols = 28, 28
 
+def batchYielder():
+    with h5py.File("/run/media/jacob/WDRed8Tb1/00_crab1314_preprocessed_images.h5", 'r') as hdf:
+        items = list(hdf.items())[0][1].shape[0]
+        i = 0
+
+        while (i+1)*batch_size < items/1: # 160 factor to not process everything
+            night = np.array(hdf['Night'][ i*batch_size:(i+1)*batch_size ])
+            run = np.array(hdf['Run'][ i*batch_size:(i+1)*batch_size ])
+            event = np.array(hdf['Event'][ i*batch_size:(i+1)*batch_size ])
+            images = np.array(hdf['Image'][ i*batch_size:(i+1)*batch_size ])
+
+            i += 1
+            print(i)
+            yield (night, run, event, images)
+
 
 def gamma_ray_loss_function():
     def weight_loss(y_true, y_pred):
@@ -43,10 +58,13 @@ def on_off_loss(on_events, off_events):
 
 
 def li_ma_significance_loss(on_events, off_events):
-    # Derivative of Li and Ma with respect to N_on
-    return np.log((2*on_events)/(on_events + off_events))/(np.sqrt(2)*np.sqrt(on_events*np.log((2*on_events)/(on_events + off_events)) + off_events*np.log((2*off_events)/(on_events + off_events))))
+    # Derivative of Li and Ma with respect to N_on and negative version to go to lower
+    on_events = np.asarray(on_events)
+    off_events = np.asarray(off_events)
+    return -K.log((2*on_events)/(on_events + off_events))/(K.sqrt(2)*K.sqrt(on_events*K.log((2*on_events)/(on_events + off_events)) + off_events*K.log((2*off_events)/(on_events + off_events))))
 
-
+def lima_sig_loss(on_events, off_events):
+    return  -1*K.sqrt(2)*K.sqrt(on_events*K.log((on_events)/(on_events + off_events)) + off_events*K.log(off_events/(on_events + off_events)))
 
 # Input is the flattened Eventlist format, point is to try to find the source in the flattened format
 # Once it identifies the central point, that event can be matched back up with the pointing and theta to have the course?
@@ -61,9 +79,9 @@ def li_ma_significance_loss(on_events, off_events):
 #
 
 #crab_df = read_h5py("/run/media/jacob/WDRed8Tb1/00_crab1314_preprocessed_images.h5", key='events')
-gamma_df = read_h5py("/run/media/jacob/WDRed8Tb1/MC_2D_Images.h5", key="events")
+#gamma_df = read_h5py("/run/media/jacob/WDRed8Tb1/MC_2D_Images.h5", key="events")
 
-print(gamma_df.columns.values)
+#print(gamma_df.columns.values)
 
 num_classes = 2
 
@@ -77,36 +95,47 @@ model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Flatten())
 model.add(Dense(1000, activation='relu'))
 model.add(Dense(num_classes, activation='softmax'))
+#model.compile(optimizer='sgd', loss=lima_sig_loss)
 
 
 
-#crab_sample = read_h5py("../dl2/crab.hdf5", "events")
-#sim_sample = read_h5py("../dl2/gamma.hdf5", "events")
-#proton_sample = read_h5py("../dl2/proton.hdf5", "events")
-#gamma_diffuse_sample = read_h5py("../dl2/gamma_diffuse.hdf5", "events")
+
+for batch in batchYielder():
+    night, run, event, images = batch
 
 
-#sim_sample['is_gamma'] = 1
-#proton_sample['is_gamma'] = 0
-#gamma_diffuse_sample['is_gamma'] = 2
+'''
+crab_sample = read_h5py("/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/crab.hdf5", "events")
+sim_sample = read_h5py("/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/gamma.hdf5", "events")
+proton_sample = read_h5py("/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/proton.hdf5", "events")
+gamma_diffuse_sample = read_h5py("/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/gamma_diffuse.hdf5", "events")
 
-#combined_proton_gamma = pd.concat([sim_sample, proton_sample], ignore_index=True)
 
-#combined_all_sim = pd.concat([sim_sample, proton_sample, gamma_diffuse_sample], ignore_index=True)
+sim_sample['is_gamma'] = 1
+proton_sample['is_gamma'] = 0
+gamma_diffuse_sample['is_gamma'] = 2
 
-#crab_proton_diffuse = pd.concat([crab_sample, proton_sample, gamma_diffuse_sample], ignore_index=True)
+combined_proton_gamma = pd.concat([sim_sample, proton_sample], ignore_index=True)
 
-#crab_proton = pd.concat([crab_sample, sim_sample], ignore_index=True)
+combined_all_sim = pd.concat([sim_sample, proton_sample, gamma_diffuse_sample], ignore_index=True)
 
-#to_h5py(filename="//run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/crab_proton_diffuse.hdf5", df=crab_proton_diffuse, key="events")
-#to_h5py(filename="/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/crab_gamma.hdf5", df=crab_proton, key="events")
+crab_proton_diffuse = pd.concat([crab_sample, proton_sample, gamma_diffuse_sample], ignore_index=True)
 
-#to_h5py(filename="../combine_proton_gamma.hdf5", df=combined_proton_gamma, key="events")
-#to_h5py(filename="../combine_all_sim.hdf5", df=combined_all_sim, key="events")
+crab_proton = pd.concat([crab_sample, proton_sample], ignore_index=True)
+
+crab_gamma = pd.concat([crab_sample, sim_sample], ignore_index=True)
+
+
+to_h5py(filename="/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/crab_proton_diffuse.hdf5", df=crab_proton_diffuse, key="events")
+to_h5py(filename="/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/crab_gamma.hdf5", df=crab_gamma, key="events")
+to_h5py(filename="/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/crab_proton.hdf5", df=crab_proton, key="events")
+
+to_h5py(filename="/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/combine_proton_gamma.hdf5", df=combined_proton_gamma, key="events")
+to_h5py(filename="/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/combine_all_sim.hdf5", df=combined_all_sim, key="events")
 
 # For loop to produce the different cuts
 
-'''
+
 start_point = 0.05
 end_point = 1.0
 number_steps = 10
