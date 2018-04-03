@@ -34,6 +34,7 @@ for (dirpath, dirnames, filenames) in walk(file_directory):
     files_names.extend(filenames)
     break
 
+print(files_names)
 # Now go through all the files, pulling out the prediction values
 for name in files_names:
     try:
@@ -63,9 +64,8 @@ for name in files_names:
 
 # Now have them all in six dictionaries, can now
 
-with open("crab_predictions.pkl", "wb") as pickler:
-    pickle.dump(crab_predictions, pickler, protocol=pickle.HIGHEST_PROTOCOL)
-
+predicitons_df = pd.DataFrame(crab_predictions)
+to_h5py(predicitons_df, "/run/media/jacob/WDRed8Tb1/gamma_predictions.hdf5", key="data")
 '''
 with open("dl2/gamma_predictions.pkl", "wb") as pickler:
     pickle.dump(gamma_predictions, pickler, protocol=pickle.HIGHEST_PROTOCOL)

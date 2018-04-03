@@ -11,15 +11,16 @@ from fact.credentials import get_credentials
 import os
 import datetime
 
+np.random.seed(0)
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
-#path_mc_images = sys.argv[3]
+#path_mc_images = "D:\Development\thesis\jan\07_make_FACT\hexagonal_to_quadratic_mapping_dict.p"
 
 source_file_paths = []
 output_paths = []
 
 # Build list of source csv files to go through
-for subdir, dirs, files in os.walk("testing/"):
+for subdir, dirs, files in os.walk("runs/"):
     for file in files:
         if ".csv" in file:
             path = os.path.join(subdir, file)
@@ -46,10 +47,18 @@ def batchYielder(path_runs_to_use):
 
     #print(paths)
     # Now select a subset of those paths to use
-    np.random.seed(0)
     num_of_files_to_use = 2000
-    used_list = np.random.choice(paths, size=num_of_files_to_use, replace=False)
-
+    try:
+        used_list = np.random.choice(paths, size=num_of_files_to_use, replace=False)
+    except:
+        try:
+            used_list = np.random.choice(paths, size=int(num_of_files_to_use/2), replace=False)
+        except:
+            try:
+                used_list = np.random.choice(paths, size=int(num_of_files_to_use/4), replace=False)
+            except:
+                print("Not Enough Events")
+                used_list = np.random.choice(paths, size=1, replace=False)
     # Load mapping-dict to switch from hexagonal to matrix
     id_position = pickle.load(open(path_store_mapping_dict, "rb"))
 
