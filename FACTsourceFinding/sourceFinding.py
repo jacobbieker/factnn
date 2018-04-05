@@ -10,13 +10,12 @@ from keras.regularizers import l2
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard
 
-from fact.analysis import split_on_off_source_independent, split_on_off_source_dependent
 from fact.analysis.binning import bin_runs
 from fact.io import read_h5py, to_h5py
 import h5py
 import keras
 import pandas as pd
-from .fact_generators import SimDataGenerator, DataGenerator
+from FACTsourceFinding.fact_generators import SimDataGenerator, DataGenerator
 
 batch_size = 128
 num_classes = 10
@@ -117,7 +116,7 @@ model.add(Conv2D(64, (5, 5), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Flatten())
 model.add(Dense(1000, activation='relu'))
-model.add(Dense(num_classes, activation='softmax'))
+model.add(Dense(num_labels, activation='softmax'))
 model.compile(optimizer='sgd', loss='mean_squared_error')
 
 model.fit_generator(generator=training_generator,
