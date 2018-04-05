@@ -26,7 +26,7 @@ for subdir, dirs, files in os.walk("runs/"):
             path = os.path.join(subdir, file)
             source_file_paths.append(path)
             output_filename = file.split(".csv")[0]
-            output_paths.append("/run/media/jacob/WDRed8Tb1/" + output_filename + "_preprocessed_images.h5")
+            output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/" + output_filename + "_preprocessed_images.h5")
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
@@ -106,52 +106,54 @@ def batchFormatter(batch):
 # Use the batchYielder to concatenate every batch and store it into a single h5 file
 
 for index, source_file in enumerate(source_file_paths):
-    gen = batchYielder(source_file)
-    batch = next(gen)
-    pic, night, run, event, zd_deg, az_deg, trigger = batchFormatter(batch)
-    row_count = trigger.shape[0]
+    print(output_paths[index])
+    if not os.path.isfile(output_paths[index]):
+        gen = batchYielder(source_file)
+        batch = next(gen)
+        pic, night, run, event, zd_deg, az_deg, trigger = batchFormatter(batch)
+        row_count = trigger.shape[0]
 
-    with h5py.File(output_paths[index], 'w') as hdf:
-        maxshape_pic = (None,) + pic.shape[1:]
-        dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
-        maxshape_night = (None,) + night.shape[1:]
-        dset_night = hdf.create_dataset('Night', shape=night.shape, maxshape=maxshape_night, chunks=night.shape, dtype=night.dtype)
-        maxshape_run = (None,) + run.shape[1:]
-        dset_run = hdf.create_dataset('Run', shape=run.shape, maxshape=maxshape_run, chunks=run.shape, dtype=run.dtype)
-        maxshape_event = (None,) + event.shape[1:]
-        dset_event = hdf.create_dataset('Event', shape=event.shape, maxshape=maxshape_event, chunks=event.shape, dtype=event.dtype)
-        maxshape_zd_deg = (None,) + zd_deg.shape[1:]
-        dset_zd_deg = hdf.create_dataset('Zd_deg', shape=zd_deg.shape, maxshape=maxshape_zd_deg, chunks=zd_deg.shape, dtype=zd_deg.dtype)
-        maxshape_az_deg = (None,) + az_deg.shape[1:]
-        dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
-        maxshape_trigger = (None,) + trigger.shape[1:]
-        dset_trigger = hdf.create_dataset('Trigger', shape=trigger.shape, maxshape=maxshape_trigger, chunks=trigger.shape, dtype=trigger.dtype)
+        with h5py.File(output_paths[index], 'w') as hdf:
+            maxshape_pic = (None,) + pic.shape[1:]
+            dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
+            maxshape_night = (None,) + night.shape[1:]
+            dset_night = hdf.create_dataset('Night', shape=night.shape, maxshape=maxshape_night, chunks=night.shape, dtype=night.dtype)
+            maxshape_run = (None,) + run.shape[1:]
+            dset_run = hdf.create_dataset('Run', shape=run.shape, maxshape=maxshape_run, chunks=run.shape, dtype=run.dtype)
+            maxshape_event = (None,) + event.shape[1:]
+            dset_event = hdf.create_dataset('Event', shape=event.shape, maxshape=maxshape_event, chunks=event.shape, dtype=event.dtype)
+            maxshape_zd_deg = (None,) + zd_deg.shape[1:]
+            dset_zd_deg = hdf.create_dataset('Zd_deg', shape=zd_deg.shape, maxshape=maxshape_zd_deg, chunks=zd_deg.shape, dtype=zd_deg.dtype)
+            maxshape_az_deg = (None,) + az_deg.shape[1:]
+            dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
+            maxshape_trigger = (None,) + trigger.shape[1:]
+            dset_trigger = hdf.create_dataset('Trigger', shape=trigger.shape, maxshape=maxshape_trigger, chunks=trigger.shape, dtype=trigger.dtype)
 
-        dset_pic[:] = pic
-        dset_night[:] = night
-        dset_run[:] = run
-        dset_event[:] = event
-        dset_zd_deg[:] = zd_deg
-        dset_az_deg[:] = az_deg
-        dset_trigger[:] = trigger
+            dset_pic[:] = pic
+            dset_night[:] = night
+            dset_run[:] = run
+            dset_event[:] = event
+            dset_zd_deg[:] = zd_deg
+            dset_az_deg[:] = az_deg
+            dset_trigger[:] = trigger
 
-        for batch in gen:
-            pic, night, run, event, zd_deg, az_deg, trigger = batchFormatter(batch)
+            for batch in gen:
+                pic, night, run, event, zd_deg, az_deg, trigger = batchFormatter(batch)
 
-            dset_pic.resize(row_count + trigger.shape[0], axis=0)
-            dset_night.resize(row_count + trigger.shape[0], axis=0)
-            dset_run.resize(row_count + trigger.shape[0], axis=0)
-            dset_event.resize(row_count + trigger.shape[0], axis=0)
-            dset_zd_deg.resize(row_count + trigger.shape[0], axis=0)
-            dset_az_deg.resize(row_count + trigger.shape[0], axis=0)
-            dset_trigger.resize(row_count + trigger.shape[0], axis=0)
+                dset_pic.resize(row_count + trigger.shape[0], axis=0)
+                dset_night.resize(row_count + trigger.shape[0], axis=0)
+                dset_run.resize(row_count + trigger.shape[0], axis=0)
+                dset_event.resize(row_count + trigger.shape[0], axis=0)
+                dset_zd_deg.resize(row_count + trigger.shape[0], axis=0)
+                dset_az_deg.resize(row_count + trigger.shape[0], axis=0)
+                dset_trigger.resize(row_count + trigger.shape[0], axis=0)
 
-            dset_pic[row_count:] = pic
-            dset_night[row_count:] = night
-            dset_run[row_count:] = run
-            dset_event[row_count:] = event
-            dset_zd_deg[row_count:] = zd_deg
-            dset_az_deg[row_count:] = az_deg
-            dset_trigger[row_count:] = trigger
+                dset_pic[row_count:] = pic
+                dset_night[row_count:] = night
+                dset_run[row_count:] = run
+                dset_event[row_count:] = event
+                dset_zd_deg[row_count:] = zd_deg
+                dset_az_deg[row_count:] = az_deg
+                dset_trigger[row_count:] = trigger
 
-            row_count += trigger.shape[0]
+                row_count += trigger.shape[0]

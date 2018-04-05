@@ -91,7 +91,7 @@ class SimDataGenerator(keras.utils.Sequence):
         'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
         # Initialization
         X = np.empty((self.batch_size, *self.dim, self.n_channels))
-        y = np.empty((self.batch_size), dtype=int)
+        y = np.empty((self.batch_size), dtype=float)
 
         # Generate data
         for i in range(0, self.batch_size):
@@ -184,8 +184,7 @@ class DataGenerator(keras.utils.Sequence):
                 images = np.sum(images, axis=0)
                 batch_images.append(images)
                 trigger_class = 0
-                if np.bincount(triggers).argmax() == 4:
-                    trigger_class = 1
+                trigger_class = 1 # Assume all sources on actual data for now
 
                 batch_triggers.append(trigger_class)
                 i = 0 # Reset to 0 after getting to image size, like 5000
@@ -200,7 +199,7 @@ class DataGenerator(keras.utils.Sequence):
         'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
         # Initialization
         X = np.empty((self.batch_size, *self.dim, self.n_channels))
-        y = np.empty((self.batch_size), dtype=int)
+        y = np.empty((self.batch_size), dtype=float)
 
         # Generate data
         for i in range(0, self.batch_size):
@@ -212,3 +211,6 @@ class DataGenerator(keras.utils.Sequence):
             y[i] = next_image[1]
 
         return X, keras.utils.to_categorical(y, num_classes=self.n_classes)
+
+if __name__ == '__main__':
+    print("Imported")
