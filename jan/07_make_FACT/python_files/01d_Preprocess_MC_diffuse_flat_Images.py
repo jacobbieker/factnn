@@ -16,12 +16,12 @@ import os
 #path_store_mapping_dict = sys.argv[3]
 #path_mc_diffuse_images = sys.argv[4]
 
-path_raw_mc_proton_folder = "/run/media/jbieker/WDRed8Tb1/sim/"
-path_raw_mc_gamma_folder = "/run/media/jbieker/WDRed8Tb1/sim/"
+path_raw_mc_proton_folder = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/phs/sim/"
+path_raw_mc_gamma_folder = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/phs/sim/"
 #path_store_mapping_dict = sys.argv[2]
-path_store_mapping_dict = "/run/media/jbieker/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
+path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jbieker/WDRed8Tb1/00_MC_Diffuse_flat_Images.h5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/00_MC_Diffuse_flat_Images.h5"
 
 def getMetadata(path_folder):
     '''

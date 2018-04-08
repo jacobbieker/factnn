@@ -85,8 +85,8 @@ def lima_sig_loss(on_events, off_events):
 
 # print(gamma_df.columns.values)
 
-source_file = "/run/media/jacob/WDRed8Tb1/Crab_preprocessed_images.h5"
-sim_source_file = "/run/media/jacob/WDRed8Tb1/MC_2D_Images.h5"
+source_file = "/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5"
+sim_source_file = "/run/media/jacob//WDRed8Tb1/FACTSources/MC_2D_Images.h5"
 length_data = 0
 with h5py.File(source_file, 'r') as hdf:
     length_data = len(hdf['Night'])
@@ -94,7 +94,7 @@ with h5py.File(source_file, 'r') as hdf:
 with h5py.File(sim_source_file, 'r') as hdf:
     sim_length_data = len(hdf['Hadron']) # Hadron has less event, so this ensures it won't go out of bounds on the hadron events, need better way to do this
 
-params = {'dim': (46,45),
+params = {'dim': (64),
           'batch_size': 64,
           'n_classes': 2,
           'n_channels': 1,
@@ -108,20 +108,22 @@ validating_generator = DataGenerator(**params)
 
 
 model = Sequential()
-model.add(Conv2D(32, kernel_size=(5, 5), strides=(1, 1),
-                 activation='relu',
-                 input_shape=(46, 45, 1)))
-model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-model.add(Conv2D(64, (5, 5), activation='relu'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Flatten())
+#model.add(Conv2D(32, kernel_size=(5, 5), strides=(1, 1),
+#                 activation='relu',
+#                 input_shape=(46,45,1)))
+#model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+#model.add(Conv2D(64, (5, 5), activation='relu'))
+#model.add(MaxPooling2D(pool_size=(2, 2)))
+#model.add(Flatten())
+model.add(Dense(1000, activation='relu', input_shape=(64)))
+model.add(Dense(1000, activation='relu'))
 model.add(Dense(1000, activation='relu'))
 model.add(Dense(num_labels, activation='softmax'))
-model.compile(optimizer='sgd', loss='mean_squared_error')
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
 model.fit_generator(generator=training_generator,
                     validation_data=validating_generator,
-                    use_multiprocessing=True)
+                    use_multiprocessing=False)
 
 model.save("crab_trained_model.h5")
 

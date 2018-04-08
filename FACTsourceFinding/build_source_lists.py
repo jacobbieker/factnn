@@ -123,7 +123,7 @@ print("Source Type:")
 print(source_type.columns.values)
 print("Source Stuff:")
 print(source_stuff.columns.values)
-'''
+
 for disk in disks:
     for subdir, dirs, files in os.walk(disk):
         for file in files:
@@ -133,8 +133,6 @@ for disk in disks:
                 with gzip.open(path) as f:
                     try:
                         line_data = json.loads(f.readline().decode('utf-8'))
-                        #for line in f:
-                        #   line_data = json.loads(line.decode('utf-8'))
                         night = line_data['Night']
                         run = line_data['Run']
                         event = line_data['Event']
@@ -207,3 +205,4 @@ for disk in disks:
                         except Exception as e:
                             print(e)
                             pass
+'''

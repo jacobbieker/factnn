@@ -1,4 +1,5 @@
 from fact.io import read_h5py, to_h5py
+from fact.instrument import get_pixel_coords, get_pixel_dataframe
 import sys
 import numpy as np
 import gzip
@@ -11,6 +12,10 @@ from fact.credentials import get_credentials
 import os
 import datetime
 
+import matplotlib.pyplot as plt
+import fact.plotting as factplot
+from scipy import spatial
+
 np.random.seed(0)
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
@@ -19,21 +24,101 @@ path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_F
 source_file_paths = []
 output_paths = []
 
-#source_file_paths.append("runs/Crab.csv")
-#output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_prebatched_preprocessed_images.h5")
-#source_file_paths.append("runs/Mrk 421.csv")
-#source_file_paths.append("runs/Mrk 501.csv")
-
-not_enough = 0
-
-# Build list of source csv files to go through
-for subdir, dirs, files in os.walk("runs/"):
+# Build list of source hdf5 files to go through to get runlist and source prediction points
+for subdir, dirs, files in os.walk("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/"):
     for file in files:
-        if ".csv" in file:
+        if "_precuts.hdf5" in file:
             path = os.path.join(subdir, file)
             source_file_paths.append(path)
-            output_filename = file.split(".csv")[0]
-            output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/" + output_filename + "_prebatched_preprocessed_images.h5")
+            output_filename = file.split(".hdf5")[0]
+            output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/" + output_filename + "_run_info.h5")
+
+def find_nearest(array,value):
+    idx = (np.abs(array-value)).argmin()
+    return array[idx]
+
+pixel_mapping_df = get_pixel_dataframe()
+for filepath in source_file_paths:
+    list_of_used_sources = []
+    print(filepath)
+    run_df = read_h5py(file_path=filepath, key='runs', columns=['night', 'run_id', 'source'])
+    info_df = read_h5py(file_path=filepath, key='events', columns=['source_x_prediction', 'source_y_prediction', 'source_position'])
+    nights = list(run_df['night'].values)
+    #print(nights)
+    run_ids = list(run_df['run_id'].values)
+    #print(run_ids)
+    # Now have all the information needed
+    current_source = run_df['source'][0]
+    print(current_source)
+    with open(os.path.join("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/runs", current_source + ".csv")) as source_list:
+        for path in source_list:
+            with gzip.open(path.split("\n")[0]) as f:
+                #try:
+                    line_data = json.loads(f.readline().decode('utf-8'))
+                    night = line_data['Night']
+                    run = line_data['Run']
+                    event = line_data['Event']
+                    trigger = line_data['Trigger']
+                    eventTime = line_data['UnixTime_s_us'][0] + 1e-6 * line_data['UnixTime_s_us'][1]
+
+                    if night in nights and run in run_ids:
+                        #print(nights)
+                        # Need it for the observations
+                        # Transform it with the pixel mapping, and a second part for the labels
+                        list_of_used_sources.append(path)
+                        # Now, use the source_x_prediction and source_y_prediction to locate the source in the pixel mapping
+                        # Get index of specific source
+                        #print(nights.index(night))
+                        index = nights.index(night)
+                        #print("Index:")
+                        #print(index)
+                        source_info_df = info_df.iloc[index]
+                        #print(source_info_df)
+                        #print("X value")
+                        #print(source_info_df['source_x_prediction'])
+                        pixel_mapping_df['source_position'] = 0 # 0 is no source, 1 is it is the source
+                        # Sets the predicted source position as the source
+                        list_x = list(pixel_mapping_df['x'].values)
+                        list_y = list(pixel_mapping_df['y'].values)
+                        float_y = float(source_info_df['source_position_0']) # source_position_0 seems to be y, and the other x
+                        float_x = float(source_info_df['source_position_1'])
+                        #print(float_x)
+                        #print(float_y)
+                        x_y = get_pixel_coords()
+                        new_list = np.stack((x_y[0], x_y[1]), axis=1)
+                        output = new_list[spatial.KDTree(new_list).query([float_x, float_y], k=7)[1]] # Return the 7 nearest neighbors, so not just a single pixel per
+                        #print("KDTree:")
+                        #print(output)
+                        nearest_value_x = find_nearest(np.asarray(list_x), float_x)
+                        nearest_value_y = find_nearest(np.asarray(list_y), float_y)
+                        for element in output:
+                            mapping_index = pixel_mapping_df.loc[(pixel_mapping_df['x'] == element[0]) & (pixel_mapping_df['y'] == element[1]), "source_position"] = 1
+                        #print("Pixel Mapping")
+                        #factplot.camera(pixel_mapping_df['source_position'])
+                        #plt.show()
+                        id_position = pickle.load(open(path_store_mapping_dict, "rb"))
+
+                        input_matrix = np.zeros([46,45])
+                        for i in range(1440):
+                            x, y = id_position[i]
+                            input_matrix[int(x)][int(y)] = pixel_mapping_df['source_position'][i]
+
+                        #plt.imshow(input_matrix)
+                        #plt.show()
+                        #print(pixel_mapping_df.loc[(pixel_mapping_df['x'] == output[0][0]) & (pixel_mapping_df['y'] == output[0][1])]['source_position'])
+                        # Write dataframe to see if working overnight
+                        #print(pixel_mapping_df.loc[pixel_mapping_df['source_position'] == 1])
+                        if os.path.isfile(path.split("\n")[0]+"_pixel_mapping.h5"):
+                            os.remove(path.split("\n")[0]+"_pixel_mapping.h5")
+                        to_h5py(df=pixel_mapping_df, filename=path.split("\n")[0]+"_pixel_mapping.h5", key='data')
+
+                #except Exception as e:
+                #    print(e)
+                #    pass
+        with open(os.path.join("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/runs", current_source + "_std_analysis.p"), 'wb') as used_list:
+            pickle.dump(list_of_used_sources, used_list)
+            source_file_paths = list_of_used_sources
+
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
@@ -41,16 +126,7 @@ def reformat(dataset):
 
 
 def batchYielder(path_runs_to_use):
-    paths = []
-    #Create paths to the runs to be processed
-    with open(path_runs_to_use) as file:
-        # Select the paths from each file that are data paths for training
-        # Crab had 20 million events in 1344 files, so maybe go for 2000 files for each, randomly chosen from 2013 or later
-        for line in file:
-            if "/obs/2011" not in line and "/obs/2012" not in line:
-                # Storing the path to every run file
-                l = line.split('\n')[0]
-                paths.append(l)
+    paths = path_runs_to_use
 
     #print(paths)
     # Now select a subset of those paths to use
@@ -103,6 +179,8 @@ def batchYielder(path_runs_to_use):
                         if batch_size_index >= 5000:
                             print("Batch Size Reached")
                             # Add to data
+                            plt.imshow(input_matrix)
+                            plt.show()
                             data.append([input_matrix, night, run, event, zd_deg, az_deg, trigger])
                             input_matrix = np.zeros([46,45])
                             batch_size_index = 0
