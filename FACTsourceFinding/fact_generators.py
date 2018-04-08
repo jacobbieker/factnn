@@ -212,5 +212,83 @@ class DataGenerator(keras.utils.Sequence):
 
         return X, keras.utils.to_categorical(y, num_classes=self.n_classes)
 
+
+class PrebatchDataGenerator(keras.utils.Sequence):
+    'Generates data for Keras'
+
+    def __init__(self, length_dataset, source_file, image_size=5000, seed=0, batch_size=32, dim=(46, 45), n_channels=1,
+                 n_classes=2, shuffle=True):
+        'Initialization'
+        self.dim = dim
+        self.batch_size = batch_size
+        self.length_dataset = length_dataset
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.shuffle = shuffle
+        self.source_file = source_file
+        self.seed = seed
+        self.image_size = image_size
+        self.batch_index = 1 # Start
+        self.on_epoch_end()
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return int(np.floor(self.length_dataset / self.batch_size))
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        # Generate indexes of the batch
+        indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
+
+        # Find list of IDs
+
+        # Generate data
+        X, y = self.__data_generation(indexes)
+
+        return X, y
+
+    def on_epoch_end(self):
+        'Updates indexes after each epoch'
+        with h5py.File(self.source_file, 'r') as hdf:
+            items = list(hdf['Night'])
+            self.indexes = np.arange(len(items))
+            np.random.seed(self.seed)
+            if self.shuffle == True:
+                np.random.shuffle(self.indexes)
+
+    def batchYielder(self, list_indexes):
+        # Generate the batches
+        batch_images = []
+        batch_triggers = []
+        with h5py.File(self.source_file, 'r') as hdf:
+            i = 0
+            items = list(hdf.items())[0][1].shape[0]
+            while (i+1)*self.batch_size < items/1: # 160 factor to not process everything
+                night = np.array(hdf['Night'][ i*self.batch_size:(i+1)*self.batch_size ])
+                run = np.array(hdf['Run'][ i*self.batch_size:(i+1)*self.batch_size ])
+                event = np.array(hdf['Event'][ i*self.batch_size:(i+1)*self.batch_size ])
+                images = np.array(hdf['Image'][ i*self.batch_size:(i+1)*self.batch_size ])
+                i += 1
+
+                yield (night, run, event, images)
+
+    def __data_generation(self, list_IDs_temp):
+        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
+        # Initialization
+        X = np.empty((self.batch_size, *self.dim, self.n_channels))
+        y = np.empty((self.batch_size), dtype=float)
+
+        # Generate data
+        for i in range(0, self.batch_size):
+            # Store sample
+            image_gen = self.batchYielder(list_IDs_temp)
+            next_image = next(image_gen)
+            X[i,] = next_image[0]
+            # Store class
+            y[i] = next_image[1]
+
+        return X, keras.utils.to_categorical(y, num_classes=self.n_classes)
+
+
 if __name__ == '__main__':
     print("Imported")

@@ -15,7 +15,7 @@ path_raw_mc_folder = "/run/media/jacob/WDRed8Tb1/sim/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
 #path_mc_images = sys.argv[3]
-path_mc_images = "/run/media/jacob/WDRed8Tb1/MC_2D_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb1/MC_2D_prebatched_Images.h5"
 
 
 def getMetadata():
@@ -42,24 +42,39 @@ path_mc_hadrons = [path for path in file_paths if 'gamma' not in path]
 
 
 def batchYielder(file_paths):
-    for path in file_paths:
-        with gzip.open(path) as file:            
-            event = []
-            print(path)
+    batch_size_index = 0
+    event = []
+    input_matrix = np.zeros([46,45])
+    file_index = 0
+    while batch_size_index < 1000:
+        try:
+            for index, path in enumerate(file_paths):
+                with gzip.open(file_paths[file_index]) as file:
+                    file_index += 1
+                    print(file_paths[file_index])
 
-            for line in file:
-                event_photons = json.loads(line.decode('utf-8'))['PhotonArrivals_500ps']
+                    for line in file:
+                        event_photons = json.loads(line.decode('utf-8'))['PhotonArrivals_500ps']
 
-                input_matrix = np.zeros([46,45])
-                for i in range(1440):
-                    x, y = id_position[i]
-                    input_matrix[int(x)][int(y)] = len(event_photons[i])
-
-                event.append(input_matrix)
+                        for i in range(1440):
+                            x, y = id_position[i]
+                            input_matrix[int(x)][int(y)] += len(event_photons[i])
+                        batch_size_index += 1
+                        #print(batch_size_index)
+                        if batch_size_index >= 1000:
+                            print("Batch Size Reached")
+                            # Add to data
+                            event.append([input_matrix])
+                            input_matrix = np.zeros([46,45])
+                            batch_size_index = 0
+        except:
+            if file_index >= len(file_paths):
+                print("Index longer than path")
+                break
+            pass
+    event = reformat(event)
             
-            event = reformat(event)
-            
-            yield event
+    yield event
             
             
 # Use the batchYielder to concatenate every batch and store it into one h5 file
