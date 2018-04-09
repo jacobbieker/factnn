@@ -10,6 +10,8 @@ from fact.factdb import connect_database, RunInfo, get_ontime_by_source_and_runt
 from fact.credentials import get_credentials
 import os
 import datetime
+import matplotlib.pyplot as plt
+
 
 np.random.seed(0)
 #path_store_mapping_dict = sys.argv[2]
@@ -19,8 +21,8 @@ path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_F
 source_file_paths = []
 output_paths = []
 
-#source_file_paths.append("runs/Crab.csv")
-#output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_prebatched_preprocessed_images.h5")
+source_file_paths.append("runs/Crab.csv")
+output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/Crab3_prebatched_preprocessed_images.h5")
 #source_file_paths.append("runs/Mrk 421.csv")
 #source_file_paths.append("runs/Mrk 501.csv")
 
@@ -33,7 +35,7 @@ for subdir, dirs, files in os.walk("runs/"):
             path = os.path.join(subdir, file)
             source_file_paths.append(path)
             output_filename = file.split(".csv")[0]
-            output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/" + output_filename + "_prebatched_preprocessed_images.h5")
+            output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/" + output_filename + "_prebatched1_preprocessed_images.h5")
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
@@ -57,14 +59,17 @@ def batchYielder(path_runs_to_use):
     num_of_files_to_use = 2000
     try:
         used_list = np.random.choice(paths, size=num_of_files_to_use, replace=False)
+        used_list = paths[0:num_of_files_to_use]
         not_enough = 0
     except:
         try:
             used_list = np.random.choice(paths, size=int(num_of_files_to_use/2), replace=False)
+            used_list = paths[0:int(num_of_files_to_use/2)]
             not_enough = 0
         except:
             try:
                 used_list = np.random.choice(paths, size=int(num_of_files_to_use/4), replace=False)
+                used_list = paths[0:int(num_of_files_to_use/4)]
                 not_enough = 0
             except:
                 print("Not Enough Events")
@@ -95,7 +100,6 @@ def batchYielder(path_runs_to_use):
                         az_deg = line_data['Az_deg']
                         trigger = line_data['Trigger']
 
-
                         for i in range(1440):
                             x, y = id_position[i]
                             input_matrix[int(x)][int(y)] += len(event_photons[i])
@@ -104,6 +108,8 @@ def batchYielder(path_runs_to_use):
                             print("Batch Size Reached")
                             # Add to data
                             data.append([input_matrix, night, run, event, zd_deg, az_deg, trigger])
+                            plt.imshow(input_matrix)
+                            plt.show()
                             input_matrix = np.zeros([46,45])
                             batch_size_index = 0
 

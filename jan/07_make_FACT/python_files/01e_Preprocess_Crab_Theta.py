@@ -6,8 +6,8 @@ import sys
 
 #First input: Path to the 'Crab1314_darknight_std_analysis_0.17.2.hdf5'
 #Second input: Path to the 'Theta_preprocessed.h5'
-path_theta = sys.argv[1]
-path_theta_preprocesses = sys.argv[2]
+path_theta = "/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/facttools/Mrk501_2014_standard_std_analysis_0.17.2.hdf5"
+path_theta_preprocesses = "/run/media/jacob/WDRed8Tb1/Mrk_501_2014_Theta_preprocessed.h5"
 
 
 keys = ['event_num', 'night', 'run_id', 'theta', 'theta_deg', 'theta_deg_off_1', 'theta_deg_off_2', 'theta_deg_off_3', 'theta_deg_off_4', 'theta_deg_off_5', 'theta_off_1', 'theta_off_1_rec_pos', 'theta_off_2', 'theta_off_2_rec_pos', 'theta_off_3', 'theta_off_3_rec_pos', 'theta_off_4', 'theta_off_4_rec_pos', 'theta_off_5', 'theta_off_5_rec_pos', 'theta_rec_pos']

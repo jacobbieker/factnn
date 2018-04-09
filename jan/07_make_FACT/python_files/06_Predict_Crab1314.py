@@ -10,9 +10,9 @@ import os
 
 
 batch_size = 10000
-prediction_save_path = '/notebooks/thesis/jan/hyperModels/crab1314_prediction.csv'
+prediction_save_path = '/run/media/jacob/WDRed8Tb1/hyperModels/crab1314_prediction.csv'
 
-path = '/notebooks/thesis/jan/hyperModels/'
+path = '/run/media/jacob/WDRed8Tb1/hyperModels/'
 file = sorted(os.listdir(path))[-1]
 path_loading = os.path.join(path, file)
 print('Loading-File:', file)
