@@ -146,14 +146,14 @@ def Dategenerator(path_to_truth_images_1, path_to_truth_images_2):
             items = list(f.items())[0][1].shape[0]
             i = 0
 
-            while (i+1)*batch_size < items/160:
-                images = f['Image'][ i*(batch_size/2):(i+1)*(batch_size/2) ]
-                images_false = f_1['Image'][ i*(batch_size/2):(i+1)*(batch_size/2) ]
-                test_dataset = np.concatenate((images, images_false), axis=0)
-                labels = np.array([True]*(len(images))+[False]*len(images_false))
-                test_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
-                i += 1
-            while items/160 < (i+1)*batch_size < 2*items/160:
+            #while (i+1)*batch_size < items/160:
+             #   images = f['Image'][ i*(batch_size/2):(i+1)*(batch_size/2) ]
+             #   images_false = f_1['Image'][ i*(batch_size/2):(i+1)*(batch_size/2) ]
+             #   test_dataset = np.concatenate((images, images_false), axis=0)
+             #   labels = np.array([True]*(len(images))+[False]*len(images_false))
+             #   test_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
+             #   i += 1
+            while (i+1)*batch_size < items/10000:
                 images = f['Image'][ i*(batch_size/2):(i+1)*(batch_size/2) ]
                 images_false = f_1['Image'][ i*(batch_size/2):(i+1)*(batch_size/2) ]
                 validating_dataset = np.concatenate((images, images_false), axis=0)
@@ -161,7 +161,7 @@ def Dategenerator(path_to_truth_images_1, path_to_truth_images_2):
                 validation_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
                 i += 1
 
-    return validating_dataset, validation_labels, test_dataset, test_labels
+    return validating_dataset, validation_labels
 
 params = {'dim': (64),
           'batch_size': 64,
@@ -172,8 +172,8 @@ params = {'dim': (64),
           'length_dataset': length_data,
           }
 
-training_generator = DataGenerator(**params)
-validating_generator = DataGenerator(**params)
+#training_generator = DataGenerator(**params)
+#validating_generator = DataGenerator(**params)
 
 
 model = Sequential()
@@ -190,11 +190,42 @@ model.add(Dense(500, activation='relu'))
 model.add(Dense(num_labels, activation='softmax'))
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-x, x_label, y, y_label = Dategenerator("/run/media/jacob/WDRed8Tb1/FACTSources/Mrk 421_preprocessed_images.h5", "/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5")
+#x, x_label, y, y_label = Dategenerator("/run/media/jacob/WDRed8Tb1/FACTSources/Mrk 421_preprocessed_images.h5", "/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5")
+'''
+with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/PKS 1749+096_preprocessed_images.h5", 'r') as f:
+    with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Dark Patch 3_preprocessed_images.h5", 'r') as f_1:
+        # Get some truth data for now, just use Crab images
+        items = list(f.items())[0][1].shape[0]
+        images = f['Image']
+        images_false = f_1['Image']
+        validating_dataset = np.concatenate((images, images_false), axis=0)
+        labels = np.array([True]*(len(images))+[False]*len(images_false))
+        validation_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
+        x = validating_dataset
+        x_label = validation_labels
+        print("Finished getting data")
+
 
 model.fit(x=x, y=x_label, batch_size=32, epochs=300, verbose=2, validation_split=0.2, shuffle='batch')
 
 model.save("Test_training_model.h5")
+'''
+with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/PKS 1749+096_preprocessed_images.h5", 'r') as f:
+    with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/MC_2D_Images.h5", 'r') as f_1:
+        # Get some truth data for now, just use Crab images
+        images = f['Image']
+        images_false = f_1['Hadron']
+        validating_dataset = np.concatenate((images, images_false), axis=0)
+        labels = np.array([True]*(len(images))+[False]*len(images_false))
+        validation_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
+        x = validating_dataset
+        x_label = validation_labels
+        print("Finished getting data")
+
+
+model.fit(x=x, y=x_label, batch_size=32, epochs=300, verbose=2, validation_split=0.2, shuffle='batch')
+
+model.save("Test_crab_proton_training_model.h5")
 
 #model.fit_generator(generator=training_generator,
 #                    validation_data=validating_generator,
