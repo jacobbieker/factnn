@@ -25,9 +25,8 @@ source_file_paths = []
 output_paths = []
 
 # Build list of source hdf5 files to go through to get runlist and source prediction points
-for subdir, dirs, files in os.walk("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/"):
+for subdir, dirs, files in os.walk("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/std_analysis/"):
     for file in files:
-        if "_precuts.hdf5" in file:
             path = os.path.join(subdir, file)
             source_file_paths.append(path)
             output_filename = file.split(".hdf5")[0]
@@ -42,7 +41,10 @@ for filepath in source_file_paths:
     list_of_used_sources = []
     print(filepath)
     run_df = read_h5py(file_path=filepath, key='runs', columns=['night', 'run_id', 'source'])
-    info_df = read_h5py(file_path=filepath, key='events', columns=['source_x_prediction', 'source_y_prediction', 'source_position'])
+    if "0.17.2" in filepath:
+        info_df = read_h5py(file_path=filepath, key='events', columns=['source_position'])
+    else:
+        info_df = read_h5py(file_path=filepath, key='events', columns=['source_position_x', 'source_position_y'])
     nights = list(run_df['night'].values)
     #print(nights)
     run_ids = list(run_df['run_id'].values)
@@ -80,8 +82,12 @@ for filepath in source_file_paths:
                         # Sets the predicted source position as the source
                         list_x = list(pixel_mapping_df['x'].values)
                         list_y = list(pixel_mapping_df['y'].values)
-                        float_y = float(source_info_df['source_position_0']) # source_position_0 seems to be y, and the other x
-                        float_x = float(source_info_df['source_position_1'])
+                        if "0.17.2" in filepath:
+                            float_y = float(source_info_df['source_position_0']) # source_position_0 seems to be y, and the other x
+                            float_x = float(source_info_df['source_position_1'])
+                        else:
+                            float_y = float(source_info_df['source_position_y']) # source_position_0 seems to be y, and the other x
+                            float_x = float(source_info_df['source_position_x'])
                         #print(float_x)
                         #print(float_y)
                         x_y = get_pixel_coords()
@@ -102,6 +108,9 @@ for filepath in source_file_paths:
                         for i in range(1440):
                             x, y = id_position[i]
                             input_matrix[int(x)][int(y)] = pixel_mapping_df['source_position'][i]
+                            if input_matrix[int(x)][int(y)] == 1:
+                                print(int(x))
+                                print(int(y))
 
                         #plt.imshow(input_matrix)
                         #plt.show()

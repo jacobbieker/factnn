@@ -193,7 +193,7 @@ def getSessConf(per_process_gpu_memory_fraction = 0.3, op_parallelism_threads = 
 #path_mc_images = sys.argv[1]
 #save_model_path = sys.argv[2]
 
-path_mc_images = '/run/media/jacob/WDRed8Tb1/00_MC_Images.h5'
+path_mc_images = '/run/media/jacob/WDRed8Tb2/00_MC_Images.h5'
 save_model_path = '/run/media/jacob/WDRed8Tb1/hyperModels'
 
 csv_path = '/run/media/jacob/WDRed8Tb1/pretraining.csv'
