@@ -30,37 +30,49 @@ for subdir, dirs, files in os.walk("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts
             path = os.path.join(subdir, file)
             source_file_paths.append(path)
             output_filename = file.split(".hdf5")[0]
-            output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/" + output_filename + "_run_info.h5")
+            output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/" + output_filename + "_preprocessed_source.hdf5")
 
 def find_nearest(array,value):
     idx = (np.abs(array-value)).argmin()
     return array[idx]
 
 pixel_mapping_df = get_pixel_dataframe()
-for filepath in source_file_paths:
-    list_of_used_sources = []
-    print(filepath)
-    run_df = read_h5py(file_path=filepath, key='runs', columns=['night', 'run_id', 'source'])
-    if "0.17.2" in filepath:
-        info_df = read_h5py(file_path=filepath, key='events', columns=['source_position'])
-    else:
-        info_df = read_h5py(file_path=filepath, key='events', columns=['source_position_x', 'source_position_y'])
-    nights = list(run_df['night'].values)
-    #print(nights)
-    run_ids = list(run_df['run_id'].values)
-    #print(run_ids)
-    # Now have all the information needed
-    current_source = run_df['source'][0]
-    print(current_source)
-    with open(os.path.join("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/runs", current_source + ".csv")) as source_list:
-        for path in source_list:
-            with gzip.open(path.split("\n")[0]) as f:
-                #try:
+
+
+
+# Format dataset to fit into tensorflow
+def reformat(dataset):
+    return dataset.reshape((-1, 46, 45, 1)).astype(np.float32)
+
+
+def batchYielder(path_runs_to_use):
+    for filepath in source_file_paths:
+        list_of_used_sources = []
+        print(filepath)
+        run_df = read_h5py(file_path=filepath, key='runs', columns=['night', 'run_id', 'source'])
+        if "0.17.2" in filepath:
+            info_df = read_h5py(file_path=filepath, key='events', columns=['source_position'])
+        else:
+            info_df = read_h5py(file_path=filepath, key='events', columns=['source_position_x', 'source_position_y'])
+        nights = list(run_df['night'].values)
+        #print(nights)
+        run_ids = list(run_df['run_id'].values)
+        #print(run_ids)
+        # Now have all the information needed
+        current_source = run_df['source'][0]
+        print(current_source)
+        with open(os.path.join("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/runs", current_source + ".csv")) as source_list:
+            data = []
+            for path in source_list:
+                with gzip.open(path.split("\n")[0]) as f:
                     line_data = json.loads(f.readline().decode('utf-8'))
                     night = line_data['Night']
                     run = line_data['Run']
                     event = line_data['Event']
                     trigger = line_data['Trigger']
+                    event_photons = line_data['PhotonArrivals_500ps']
+                    zd_deg = line_data['Zd_deg']
+                    az_deg = line_data['Az_deg']
                     eventTime = line_data['UnixTime_s_us'][0] + 1e-6 * line_data['UnixTime_s_us'][1]
 
                     if night in nights and run in run_ids:
@@ -104,111 +116,19 @@ for filepath in source_file_paths:
                         #plt.show()
                         id_position = pickle.load(open(path_store_mapping_dict, "rb"))
 
-                        input_matrix = np.zeros([46,45])
+                        mapping_matrix = np.zeros([46, 45])
+                        input_matrix = np.zeros([46, 45])
                         for i in range(1440):
                             x, y = id_position[i]
-                            input_matrix[int(x)][int(y)] = pixel_mapping_df['source_position'][i]
-                            if input_matrix[int(x)][int(y)] == 1:
-                                print(int(x))
-                                print(int(y))
-
-                        #plt.imshow(input_matrix)
-                        #plt.show()
-                        #print(pixel_mapping_df.loc[(pixel_mapping_df['x'] == output[0][0]) & (pixel_mapping_df['y'] == output[0][1])]['source_position'])
-                        # Write dataframe to see if working overnight
-                        #print(pixel_mapping_df.loc[pixel_mapping_df['source_position'] == 1])
-                        if os.path.isfile(path.split("\n")[0]+"_pixel_mapping.h5"):
-                            os.remove(path.split("\n")[0]+"_pixel_mapping.h5")
-                        to_h5py(df=pixel_mapping_df, filename=path.split("\n")[0]+"_pixel_mapping.h5", key='data')
-
-                #except Exception as e:
-                #    print(e)
-                #    pass
-        with open(os.path.join("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/runs", current_source + "_std_analysis.p"), 'wb') as used_list:
-            pickle.dump(list_of_used_sources, used_list)
-            source_file_paths = list_of_used_sources
-
-
-# Format dataset to fit into tensorflow
-def reformat(dataset):
-    return dataset.reshape((-1, 46, 45, 1)).astype(np.float32)
-
-
-def batchYielder(path_runs_to_use):
-    paths = path_runs_to_use
-
-    #print(paths)
-    # Now select a subset of those paths to use
-    num_of_files_to_use = 2000
-    try:
-        used_list = np.random.choice(paths, size=num_of_files_to_use, replace=False)
-        not_enough = 0
-    except:
-        try:
-            used_list = np.random.choice(paths, size=int(num_of_files_to_use/2), replace=False)
-            not_enough = 0
-        except:
-            try:
-                used_list = np.random.choice(paths, size=int(num_of_files_to_use/4), replace=False)
-                not_enough = 0
-            except:
-                print("Not Enough Events")
-                not_enough = 1
-                used_list = np.random.choice(paths, size=1, replace=False)
-    # Load mapping-dict to switch from hexagonal to matrix
-    id_position = pickle.load(open(path_store_mapping_dict, "rb"))
-
-    batch_size_index = 0
-    data = []
-    input_matrix = np.zeros([46,45])
-    file_index = 0
-    while batch_size_index < 5000:
-        try:
-            for index, file in enumerate(used_list):
-                with gzip.open(used_list[file_index]) as f:
-                    print(used_list[file_index])
-                    file_index += 1
-
-                    for line in f:
-                        line_data = json.loads(line.decode('utf-8'))
-
-                        event_photons = line_data['PhotonArrivals_500ps']
-                        night = line_data['Night']
-                        run = line_data['Run']
-                        event = line_data['Event']
-                        zd_deg = line_data['Zd_deg']
-                        az_deg = line_data['Az_deg']
-                        trigger = line_data['Trigger']
-
-
-                        for i in range(1440):
-                            x, y = id_position[i]
-                            input_matrix[int(x)][int(y)] += len(event_photons[i])
-                        batch_size_index += 1
-                        if batch_size_index >= 5000:
-                            print("Batch Size Reached")
-                            # Add to data
-                            plt.imshow(input_matrix)
-                            plt.show()
-                            data.append([input_matrix, night, run, event, zd_deg, az_deg, trigger])
-                            input_matrix = np.zeros([46,45])
-                            batch_size_index = 0
-
-        except:
-            if file_index >= len(used_list):
-                print("Overrun events")
-                data.append([input_matrix, night, run, event, zd_deg, az_deg, trigger])
-                input_matrix = np.zeros([46,45])
-                batch_size_index = 0
-                break
-            pass
-
-    yield data
+                            mapping_matrix[int(x)][int(y)] = pixel_mapping_df['source_position'][i]
+                            input_matrix[int(x)][int(y)] = len(event_photons[i])
+                            data.append([input_matrix, night, run, event, zd_deg, az_deg, trigger, mapping_matrix])
+            yield data
 
 
 # Change the datatype to np-arrays
 def batchFormatter(batch):
-    pic, night, run, event, zd_deg, az_deg, trigger = zip(*batch)
+    pic, night, run, event, zd_deg, az_deg, trigger, mapping = zip(*batch)
     pic = reformat(np.array(pic))
     night = np.array(night)
     run = np.array(run)
@@ -216,7 +136,8 @@ def batchFormatter(batch):
     zd_deg = np.array(zd_deg)
     az_deg = np.array(az_deg)
     trigger = np.array(trigger)
-    return (pic, night, run, event, zd_deg, az_deg, trigger)
+    mapping = reformat(np.array(mapping))
+    return (pic, night, run, event, zd_deg, az_deg, trigger, mapping)
 
 
 # Use the batchYielder to concatenate every batch and store it into a single h5 file
@@ -226,7 +147,7 @@ for index, source_file in enumerate(source_file_paths):
     if not os.path.isfile(output_paths[index]):
         gen = batchYielder(source_file)
         batch = next(gen)
-        pic, night, run, event, zd_deg, az_deg, trigger = batchFormatter(batch)
+        pic, night, run, event, zd_deg, az_deg, trigger, mapping = batchFormatter(batch)
         row_count = trigger.shape[0]
 
         with h5py.File(output_paths[index], 'w') as hdf:
@@ -244,6 +165,8 @@ for index, source_file in enumerate(source_file_paths):
             dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
             maxshape_trigger = (None,) + trigger.shape[1:]
             dset_trigger = hdf.create_dataset('Trigger', shape=trigger.shape, maxshape=maxshape_trigger, chunks=trigger.shape, dtype=trigger.dtype)
+            maxshape_mapping = (None,) + mapping.shape[1:]
+            dset_map = hdf.create_dataset('Source_Position', shape=mapping.shape, maxshape=maxshape_mapping, chunks=mapping.shape, dtype=mapping.dtype)
 
             dset_pic[:] = pic
             dset_night[:] = night
@@ -252,9 +175,10 @@ for index, source_file in enumerate(source_file_paths):
             dset_zd_deg[:] = zd_deg
             dset_az_deg[:] = az_deg
             dset_trigger[:] = trigger
+            dset_map[:] = mapping
 
             for batch in gen:
-                pic, night, run, event, zd_deg, az_deg, trigger = batchFormatter(batch)
+                pic, night, run, event, zd_deg, az_deg, trigger, mapping = batchFormatter(batch)
 
                 dset_pic.resize(row_count + trigger.shape[0], axis=0)
                 dset_night.resize(row_count + trigger.shape[0], axis=0)
@@ -263,6 +187,7 @@ for index, source_file in enumerate(source_file_paths):
                 dset_zd_deg.resize(row_count + trigger.shape[0], axis=0)
                 dset_az_deg.resize(row_count + trigger.shape[0], axis=0)
                 dset_trigger.resize(row_count + trigger.shape[0], axis=0)
+                dset_map.resize(row_count + trigger.shape[0], axis=0)
 
                 dset_pic[row_count:] = pic
                 dset_night[row_count:] = night
@@ -271,5 +196,6 @@ for index, source_file in enumerate(source_file_paths):
                 dset_zd_deg[row_count:] = zd_deg
                 dset_az_deg[row_count:] = az_deg
                 dset_trigger[row_count:] = trigger
+                dset_map[row_count:] = mapping
 
                 row_count += trigger.shape[0]

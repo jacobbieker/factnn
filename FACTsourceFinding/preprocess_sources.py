@@ -22,7 +22,7 @@ source_file_paths = []
 output_paths = []
 
 source_file_paths.append("runs/Crab.csv")
-output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/Crab3_prebatched_preprocessed_images.h5")
+output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_background_preprocessed_images.h5")
 #source_file_paths.append("runs/Mrk 421.csv")
 #source_file_paths.append("runs/Mrk 501.csv")
 
@@ -35,7 +35,7 @@ for subdir, dirs, files in os.walk("runs/"):
             path = os.path.join(subdir, file)
             source_file_paths.append(path)
             output_filename = file.split(".csv")[0]
-            output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/" + output_filename + "_prebatched1_preprocessed_images.h5")
+            output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/" + output_filename + "_background_preprocessed_images.h5")
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
@@ -82,47 +82,51 @@ def batchYielder(path_runs_to_use):
     data = []
     input_matrix = np.zeros([46,45])
     file_index = 0
-    while batch_size_index < 5000:
-        try:
-            for index, file in enumerate(used_list):
-                with gzip.open(used_list[file_index]) as f:
-                    print(used_list[file_index])
-                    file_index += 1
+    #while batch_size_index < 5000:
+    try:
+        for index, file in enumerate(used_list):
+            with gzip.open(used_list[file_index]) as f:
+                print(used_list[file_index])
+                file_index += 1
 
-                    for line in f:
-                        line_data = json.loads(line.decode('utf-8'))
+                for line in f:
+                    line_data = json.loads(line.decode('utf-8'))
 
-                        event_photons = line_data['PhotonArrivals_500ps']
-                        night = line_data['Night']
-                        run = line_data['Run']
-                        event = line_data['Event']
-                        zd_deg = line_data['Zd_deg']
-                        az_deg = line_data['Az_deg']
-                        trigger = line_data['Trigger']
+                    event_photons = line_data['PhotonArrivals_500ps']
+                    night = line_data['Night']
+                    run = line_data['Run']
+                    event = line_data['Event']
+                    zd_deg = line_data['Zd_deg']
+                    az_deg = line_data['Az_deg']
+                    trigger = line_data['Trigger']
 
+                    if trigger == 1024: # Code for background only trigger
+                        #print("Trigger type is " + str(trigger))
                         for i in range(1440):
                             x, y = id_position[i]
                             input_matrix[int(x)][int(y)] += len(event_photons[i])
-                        batch_size_index += 1
-                        if batch_size_index >= 5000:
-                            print("Batch Size Reached")
-                            # Add to data
+                        #batch_size_index += 1
+                        #if batch_size_index >= 5000:
+                        #    print("Batch Size Reached")
+                        #    # Add to data
                             data.append([input_matrix, night, run, event, zd_deg, az_deg, trigger])
-                            plt.imshow(input_matrix)
-                            plt.show()
+                        #    plt.imshow(input_matrix)
+                        #    plt.show()
                             input_matrix = np.zeros([46,45])
-                            batch_size_index = 0
+                        #    batch_size_index = 0
+            print("Data")
+            yield data
 
-        except:
-            if file_index >= len(used_list):
-                print("Overrun events")
-                data.append([input_matrix, night, run, event, zd_deg, az_deg, trigger])
-                input_matrix = np.zeros([46,45])
-                batch_size_index = 0
-                break
-            pass
+    except:
+        if file_index >= len(used_list):
+            print("Overrun events")
+            data.append([input_matrix, night, run, event, zd_deg, az_deg, trigger])
+            input_matrix = np.zeros([46,45])
+            batch_size_index = 0
+            #break
+        pass
 
-    yield data
+   # yield data
 
 
 # Change the datatype to np-arrays
