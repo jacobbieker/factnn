@@ -196,34 +196,37 @@ params = {'dim': (64),
 #training_generator = DataGenerator(**params)
 #validating_generator = DataGenerator(**params)
 
+adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.1, amsgrad=False)
+
 
 model = Sequential()
-model.add(Conv2D(16, kernel_size=(5, 5), strides=(1, 1),
+model.add(Conv2D(32, kernel_size=(5, 5), strides=(1, 1),
                  activation='relu',
                  input_shape=(46,45,1)))
 model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
 model.add(Dropout(0.8))
-model.add(Conv2D(16, (5, 5), activation='relu'))
+model.add(Conv2D(16, (5, 5), strides=(1, 1),  activation='relu'))
 model.add(Dropout(0.8))
-model.add(Conv2D(32, (3, 3), activation='relu'))
+model.add(Conv2D(32, (3, 3), strides=(1, 1), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Dropout(0.8))
-model.add(Conv2D(16, (5, 5), activation='relu'))
+model.add(Conv2D(16, (5, 5),strides=(1, 1),  activation='relu'))
 model.add(Flatten())
 #model.add(Dense(1000, activation='relu', input_shape=(64)))
 #model.add(Dense(1000, activation='relu'))
 model.add(Dense(512, activation='relu'))
 model.add(Dense(num_labels, activation='softmax'))
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy', 'mae'])
+model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['categorical_accuracy', 'binary_accuracy', 'mae'])
 
 #x, x_label, y, y_label = Dategenerator("/run/media/jacob/WDRed8Tb1/FACTSources/Mrk 421_preprocessed_images.h5", "/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5")
 
-with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/PKS 1749+096_preprocessed_images.h5", 'r') as f:
-    with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Dark Patch 3_preprocessed_images.h5", 'r') as f_1:
+with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5", 'r') as f:
+    with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_background_preprocessed_images.h5", 'r') as f_1:
         # Get some truth data for now, just use Crab images
         items = list(f.items())[0][1].shape[0]
-        images = f['Image']
-        images_false = f_1['Image']
+        images = f['Image'][0:400000]
+        images_false = f_1['Image'][0:400000]
+        # TODO: Add label based on the trigger type, 1024 is False, 4 is True if from preprocessed, False otherwise
         validating_dataset = np.concatenate((images, images_false), axis=0)
         labels = np.array([True]*(len(images))+[False]*len(images_false))
         validation_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
@@ -232,10 +235,10 @@ with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/PKS 1749+096_preprocessed
         print("Finished getting data")
 
 
-model.fit(x=x, y=x_label, batch_size=32, epochs=50, verbose=2, validation_split=0.4, shuffle=True)
+model.fit(x=x, y=x_label, batch_size=64, epochs=200, verbose=2, validation_split=0.99, shuffle=True)
 
 
-model.save("Test_training_model.h5")
+model.save("Crab_source_background_model.h5")
 
 with h5py.File("/run/media/jacob/WDRed8Tb2/00_MC_Images.h5", 'r') as f:
     with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/MC_2D_Images.h5", 'r') as f_1:
