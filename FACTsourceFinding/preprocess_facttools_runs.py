@@ -15,24 +15,36 @@ import datetime
 import matplotlib.pyplot as plt
 import fact.plotting as factplot
 from scipy import spatial
+import yaml
+
+architecture = yaml.load("../envs.yaml")['arch']
+
+if architecture == 'manjaro':
+    base_dir = '/run/media/jacob/WDRed8Tb1'
+    thesis_base = '/run/media/jacob/SSD/Development/thesis'
+    std_base = '/dl2_theta/orecuts/std_analysis/'
+else:
+    base_dir = '/projects/sventeklab/jbieker'
+    thesis_base = base_dir + '/thesis'
+    std_base = base_dir + "/FACTSources/std_analysis/"
 
 np.random.seed(0)
 #path_store_mapping_dict = sys.argv[2]
-path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
+path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
 #path_mc_images = "D:\Development\thesis\jan\07_make_FACT\hexagonal_to_quadratic_mapping_dict.p"
 
 source_file_paths = []
 output_paths = []
 
-source_file_paths.append("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/std_analysis/mrk501_2014_std_analysis_v1.0.0.hdf5")
-output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/mrk501_2014_std_analysis_v1.0.0_preprocessed_source.hdf5")
+#source_file_paths.append(base"/dl2_theta/precuts/std_analysis/mrk501_2014_std_analysis_v1.0.0.hdf5")
+#output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/mrk501_2014_std_analysis_v1.0.0_preprocessed_source.hdf5")
 # Build list of source hdf5 files to go through to get runlist and source prediction points
-for subdir, dirs, files in os.walk("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/std_analysis/"):
+for subdir, dirs, files in os.walk(std_base):
     for file in files:
             path = os.path.join(subdir, file)
             source_file_paths.append(path)
             output_filename = file.split(".hdf5")[0]
-            output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/" + output_filename + "_preprocessed_source.hdf5")
+            output_paths.append(base_dir + "/FACTSources/" + output_filename + "_preprocessed_source.hdf5")
 
 def find_nearest(array,value):
     idx = (np.abs(array-value)).argmin()
@@ -83,7 +95,7 @@ for index, source_file in enumerate(source_file_paths):
     # Now have all the information needed
     current_source = run_df['source'][0]
     print(current_source)
-    with open(os.path.join("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/runs", current_source + ".csv")) as source_list:
+    with open(os.path.join(thesis_base + "/FACTsourceFinding/runs", current_source + ".csv")) as source_list:
         data = []
         k = 0
         for path in source_list:
