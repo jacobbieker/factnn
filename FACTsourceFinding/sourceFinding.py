@@ -230,7 +230,7 @@ model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['categor
 
 #x, x_label, y, y_label = Dategenerator("/run/media/jacob/WDRed8Tb1/FACTSources/Mrk 421_preprocessed_images.h5", "/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5")
 
-with h5py.File(base_dir + "FACTSources/Crab_preprocessed_images.h5", 'r') as f:
+with h5py.File(base_dir + "/FACTSources/Crab_preprocessed_images.h5", 'r') as f:
     with h5py.File(base_dir + "/FACTSources/Crab_background_preprocessed_images.h5", 'r') as f_1:
         # Get some truth data for now, just use Crab images
         items = list(f.items())[0][1].shape[0]
