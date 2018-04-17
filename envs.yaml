@@ -1,3 +1,5 @@
 fact:
   password: <password>
   username: fact
+
+arch: 'manjaro'
