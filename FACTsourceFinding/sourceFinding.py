@@ -14,8 +14,18 @@ from fact.analysis.binning import bin_runs
 from fact.io import read_h5py, to_h5py
 import h5py
 import keras
+import yaml
 import pandas as pd
 from FACTsourceFinding.fact_generators import SimDataGenerator, DataGenerator
+
+architecture = yaml.load("../envs.yaml")['arch']
+
+if architecture == 'manjaro':
+    base_dir = '/run/media/jacob/WDRed8Tb1'
+    thesis_base = '/run/media/jacob/SSD/Development/thesis'
+else:
+    base_dir = '/projects/sventeklab/jbieker'
+    thesis_base = base_dir + '/thesis'
 
 batch_size = 128
 num_classes = 10
@@ -220,8 +230,8 @@ model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['categor
 
 #x, x_label, y, y_label = Dategenerator("/run/media/jacob/WDRed8Tb1/FACTSources/Mrk 421_preprocessed_images.h5", "/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5")
 
-with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5", 'r') as f:
-    with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_background_preprocessed_images.h5", 'r') as f_1:
+with h5py.File(base_dir + "FACTSources/Crab_preprocessed_images.h5", 'r') as f:
+    with h5py.File(base_dir + "/FACTSources/Crab_background_preprocessed_images.h5", 'r') as f_1:
         # Get some truth data for now, just use Crab images
         items = list(f.items())[0][1].shape[0]
         images = f['Image'][0:400000]
@@ -239,58 +249,6 @@ model.fit(x=x, y=x_label, batch_size=64, epochs=200, verbose=2, validation_split
 
 
 model.save("Crab_source_background_model.h5")
-
-with h5py.File("/run/media/jacob/WDRed8Tb2/00_MC_Images.h5", 'r') as f:
-    with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/MC_2D_Images.h5", 'r') as f_1:
-        # Get some truth data for now, just use Crab images
-        images = f['Gamma']
-        images_false = f['Hadron']
-        validating_dataset = np.concatenate((images, images_false), axis=0)
-        labels = np.array([True]*(len(images))+[False]*len(images_false))
-        validation_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
-        x = validating_dataset
-        x_label = validation_labels
-        print("Finished getting data")
-
-
-model.fit(x=x, y=x_label, batch_size=32, epochs=50, verbose=2, validation_split=0.4, shuffle=True)
-
-model.save("Test_sim_training_model.h5")
-
-
-with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5", 'r') as f:
-    with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/MC_2D_Images.h5", 'r') as f_1:
-        # Get some truth data for now, just use Crab images
-        images = f['Image'][0:10000]
-        images_false = f_1['Hadron']
-        validating_dataset = np.concatenate((images, images_false), axis=0)
-        labels = np.array([True]*(len(images))+[False]*len(images_false))
-        validation_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
-        x = validating_dataset
-        x_label = validation_labels
-        print("Finished getting data")
-
-
-model.fit(x=x, y=x_label, batch_size=32, epochs=50, verbose=2, validation_split=0.4, shuffle=True)
-
-model.save("Test_crab_sim_training_model.h5")
-
-with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5", 'r') as f:
-    with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Dark Patch 3_preprocessed_images.h5", 'r') as f_1:
-        # Get some truth data for now, just use Crab images
-        images = f['Image'][0:10000]
-        images_false = f_1['Image']
-        validating_dataset = np.concatenate((images, images_false), axis=0)
-        labels = np.array([True]*(len(images))+[False]*len(images_false))
-        validation_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
-        x = validating_dataset
-        x_label = validation_labels
-        print("Finished getting data")
-
-
-model.fit(x=x, y=x_label, batch_size=32, epochs=50, verbose=2, validation_split=0.4, shuffle=True)
-
-model.save("Test_crab_dark_training_model.h5")
 
 #model.fit_generator(generator=training_generator,
 #                    validation_data=validating_generator,
