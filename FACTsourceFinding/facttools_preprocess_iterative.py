@@ -30,14 +30,16 @@ architecture = yaml.load("../envs.yaml")['arch']
 if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
     thesis_base = '/run/media/jacob/SSD/Development/thesis'
+    std_base = base_dir + '/dl2_theta/orecuts/std_analysis/'
 else:
     base_dir = '/projects/sventeklab/jbieker'
     thesis_base = base_dir + '/thesis'
+    std_base = base_dir + "/FACTSources/std_analysis/"
 
-source_file_paths.append("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/std_analysis/crab_1314_std_analysis_v1.0.0.hdf5")
-output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/crab_1314_std_analysis_v1.0.0_preprocessed_source.hdf5")
+#source_file_paths.append("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/std_analysis/crab_1314_std_analysis_v1.0.0.hdf5")
+#output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/crab_1314_std_analysis_v1.0.0_preprocessed_source.hdf5")
 # Build list of source hdf5 files to go through to get runlist and source prediction points
-for subdir, dirs, files in os.walk("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/std_analysis/"):
+for subdir, dirs, files in os.walk(std_base):
     for file in files:
         path = os.path.join(subdir, file)
         source_file_paths.append(path)
