@@ -235,7 +235,7 @@ with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.
         print("Finished getting data")
 
 
-model.fit(x=x, y=x_label, batch_size=64, epochs=200, verbose=2, validation_split=0.99, shuffle=True)
+model.fit(x=x, y=x_label, batch_size=64, epochs=200, verbose=2, validation_split=0.9, shuffle=True)
 
 
 model.save("Crab_source_background_model.h5")
