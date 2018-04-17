@@ -21,8 +21,8 @@ path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_F
 source_file_paths = []
 output_paths = []
 
-source_file_paths.append("runs/Crab.csv")
-output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_background_preprocessed_images.h5")
+#source_file_paths.append("runs/Crab.csv")
+#output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_background_preprocessed_images.h5")
 #source_file_paths.append("runs/Mrk 421.csv")
 #source_file_paths.append("runs/Mrk 501.csv")
 
