@@ -62,7 +62,7 @@ conv6 = Conv2D(16, (3, 3), activation='relu', padding='same')(merge2)
 decoded = Conv2D(1, (3, 3), activation='relu', padding='same')(conv6)
 
 autoencoder = Model(input_img, decoded)
-autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
+autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy', metrics=['acc'])
 
 #from keras.datasets import mnist
 import numpy as np
@@ -79,7 +79,7 @@ import numpy as np
 # Print test images from source pos
 np.random.seed(0)
 
-with h5py.File(base_dir + "/FACTSources/crab_1314_std_analysis_v1.0.0_preprocessed_source.hdf5_34") as f:
+with h5py.File(base_dir + "/FACTSources/crab_1314_std_analysis_v1.0.0_preprocessed_source.hdf5_55") as f:
     # Get some truth data for now, just use Crab images
     items = list(f.items())[0][1].shape[0]
     # Build up images with same source
@@ -162,7 +162,7 @@ with h5py.File(base_dir + "/FACTSources/crab_1314_std_analysis_v1.0.0_preprocess
 
 import matplotlib.pyplot as plt
 
-with h5py.File(base_dir + "/FACTSources/mrk501_2014_std_analysis_v1.0.0_preprocessed_source.hdf5_10") as f:
+with h5py.File(base_dir + "/FACTSources/mrk501_2014_std_analysis_v1.0.0_preprocessed_source.hdf5_75") as f:
     # Get some truth data for now, just use Crab images
     items = list(f.items())[0][1].shape[0]
     # Build up images with same source
@@ -170,6 +170,8 @@ with h5py.File(base_dir + "/FACTSources/mrk501_2014_std_analysis_v1.0.0_preproce
     source_pos_two = []
     source_truth = f['Source_Position'][0]
     tmp_arr = np.zeros((46,45,1))
+    tmp_arr2 = np.zeros((46,45,1))
+    source_arr2 = np.zeros((46,45,1))
     k = 1
     for i in range(0, items):
         if not np.array_equal(f['Source_Position'][i], source_truth) and f['Trigger'][i] == 4:
@@ -184,16 +186,17 @@ with h5py.File(base_dir + "/FACTSources/mrk501_2014_std_analysis_v1.0.0_preproce
             if (k % 5000) != 0:
                 # Add to temp image
                 tmp_arr += f['Image'][i]
+                tmp_arr2 += f['Image'][i]
                 k += 1
             else:
                 # Hit the 5000 cap I need
-                plt.imshow(tmp_arr.reshape(46, 45))
-                plt.show()
+                #plt.imshow(tmp_arr.reshape(46, 45))
+                #plt.show()
                 tmp_arr = np.c_[tmp_arr.reshape((46,45)), np.zeros((46,3))]
                 tmp_arr = np.r_[tmp_arr, np.zeros((2,48))]
                 tmp_arr = tmp_arr.reshape((48,48,1))
-                plt.imshow(tmp_arr.reshape(48, 48))
-                plt.show()
+                #plt.imshow(tmp_arr.reshape(48, 48))
+                #plt.show()
                 source_two_images.append(tmp_arr)
                 source_arr = f['Source_Position'][i]
                 source_arr = np.c_[source_arr.reshape((46,45)), np.zeros((46,3))]
@@ -202,30 +205,41 @@ with h5py.File(base_dir + "/FACTSources/mrk501_2014_std_analysis_v1.0.0_preproce
                 source_pos_two.append(source_arr)
                 tmp_arr = np.zeros((46,45,1))
                 k += 1
-            '''
-            if ran_int < 5:
-                image_arr = f['Image'][i]
-                image_arr.resize((48,48,1), refcheck=False)
-                source_two_images.append(image_arr)
-                source_arr = f['Source_Position'][i]
-                source_arr.resize((48,48,1), refcheck=False)
-                source_pos_two.append(source_arr)
-            else:
-                print("Flipping")
-                image_arr = f['Image'][i]
-                # Flip twice
-                image_arr = np.fliplr(image_arr)
-                image_arr = np.flipud(image_arr)
-                print(image_arr.shape)
-                image_arr.resize((48,48,1), refcheck=False)
-                source_two_images.append(image_arr)
-                source_arr = f['Source_Position'][i]
-                # Flip twice
-                source_arr = np.fliplr(image_arr)
-                source_arr = np.flipud(image_arr)
-                source_arr.resize((48,48,1), refcheck=False)
-                source_pos_two.append(source_arr)
-            '''
+
+    #plt.imshow(tmp_arr2.reshape((46,45)))
+    #plt.title("All events here")
+    #plt.show()
+
+    #source_arr2 = f['Source_Position'][0]
+
+    #plt.imshow(source_arr2.reshape((46,45)))
+    #plt.title("Source of all events")
+    #plt.show()
+
+    '''
+    if ran_int < 5:
+        image_arr = f['Image'][i]
+        image_arr.resize((48,48,1), refcheck=False)
+        source_two_images.append(image_arr)
+        source_arr = f['Source_Position'][i]
+        source_arr.resize((48,48,1), refcheck=False)
+        source_pos_two.append(source_arr)
+    else:
+        print("Flipping")
+        image_arr = f['Image'][i]
+        # Flip twice
+        image_arr = np.fliplr(image_arr)
+        image_arr = np.flipud(image_arr)
+        print(image_arr.shape)
+        image_arr.resize((48,48,1), refcheck=False)
+        source_two_images.append(image_arr)
+        source_arr = f['Source_Position'][i]
+        # Flip twice
+        source_arr = np.fliplr(image_arr)
+        source_arr = np.flipud(image_arr)
+        source_arr.resize((48,48,1), refcheck=False)
+        source_pos_two.append(source_arr)
+    '''
     # now get number of 500 event things, or 5000 event things
     x_test = np.array(source_two_images)
     print(x_test.shape)

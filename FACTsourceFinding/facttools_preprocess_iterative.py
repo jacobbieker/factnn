@@ -25,7 +25,8 @@ path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_F
 source_file_paths = []
 output_paths = []
 
-architecture = yaml.load("../envs.yaml")['arch']
+with open("../envs.yaml", "r") as envfile:
+    architecture = yaml.load(envfile)['arch']
 
 if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
