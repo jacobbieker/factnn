@@ -7,8 +7,11 @@ import h5py
 
 # Courteous of Joesph Yaconelli for the original implementation, modified by Jacob Bieker
 
-with open("/run/media/jacob/SSD/Development/thesis/envs.yaml", 'r') as yaml_file:
-    architecture = yaml.load(yaml_file)['arch']
+try:
+    with open("/run/media/jacob/SSD/Development/thesis/envs.yaml", 'r') as yaml_file:
+        architecture = yaml.load(yaml_file)['arch']
+except:
+    architecture = 'intel'
 
 if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
@@ -267,12 +270,12 @@ autoencoder.fit(x_train, x_train_source,
     epochs = 10,
     batch_size=128,
     shuffle=True,
-    validation_split=0.4,
+    validation_split=0.2,
     callbacks=[TensorBoard(log_dir='/tmp/autoencoder')])
 
 import matplotlib.pyplot as plt
 
-autoencoder.save(filepath="unet_test.hdf5")
+autoencoder.save(filepath="unet_test_other.hdf5")
 decoded_imgs = autoencoder.predict(x_test)
 
 # number of images to display
@@ -281,7 +284,7 @@ plt.figure(figsize=(20, 4))
 
 for i in range(1, n+1):
     ax = plt.subplot(2, n, i)
-    plt.imshow(x_test[i].reshape(48, 48))
+    plt.imshow(x_test_source[i].reshape(48, 48))
     plt.gray()
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)

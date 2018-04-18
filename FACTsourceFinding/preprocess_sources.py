@@ -35,7 +35,7 @@ for subdir, dirs, files in os.walk("runs/"):
             path = os.path.join(subdir, file)
             source_file_paths.append(path)
             output_filename = file.split(".csv")[0]
-            output_paths.append("/run/media/jacob/WDRed8Tb1/FACTSources/" + output_filename + "_background_preprocessed_images.h5")
+            output_paths.append("/run/media/jacob/WDRed8Tb2/FACTSources/" + output_filename + "_event_preprocessed_images.h5")
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
@@ -100,7 +100,7 @@ def batchYielder(path_runs_to_use):
                     az_deg = line_data['Az_deg']
                     trigger = line_data['Trigger']
 
-                    if trigger == 1024: # Code for background only trigger
+                    if trigger == 4: # Code for background only trigger
                         #print("Trigger type is " + str(trigger))
                         for i in range(1440):
                             x, y = id_position[i]
