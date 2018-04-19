@@ -100,13 +100,14 @@ with h5py.File(base_dir + "/FACTSources/crab_1314_std_analysis_v1.0.0_preprocess
             # arrays are the same, add to source images and ones
             # Randomly flip the array twice to augment training
 
-            if (k % 500) != 0:
+            if (k % 500) == 0:
                 # Add to temp image
                 tmp_arr += f['Image'][i]
                 k += 1
             else:
                 # Hit the 5000 cap I need
-                print("5000 Hit")
+                #print("5000 Hit")
+                tmp_arr = f['Image'][i]
                 # REsize correctly
                 tmp_arr = np.c_[tmp_arr.reshape((46,45)), np.zeros((46,3))]
                 tmp_arr = np.r_[tmp_arr, np.zeros((2,48))]
@@ -186,7 +187,7 @@ with h5py.File("/run/media/jacob/WDRed8Tb2/FACTSources/FromTalapas/mrk501_2014_s
 
             ran_int = np.random.randint(0,3)
 
-            if (k % 500) != 0:
+            if (k % 500) == 0:
                 # Add to temp image
                 tmp_arr += f['Image'][i]
                 tmp_arr2 += f['Image'][i]
@@ -195,6 +196,7 @@ with h5py.File("/run/media/jacob/WDRed8Tb2/FACTSources/FromTalapas/mrk501_2014_s
                 # Hit the 5000 cap I need
                 #plt.imshow(tmp_arr.reshape(46, 45))
                 #plt.show()
+                tmp_arr = f['Image'][i]
                 tmp_arr = np.c_[tmp_arr.reshape((46,45)), np.zeros((46,3))]
                 tmp_arr = np.r_[tmp_arr, np.zeros((2,48))]
                 tmp_arr = tmp_arr.reshape((48,48,1))
@@ -267,7 +269,7 @@ x_test_source = np.reshape(x_test_source, (-1, 48, 48, 1))
 from keras.callbacks import TensorBoard
 
 autoencoder.fit(x_train, x_train_source,
-    epochs = 10,
+    epochs = 100,
     batch_size=128,
     shuffle=True,
     validation_split=0.2,
@@ -275,7 +277,7 @@ autoencoder.fit(x_train, x_train_source,
 
 import matplotlib.pyplot as plt
 
-autoencoder.save(filepath="unet_test_500.hdf5")
+autoencoder.save(filepath="unet_test_single_image.hdf5")
 decoded_imgs = autoencoder.predict(x_test)
 
 # number of images to display
