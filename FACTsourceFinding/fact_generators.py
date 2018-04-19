@@ -16,7 +16,7 @@ Goal is to have: One that gives the individual images and source
 
 
 def RaDecGenerator(source_file, num_images_per_output, batch_size, dim, n_channels, truths, shuffle, seed=0,
-                   source=None):
+                   source=None, trigger=4):
     '''
     Here, need to get the ra and dec from the files, and the timing information, probably from the night and run_id
     since it is not in the HDF5 files anymore
@@ -36,6 +36,61 @@ def RaDecGenerator(source_file, num_images_per_output, batch_size, dim, n_channe
     :param seed:
     :return:
     '''
+
+    with h5py.File(source_file) as f:
+        items = list(f.items())[0][1].shape[0]
+        source_one_images = []
+        source_pos_one = []
+        tmp_arr = np.zeros((46, 45, 1))
+        k = 1
+        batch_index = 0
+        source_truth = f['Source_Position'][0]
+        for i in range(0, items):
+            if not np.array_equal(f['Source_Position'][i], source_truth) and f['Trigger'][i] == trigger:
+                source_truth_two = f['Source_Position'][i]
+        for i in range(0, items):
+            if np.array_equal(f['Source_Position'][i], source_truth) and f['Trigger'][i] == trigger:
+                # arrays are the same, add to source images and ones
+                # Randomly flip the array twice to augment training
+
+                if (k % num_images_per_output) == 0:
+                    # Add to temp image
+                    tmp_arr += f['Image'][i]
+                    k += 1
+                else:
+                    # Hit the 5000 cap I need
+                    # print("5000 Hit")
+                    tmp_arr = f['Image'][i]
+                    # REsize correctly
+                    if tmp_arr.shape != dim:
+                        # Because it won't ever be smaller, only have to chech which dims are smaller than required
+                        if tmp_arr.shape[0] < dim[0]:
+                            tmp_arr = np.c_[tmp_arr.reshape((46, 45)), np.zeros((46, (dim[0] - tmp_arr.shape[0])))]
+                        if tmp_arr.shape[1] < dim[1]:
+                            tmp_arr = np.r_[tmp_arr, np.zeros(((dim[1] - tmp_arr.shape[1]), dim[0]))]
+                    tmp_arr = tmp_arr.reshape((dim[1], dim[0], 1))
+                    # tmp_arr.resize((48,48,1))
+                    source_one_images.append(tmp_arr)
+                    source_arr = f['Source_Position'][i]
+                    if source_arr.shape[0] < dim[0]:
+                        source_arr = np.c_[source_arr.reshape((46, 45)), np.zeros((46, (dim[0] - source_arr.shape[0])))]
+                    if source_arr.shape[1] < dim[1]:
+                        source_arr = np.r_[source_arr, np.zeros(((dim[1] - source_arr.shape[1]), dim[0]))]
+                    source_arr = source_arr.reshape((dim[1], dim[0], 1))
+                    # source_arr.resize((48,48,1), refcheck=False)
+                    source_pos_one.append(source_arr)
+                    tmp_arr = np.zeros((46, 45, 1))
+                    k += 1
+                    batch_index += 1
+
+            if (batch_index % batch_size ) == 0:
+                x_train = np.array(source_one_images)
+                print(x_train.shape)
+                # x_test = source_two_images
+                x_train_source = np.array(source_pos_one)
+                print(x_train_source.shape)
+                # x_test_source = source_pos_two
+                yield x_train, x_train_source
     return NotImplementedError
 
 
@@ -99,39 +154,6 @@ def CameraGenerator(source_file, num_images_per_output, batch_size, dim, n_chann
                     tmp_arr = np.zeros((46, 45, 1))
                     k += 1
                     batch_index += 1
-
-                ran_int = np.random.randint(0, 3)
-                ''''
-                if ran_int < 5:
-                    image_arr = f['Image'][i]
-                    image_arr.resize((48,48,1), refcheck=False)
-                    source_one_images.append(image_arr)
-                    source_arr = f['Source_Position'][i]
-                    source_arr.resize((48,48,1), refcheck=False)
-                    source_pos_one.append(source_arr)
-                else:
-                    print("Flipping")
-                    image_arr = f['Image'][i]
-                    # Flip twice
-                    image_arr = np.fliplr(image_arr)
-                    image_arr = np.flipud(image_arr)
-                    print(image_arr.shape)
-                    image_arr.resize((48,48,1), refcheck=False)
-                    source_one_images.append(image_arr)
-                    source_arr = f['Source_Position'][i]
-                    # Flip twice
-                    source_arr = np.fliplr(image_arr)
-                    source_arr = np.flipud(image_arr)
-                    source_arr.resize((48,48,1), refcheck=False)
-                    source_pos_one.append(source_arr)
-                '''
-                # elif np.array_equal(f['Source_Position'][i], source_truth_two) and f['Trigger'][i] == 4:
-                #    image_arr = f['Image'][i]
-                #    image_arr.resize((48,48,1))
-                #    source_two_images.append(image_arr)
-                #    source_arr = f['Source_Position'][i]
-                #    source_arr.resize((48,48,1))
-                #    source_pos_two.append(source_arr)
 
             if (batch_index % batch_size ) == 0:
                 x_train = np.array(source_one_images)
