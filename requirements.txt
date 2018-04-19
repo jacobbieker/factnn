@@ -1,5 +1,5 @@
 h5py
-pyfact
+pyfact==0.19.1
 photon_stream
 keras
 fact_plots
