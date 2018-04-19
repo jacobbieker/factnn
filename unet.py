@@ -100,7 +100,7 @@ with h5py.File(base_dir + "/FACTSources/crab_1314_std_analysis_v1.0.0_preprocess
             # arrays are the same, add to source images and ones
             # Randomly flip the array twice to augment training
 
-            if (k % 5000) != 0:
+            if (k % 500) != 0:
                 # Add to temp image
                 tmp_arr += f['Image'][i]
                 k += 1
@@ -165,7 +165,7 @@ with h5py.File(base_dir + "/FACTSources/crab_1314_std_analysis_v1.0.0_preprocess
 
 import matplotlib.pyplot as plt
 
-with h5py.File(base_dir + "/FACTSources/mrk501_2014_std_analysis_v1.0.0_preprocessed_source.hdf5_75") as f:
+with h5py.File("/run/media/jacob/WDRed8Tb2/FACTSources/FromTalapas/mrk501_2014_std_analysis_v1.0.0_preprocessed_source.hdf5_195") as f:
     # Get some truth data for now, just use Crab images
     items = list(f.items())[0][1].shape[0]
     # Build up images with same source
@@ -186,7 +186,7 @@ with h5py.File(base_dir + "/FACTSources/mrk501_2014_std_analysis_v1.0.0_preproce
 
             ran_int = np.random.randint(0,3)
 
-            if (k % 5000) != 0:
+            if (k % 500) != 0:
                 # Add to temp image
                 tmp_arr += f['Image'][i]
                 tmp_arr2 += f['Image'][i]
@@ -275,7 +275,7 @@ autoencoder.fit(x_train, x_train_source,
 
 import matplotlib.pyplot as plt
 
-autoencoder.save(filepath="unet_test_other.hdf5")
+autoencoder.save(filepath="unet_test_500.hdf5")
 decoded_imgs = autoencoder.predict(x_test)
 
 # number of images to display
