@@ -154,6 +154,69 @@ def convert_to_hexagonal(image_array):
 
     return np.array(chid_values)
 
+with h5py.File("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5") as f:
+    ra = []
+    dec = []
+    num_of_each = []
+    camera_df = get_pixel_dataframe()
+    #items = list(f.items())[0][1].shape[0]
+    source_one_images = []
+    source_pos_one = []
+    tmp_arr = np.zeros(1440)
+    #tmp_arr += convert_to_hexagonal(f['Image'][0])
+    #source_arr = convert_to_hexagonal(f['Source_Position'][0])
+
+    #chid_source = []
+    #for i in range(source_arr.shape[0]):
+    #    if source_arr[i] == 1:
+    #        chid_source.append(i)
+    for index in range(10000):
+        print(index)
+        # Go through and get every event
+        time = get_obstime(f['events']['run_id'][index], f['events']['night'][index])
+        source_x = f['events']['source_x_prediction'][index]
+        source_y = f['events']['source_y_prediction'][index]
+        time = get_obstime(f['events']['run_id'][index], f['events']['night'][index])
+        #print(chid_source)
+        ra_and_dec = camera_to_equatorial(source_x, source_y, f['events']['zd_source_calc'][index], f['events']['az_source_calc'][index], time)
+        #ra_and_dec = camera_to_equatorial(camera_df['x'].values, camera_df['y'].values, f['Zd_deg'][index], f['Az_deg'][index], time)
+        # Now have the ra and dec of every pixel, add that to the overall ra and dec predictions one
+        ra.append(ra_and_dec[0])
+        dec.append(ra_and_dec[1])
+        num_of_each.append([1])
+
+    # Now have the ra, dec, and number of photons for each in lists of lists, have to add to that
+    import itertools
+    ra = np.array(list(itertools.chain.from_iterable(ra)))
+    dec = np.array(list(itertools.chain.from_iterable(dec)))
+    num_of_each = np.array(list(itertools.chain.from_iterable(num_of_each)))
+    all_ra = []
+    all_dec = []
+    print("All Done, now appending to all")
+    for index, element in enumerate(num_of_each):
+        count = 0
+        while count < element:
+            all_ra.append(ra[index])
+            all_dec.append(dec[index])
+            count += 1
+
+    stuff = {'ra_prediction': all_ra,
+             'dec_prediction': all_dec}
+
+    new_df = pd.DataFrame.from_dict(stuff)
+    #camera_df['ra_prediction'] = all_ra
+    #camera_df['dec_prediction'] = all_dec
+    print("Plotting")
+    main(new_df, source="MRK501", output="mrk501_skymap_source_calc_prediction_10000.pdf")
+
+    #print(thing3[0][0] / new_stuff[0][0])
+
+    #time = get_obstime(f['Run'][0], f['Night'][0])
+
+#for chid in chid_source:
+#     new_stuff = camera_to_equatorial(camera_df['x'][chid], camera_df['y'][chid], f['Zd_deg'][0], f['Az_deg'][0], time)
+#     print(new_stuff)
+
 
 with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5") as f:
     camera_df = get_pixel_dataframe()
@@ -173,7 +236,7 @@ with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.
     #    if source_arr[i] == 1:
     #        chid_source.append(i)
     chid_values = []
-    for index in range(1000):
+    for index in range(1):
         print(index)
         # Go through and get every event
         chid_values = convert_to_hexagonal(f['Image'][index])
@@ -210,14 +273,14 @@ with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.
     main(new_df, source="CRAB", output="crab_skymap.pdf")
 
 
-    source_x = f['events']['source_position']
-    source_y = f['events']['source_position']
-    time = get_obstime(f['events']['run_id'][10], f['events']['night'][10])
+    #source_x = f['events']['source_position']
+    #source_y = f['events']['source_position']
+    #time = get_obstime(f['events']['run_id'][10], f['events']['night'][10])
     #print(chid_source)
-    new_stuff = camera_to_equatorial(source_x, source_y, f['events']['zd_pointing'][10], f['events']['az_pointing'][10], time)
-    print(new_stuff)
-    print("Mrk501 Ratio:")
-    print(new_stuff[0][0])
+    #new_stuff = camera_to_equatorial(source_x, source_y, f['events']['zd_pointing'][10], f['events']['az_pointing'][10], time)
+    #print(new_stuff)
+    #print("Mrk501 Ratio:")
+    #print(new_stuff[0][0])
 
 
 with h5py.File("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5") as f:
@@ -233,14 +296,45 @@ with h5py.File("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5
     #for i in range(source_arr.shape[0]):
     #    if source_arr[i] == 1:
     #        chid_source.append(i)
-    source_x = f['events']['source_position'][10][0]
-    source_y = f['events']['source_position'][10][1]
-    time = get_obstime(f['events']['run_id'][10], f['events']['night'][10])
-    #print(chid_source)
-    new_stuff = camera_to_equatorial(source_x, source_y, f['events']['zd_pointing'][10], f['events']['az_pointing'][10], time)
-    print(new_stuff)
-    print("Mrk501 Ratio:")
-    print(new_stuff[0][0])
+    for index in range(100):
+        print(index)
+        # Go through and get every event
+        time = get_obstime(f['Run'][index], f['Night'][index])
+        source_x = f['events']['source_position'][index][0]
+        source_y = f['events']['source_position'][index][1]
+        time = get_obstime(f['events']['run_id'][index], f['events']['night'][index])
+        #print(chid_source)
+        ra_and_dec = camera_to_equatorial(source_x, source_y, f['events']['zd_pointing'][index], f['events']['az_pointing'][index], time)
+        #ra_and_dec = camera_to_equatorial(camera_df['x'].values, camera_df['y'].values, f['Zd_deg'][index], f['Az_deg'][index], time)
+        # Now have the ra and dec of every pixel, add that to the overall ra and dec predictions one
+        ra.append(ra_and_dec[0])
+        dec.append(ra_and_dec[1])
+        num_of_each.append(1)
+
+    # Now have the ra, dec, and number of photons for each in lists of lists, have to add to that
+    import itertools
+    ra = np.array(list(itertools.chain.from_iterable(ra)))
+    dec = np.array(list(itertools.chain.from_iterable(dec)))
+    num_of_each = np.array(list(itertools.chain.from_iterable(num_of_each)))
+    all_ra = []
+    all_dec = []
+    print("All Done, now appending to all")
+    for index, element in enumerate(num_of_each):
+        count = 0
+        while count < element:
+            all_ra.append(ra[index])
+            all_dec.append(dec[index])
+            count += 1
+
+    stuff = {'ra_prediction': all_ra,
+             'dec_prediction': all_dec}
+
+    new_df = pd.DataFrame.from_dict(stuff)
+    #camera_df['ra_prediction'] = all_ra
+    #camera_df['dec_prediction'] = all_dec
+    print("Plotting")
+    main(new_df, source="MRK501")#, output="mrk501_skymap.pdf")
+
     #print(thing3[0][0] / new_stuff[0][0])
 
     #time = get_obstime(f['Run'][0], f['Night'][0])
