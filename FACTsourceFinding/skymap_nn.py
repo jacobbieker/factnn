@@ -30,7 +30,7 @@ columns = [
 ]
 
 
-def plot_skymap(df, width=4, bins=100, center_ra=None, center_dec=None, ax=None):
+def plot_skymap(df, width=90.0, bins=10000, center_ra=None, center_dec=None, ax=None):
     '''
     Plot a 2d histogram of the reconstructed positions of air showers
 
@@ -153,9 +153,9 @@ def main(data_path, threshold=0.0, key='events', bins=100, width=8.0, preliminar
 
 #main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/crab_precuts.hdf5", source='CRAB')
 
-main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk421_precuts.hdf5", source="MRK421")
+#main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk421_precuts.hdf5", source="MRK421")
 
-main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5", source="MRK501")
+#main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5", source="MRK501")
 
 # convert to ra and dec, bin it, and then run unet on it to find possible sources
 
@@ -164,6 +164,20 @@ main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5", source=
 
 # But use ra and dec of a source from SkyCoord as the truth, with an area around it for UNET, convert all pixel things to ra and dec and plaster over each other
 #
+
+
+# Use the UNET to get to sky point, basically create a grid in ra and dec, with truth being the source position + 0.025 or so, train UNET on batches that are from the source
+
+# Also use a UNET or just general NN for finding conc_cog, cog, length, width too in the phs files,
+
+
+
+# Make a thousand by thousand box based on the max and min of the ra and decs of each set of events. From that, have the NN go through and try to determine where a source is
+# Train it on with the SkyCoord source given, but validate on other ones
+
+# Also take the phs files from the diffuse one, and combine that to get different training, see how that works vs the current one.
+
+
 
 try:
     # df = read_h5py("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/crab_precuts.hdf5", key='events')

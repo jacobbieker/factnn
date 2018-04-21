@@ -44,7 +44,7 @@ thing3 = SkyCoord.from_name("MRK501")
 print(thing3)
 
 
-def main(data_path, threshold=0.0, key='events', bins=100, width=8.0, preliminary=True, config=None, output=None,
+def main(data_path, threshold=0.0, key='events', bins=10000, width=8.0, preliminary=True, config=None, output=None,
          source=None):
     '''
     Plot a 2d histogram of the origin of the air showers in the
@@ -71,6 +71,7 @@ def main(data_path, threshold=0.0, key='events', bins=100, width=8.0, preliminar
         coord = SkyCoord.from_name(source)
         center_ra = coord.ra.deg
         center_dec = coord.dec.deg
+
     else:
         center_ra = center_dec = None
 
@@ -154,6 +155,12 @@ def convert_to_hexagonal(image_array):
 
     return np.array(chid_values)
 
+#mrk501_df = read_h5py("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5", key='events', columns=columns)
+#crab_df = read_h5py("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/crab_precuts.hdf5", key='events', columns=columns)
+#mrk421_df = read_h5py("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk421_precuts.hdf5", key='events', columns=columns)
+#newdf = pd.concat([crab_df, mrk501_df, mrk421_df], ignore_index=True)
+
+
 with h5py.File("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5") as f:
     ra = []
     dec = []
@@ -170,7 +177,7 @@ with h5py.File("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5
     #for i in range(source_arr.shape[0]):
     #    if source_arr[i] == 1:
     #        chid_source.append(i)
-    for index in range(10000):
+    for index in range(1):
         print(index)
         # Go through and get every event
         time = get_obstime(f['events']['run_id'][index], f['events']['night'][index])
@@ -207,7 +214,7 @@ with h5py.File("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5
     #camera_df['ra_prediction'] = all_ra
     #camera_df['dec_prediction'] = all_dec
     print("Plotting")
-    main(new_df, source="MRK501", output="mrk501_skymap_source_calc_prediction_10000.pdf")
+    main(new_df, source="MRK501")
 
     #print(thing3[0][0] / new_stuff[0][0])
 
@@ -236,7 +243,7 @@ with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.
     #    if source_arr[i] == 1:
     #        chid_source.append(i)
     chid_values = []
-    for index in range(1):
+    for index in range(10000):
         print(index)
         # Go through and get every event
         chid_values = convert_to_hexagonal(f['Image'][index])
@@ -270,7 +277,7 @@ with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.
     #camera_df['ra_prediction'] = all_ra
     #camera_df['dec_prediction'] = all_dec
     print("Plotting")
-    main(new_df, source="CRAB", output="crab_skymap.pdf")
+    main(new_df, source="CRAB", output="crab_skymap_10000.pdf")
 
 
     #source_x = f['events']['source_position']
