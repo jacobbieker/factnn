@@ -58,12 +58,13 @@ def batchYielder():
                     zd_deg = line_data['Zd_deg']
                     az_deg = line_data['Az_deg']
                     trigger = line_data['Trigger']
+                    time = line_data['UnixTime_s_us'][0] + 1e-6*line_data['UnixTime_s_us'][1]
 
                     input_matrix = np.zeros([46,45])
                     for i in range(1440):
                         x, y = id_position[i]
                         input_matrix[int(x)][int(y)] = len(event_photons[i])
-                    data.append([input_matrix, night, run, event, zd_deg, az_deg, trigger])
+                    data.append([input_matrix, night, run, event, zd_deg, az_deg, trigger, time])
             yield data
 
         except:
@@ -72,7 +73,7 @@ def batchYielder():
         
 # Change the datatype to np-arrays
 def batchFormatter(batch):
-    pic, night, run, event, zd_deg, az_deg, trigger = zip(*batch)
+    pic, night, run, event, zd_deg, az_deg, trigger, time = zip(*batch)
     pic = reformat(np.array(pic))
     night = np.array(night)
     run = np.array(run)
@@ -80,14 +81,15 @@ def batchFormatter(batch):
     zd_deg = np.array(zd_deg)
     az_deg = np.array(az_deg)
     trigger = np.array(trigger)
-    return (pic, night, run, event, zd_deg, az_deg, trigger)
+    time = np.array(time)
+    return (pic, night, run, event, zd_deg, az_deg, trigger, time)
 
 
 # Use the batchYielder to concatenate every batch and store it into a single h5 file
 
 gen = batchYielder()
 batch = next(gen)
-pic, night, run, event, zd_deg, az_deg, trigger = batchFormatter(batch)
+pic, night, run, event, zd_deg, az_deg, trigger, time = batchFormatter(batch)
 row_count = trigger.shape[0]
 
 with h5py.File(path_crab_images, 'w') as hdf:
@@ -105,6 +107,8 @@ with h5py.File(path_crab_images, 'w') as hdf:
     dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
     maxshape_trigger = (None,) + trigger.shape[1:]
     dset_trigger = hdf.create_dataset('Trigger', shape=trigger.shape, maxshape=maxshape_trigger, chunks=trigger.shape, dtype=trigger.dtype)
+    maxshape_time = (None,) + time.shape[1:]
+    dset_time = hdf.create_dataset('Time', shape=time.shape, maxshape=maxshape_time, chunks=time.shape, dtype=time.dtype)
     
     dset_pic[:] = pic
     dset_night[:] = night
@@ -113,9 +117,10 @@ with h5py.File(path_crab_images, 'w') as hdf:
     dset_zd_deg[:] = zd_deg
     dset_az_deg[:] = az_deg
     dset_trigger[:] = trigger
+    dset_time[:] = time
     
     for batch in gen:
-        pic, night, run, event, zd_deg, az_deg, trigger = batchFormatter(batch)
+        pic, night, run, event, zd_deg, az_deg, trigger, time = batchFormatter(batch)
         
         dset_pic.resize(row_count + trigger.shape[0], axis=0)
         dset_night.resize(row_count + trigger.shape[0], axis=0)
@@ -124,6 +129,7 @@ with h5py.File(path_crab_images, 'w') as hdf:
         dset_zd_deg.resize(row_count + trigger.shape[0], axis=0)
         dset_az_deg.resize(row_count + trigger.shape[0], axis=0)
         dset_trigger.resize(row_count + trigger.shape[0], axis=0)
+        dset_time.resize(row_count + trigger.shape[0], axis=0)
         
         dset_pic[row_count:] = pic
         dset_night[row_count:] = night
@@ -132,5 +138,6 @@ with h5py.File(path_crab_images, 'w') as hdf:
         dset_zd_deg[row_count:] = zd_deg
         dset_az_deg[row_count:] = az_deg
         dset_trigger[row_count:] = trigger
+        dset_time[row_count:] = time
         
         row_count += trigger.shape[0]

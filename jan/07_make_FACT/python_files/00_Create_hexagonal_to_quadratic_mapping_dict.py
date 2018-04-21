@@ -9,15 +9,18 @@ import numpy as np
 #First input: Path to the 'Camera_Image_FACT.csv'
 #Second input: Path to the 'hexagonal_to_quadratic_mapping_dict.p'
 path_image = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/Camera_Image_FACT.csv"
-path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
+path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/quadratic_to_hexagonal_mapping_dict.p"
 
 df = get_pixel_dataframe()
+df2 = deepcopy(df)
 
 # Get
 
 # Translating and scaling the values to represent natural numbers
 # Rounding is needed, because some hexagonal pixel layers are not equally spaced
 factplot.camera(df['CHID'])
+x1 = df['x'].values
+y1 = df['y'].values
 plt.show()
 df['y'] =round(df['y']/8.2175,0)+22
 df['x'] =(df['x']/4.75+39+df['y']-16)/2
@@ -34,8 +37,9 @@ plt.ylim(0,50)
 plt.xlim(-100,100)
 plt.show()
 
-position_dict = {}
+position_dict = []
 for id, values in enumerate(df['x'].values):
-    position_dict[id] = [df['x'][id], df['y'][id]]
+    position_dict.append((df['x'][id], df['y'][id], id, round(df2['x'][id], 3), round(df2['y'][id], 3)))
 
+print(position_dict)
 pickle.dump(position_dict, open(path_store_mapping_dict, 'wb'))
