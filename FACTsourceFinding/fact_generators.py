@@ -3,7 +3,11 @@ import numpy as np
 import h5py
 import fact
 from fact.io import read_h5py
+from fact.coordinates.utils import arrays_to_equatorial, equatorial_to_camera, camera_to_equatorial
+import pickle
+from astropy.coordinates import SkyCoord
 
+from fact.instrument import get_pixel_dataframe
 '''
 Set of generators for the different neural networks
 
@@ -13,6 +17,44 @@ Goal is to have: One that gives the individual images and source
  One that gives it bundled, like 5000 images at a time or so
  
 '''
+
+def get_obstime(event, night):
+    '''
+    Return the time from the night and event
+    :param event:
+    :param night:
+    :return:
+    '''
+
+    info_df = read_h5py("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/RunInfo.hdf5", key='info')
+    current_event = info_df.iloc[info_df['fNight'] == night & info_df['fRunID'] == event]
+    time = info_df[current_event].values
+    print(time)
+    return time
+
+def convert_to_hexagonal(image_array):
+    '''
+    Converts a given image back to hexagonal coordinates, for correct use with ra and dec stuff
+    :param image_array:
+    :return: List of the photon values for each CHID
+    '''
+
+    camera_df = get_pixel_dataframe()
+    path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/quadratic_to_hexagonal_mapping_dict.p"
+
+    # Load the quadratic to hexagonal, to convert back to the correct format again
+    id_position = pickle.load(open(path_store_mapping_dict, "rb"))
+
+    chid_values = np.zeros(1440)
+
+    for x in range(image_array.shape[0]):
+        for y in range(image_array.shape[1]):
+            for i in range(len(id_position)):
+                if id_position[i][0] == x and id_position[i][1] == y:
+                    chid_values[i] = image_array[x][y]
+
+
+    return chid_values
 
 
 def RaDecGenerator(source_file, num_images_per_output, batch_size, dim, n_channels, truths, shuffle, seed=0,
@@ -37,17 +79,21 @@ def RaDecGenerator(source_file, num_images_per_output, batch_size, dim, n_channe
     :return:
     '''
 
+
+    # Use the pixel_df to convert back to FACT camera coordinates, and then ra and dec
+
     with h5py.File(source_file) as f:
         items = list(f.items())[0][1].shape[0]
         source_one_images = []
         source_pos_one = []
-        tmp_arr = np.zeros((46, 45, 1))
+        tmp_arr = np.zeros(1440)
         k = 1
         batch_index = 0
-        source_truth = f['Source_Position'][0]
-        for i in range(0, items):
-            if not np.array_equal(f['Source_Position'][i], source_truth) and f['Trigger'][i] == trigger:
-                source_truth_two = f['Source_Position'][i]
+        if source != None:
+            # Get the source coords from astropy
+            source_truth = SkyCoord.from_name(source)
+        else:
+            source_truth = f['Source_Position'][0]
         for i in range(0, items):
             if np.array_equal(f['Source_Position'][i], source_truth) and f['Trigger'][i] == trigger:
                 # arrays are the same, add to source images and ones
@@ -55,12 +101,12 @@ def RaDecGenerator(source_file, num_images_per_output, batch_size, dim, n_channe
 
                 if (k % num_images_per_output) == 0:
                     # Add to temp image
-                    tmp_arr += f['Image'][i]
+                    tmp_arr += convert_to_hexagonal(f['Image'][i])
                     k += 1
                 else:
                     # Hit the 5000 cap I need
                     # print("5000 Hit")
-                    tmp_arr = f['Image'][i]
+                    tmp_arr = convert_to_hexagonal(f['Image'][i])
                     # REsize correctly
                     if tmp_arr.shape != dim:
                         # Because it won't ever be smaller, only have to chech which dims are smaller than required
@@ -71,7 +117,7 @@ def RaDecGenerator(source_file, num_images_per_output, batch_size, dim, n_channe
                     tmp_arr = tmp_arr.reshape((dim[1], dim[0], 1))
                     # tmp_arr.resize((48,48,1))
                     source_one_images.append(tmp_arr)
-                    source_arr = f['Source_Position'][i]
+                    source_arr = convert_to_hexagonal(f['Source_Position'][i])
                     if source_arr.shape[0] < dim[0]:
                         source_arr = np.c_[source_arr.reshape((46, 45)), np.zeros((46, (dim[0] - source_arr.shape[0])))]
                     if source_arr.shape[1] < dim[1]:

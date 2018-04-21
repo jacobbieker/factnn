@@ -29,7 +29,60 @@ columns = [
     'dec_prediction'
 ]
 
-def main(data_path, threshold=0.0, key='events', bins=100, width=4.0, preliminary=True, config=None, output=None, source=None):
+
+def plot_skymap(df, width=4, bins=100, center_ra=None, center_dec=None, ax=None):
+    '''
+    Plot a 2d histogram of the reconstructed positions of air showers
+
+    Parameters
+    ----------
+    df: pd.DataFrame
+        DataFrame of the reconstructed events containing the columns
+        `reconstructed_source_position_0`, `reconstructed_source_position_0`,
+        `zd_tracking`, `az_tracking`, `time`, where time is the
+        observation time as datetime
+    width: float
+        Extent of the plot in degrees
+    bins: int
+        number of bins
+    center_ra: float
+        right ascension of the center in degrees
+    center_dec: float
+        declination of the center in degrees
+    ax: matplotlib.axes.Axes
+        axes to plot into
+    '''
+    ax = ax or plt.gca()
+
+    ra = df['ra_prediction']
+    dec = df['dec_prediction']
+
+    if center_ra is None:
+        center_ra = ra.mean()
+        center_ra *= 15  # conversion from hourangle to degree
+
+    if center_dec is None:
+        center_dec = dec.mean()
+
+    bins, x_edges, y_deges, img = ax.hist2d(
+        ra * 15,  # conversion from hourangle to degree
+        dec,
+        bins=bins,
+        range=[
+            [center_ra - width / 2, center_ra + width / 2],
+            [center_dec - width / 2, center_dec + width / 2]
+        ],
+    )
+
+    ax.set_xlabel('right ascencion / degree')
+    ax.set_ylabel('declination / degree')
+    ax.set_aspect(1)
+
+    return ax, img
+
+
+def main(data_path, threshold=0.0, key='events', bins=100, width=8.0, preliminary=True, config=None, output=None,
+         source=None):
     '''
     Plot a 2d histogram of the origin of the air showers in the
     given hdf5 file in ra, dec.
@@ -98,18 +151,26 @@ def main(data_path, threshold=0.0, key='events', bins=100, width=4.0, preliminar
         plt.show()
 
 
-main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/crab_precuts.hdf5")
+main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/crab_precuts.hdf5", source='CRAB')
 
 main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk421_precuts.hdf5")
 
 main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5")
 
+# convert to ra and dec, bin it, and then run unet on it to find possible sources
+
+# Add in theta to get the angles? And off regions in the camera, need that to determine significance
+# Could just do a radial one maybe?
+
+# But use ra and dec of a source from SkyCoord as the truth, with an area around it for UNET, convert all pixel things to ra and dec and plaster over each other
+#
+
 try:
-    #df = read_h5py("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/crab_precuts.hdf5", key='events')
+    # df = read_h5py("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/crab_precuts.hdf5", key='events')
 
     print("Read in file")
 
-    #plot_skymap(df=df)
+    # plot_skymap(df=df)
 except:
     try:
         df = read_h5py("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk421_precuts.hdf5", key='events')
