@@ -151,11 +151,11 @@ def main(data_path, threshold=0.0, key='events', bins=100, width=8.0, preliminar
         plt.show()
 
 
-main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/crab_precuts.hdf5", source='CRAB')
+#main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/crab_precuts.hdf5", source='CRAB')
 
-main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk421_precuts.hdf5")
+main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk421_precuts.hdf5", source="MRK421")
 
-main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5")
+main("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5", source="MRK501")
 
 # convert to ra and dec, bin it, and then run unet on it to find possible sources
 
