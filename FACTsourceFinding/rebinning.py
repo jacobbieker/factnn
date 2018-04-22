@@ -193,7 +193,7 @@ hexagon = MultiPoint([p1, p2, p3, p4, p5, p6]).convex_hull
 
 
 square_start = 186
-square_size = 2
+square_size = 9
 square = Polygon([(-square_start,square_start), (-square_start+square_size,square_start),
                   (-square_start+square_size,square_start-square_size), (-square_start, square_start-square_size),
                   (-square_start,square_start)])
@@ -280,7 +280,7 @@ for index in range(1440):
         coords = pixel_index_to_grid[element[0]]
         test_rebin[coords[0]][coords[1]] += element[1]*index
 
-plt.imshow(np.rot90(test_rebin, 3))
+plt.imshow(np.fliplr(np.rot90(test_rebin, 3)))
 plt.title("Testing Rebin at " + str(square_size))
-plt.show()
+plt.savefig("Rebin_size_9.png", dpi=300)
 # HAVE IT!!!
