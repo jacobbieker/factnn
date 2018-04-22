@@ -267,9 +267,14 @@ for pixel_index, pixel in enumerate(list_of_squares):
 
 #print(list_pixels_and_fractions)
 
+hex_to_grid = [chid_to_pixel, pixel_index_to_grid]
 
 path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict.p"
-pickle.dump(chid_to_pixel, open(path_store_mapping_dict, 'wb'))
+pickle.dump(chid_to_pixel, open(hex_to_grid, 'wb'))
+
+# To get back to original orientation, need to do a fliplr, after a rot90, 3
+
+
 
 # Test with CHID mapping
 test_rebin = np.zeros((steps,steps))
