@@ -18,13 +18,13 @@ import sys
 path_raw_crab_folder = "/run/media/jacob/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/"
 #path_store_mapping_dict = sys.argv[2]
 path_runs_to_use = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/Crab1314_runs_to_use.csv"
-path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
+path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/holy_squished_mapping_dict.p"
 #path_mc_images = sys.argv[3]
-path_crab_images = "/run/media/jacob/WDRed8Tb1/00_crab1314_preprocessed_images.h5"
+path_crab_images = "/run/media/jacob/WDRed8Tb1/Holy_Squished_crab1314_preprocessed_images.h5"
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
-    return dataset.reshape((-1, 46, 45, 1)).astype(np.float32)
+    return dataset.reshape((-1, 45, 40, 1)).astype(np.float32)
 
 
 def batchYielder():
@@ -60,11 +60,11 @@ def batchYielder():
                     trigger = line_data['Trigger']
                     time = line_data['UnixTime_s_us'][0] + 1e-6*line_data['UnixTime_s_us'][1]
 
-                    input_matrix = np.zeros([46,45])
+                    input_matrix = np.zeros([45,40])
                     for i in range(1440):
                         x, y = id_position[i]
                         input_matrix[int(x)][int(y)] = len(event_photons[i])
-                    data.append([input_matrix, night, run, event, zd_deg, az_deg, trigger, time])
+                    data.append([np.flip(input_matrix, 0), night, run, event, zd_deg, az_deg, trigger, time])
             yield data
 
         except:

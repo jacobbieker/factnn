@@ -13,9 +13,9 @@ import os
 #path_raw_mc_folder = sys.argv[1]
 path_raw_mc_folder = "/run/media/jacob/WDRed8Tb1/sim/"
 #path_store_mapping_dict = sys.argv[2]
-path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
+path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/holy_squished_mapping_dict.p"
 #path_mc_images = sys.argv[3]
-path_mc_images = "/run/media/jacob/WDRed8Tb1/MC_2D_prebatched_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb1/MC_Holy_Squished_prebatched_Images.h5"
 
 
 def getMetadata():
@@ -29,7 +29,7 @@ def getMetadata():
 
 def reformat(dataset):
     #Reformat to fit into tensorflow
-    dataset = np.array(dataset).reshape((-1, 46, 45, 1)).astype(np.float32)
+    dataset = np.array(dataset).reshape((-1, 45, 40, 1)).astype(np.float32)
     return dataset
 
 
@@ -44,9 +44,9 @@ path_mc_hadrons = [path for path in file_paths if 'gamma' not in path]
 def batchYielder(file_paths):
     batch_size_index = 0
     event = []
-    input_matrix = np.zeros([46,45])
+    input_matrix = np.zeros([45,40])
     file_index = 0
-    while batch_size_index < 1000:
+    while batch_size_index < 1:
         try:
             for index, path in enumerate(file_paths):
                 with gzip.open(file_paths[file_index]) as file:
@@ -61,11 +61,10 @@ def batchYielder(file_paths):
                             input_matrix[int(x)][int(y)] += len(event_photons[i])
                         batch_size_index += 1
                         #print(batch_size_index)
-                        if batch_size_index >= 1000:
-                            print("Batch Size Reached")
+                        if batch_size_index >= 1:
                             # Add to data
-                            event.append([input_matrix])
-                            input_matrix = np.zeros([46,45])
+                            event.append([np.flip(input_matrix, 0)])
+                            input_matrix = np.zeros([45,40])
                             batch_size_index = 0
         except:
             if file_index >= len(file_paths):
