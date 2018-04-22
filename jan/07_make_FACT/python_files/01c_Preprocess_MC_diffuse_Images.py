@@ -19,9 +19,9 @@ import os
 path_raw_mc_proton_folder = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/phs/sim/"
 path_raw_mc_gamma_folder = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/phs/sim/"
 #path_store_mapping_dict = sys.argv[2]
-path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/hexagonal_to_quadratic_mapping_dict.p"
+path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/holy_squished_mapping_dict.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/00_MC_Diffuse_Images.h5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Holy_Squished_MC_Diffuse_Images.h5"
 
 
 def getMetadata(path_folder):
@@ -35,7 +35,7 @@ def getMetadata(path_folder):
 
 def reformat(dataset):
     #Reformat to fit into tensorflow
-    dataset = np.array(dataset).reshape((-1, 46, 45, 1)).astype(np.float32)
+    dataset = np.array(dataset).reshape((-1, 45, 40, 1)).astype(np.float32)
     return dataset
 
 
@@ -56,12 +56,12 @@ def batchYielder(file_paths):
             for line in file:
                 event_photons = json.loads(line.decode('utf-8'))['PhotonArrivals_500ps']
 
-                input_matrix = np.zeros([46,45])
+                input_matrix = np.zeros([45,40])
                 for i in range(1440):
                     x, y = id_position[i]
                     input_matrix[int(x)][int(y)] = len(event_photons[i])
 
-                event.append(input_matrix)
+                event.append(np.flip(input_matrix, 0))
             
             event = reformat(event)
             
