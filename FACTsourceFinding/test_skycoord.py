@@ -44,7 +44,7 @@ thing3 = SkyCoord.from_name("MRK501")
 print(thing3)
 
 
-def main(data_path, threshold=0.0, key='events', bins=10000, width=8.0, preliminary=True, config=None, output=None,
+def main(data_path, threshold=0.0, key='events', bins=100, width=8.0, preliminary=True, config=None, output=None,
          source=None):
     '''
     Plot a 2d histogram of the origin of the air showers in the
@@ -225,7 +225,7 @@ with h5py.File("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk501_precuts.hdf5
 #     print(new_stuff)
 
 
-with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5") as f:
+with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_background_preprocessed_images.h5") as f:
     camera_df = get_pixel_dataframe()
     #items = list(f.items())[0][1].shape[0]
     source_one_images = []
@@ -277,7 +277,7 @@ with h5py.File("/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.
     #camera_df['ra_prediction'] = all_ra
     #camera_df['dec_prediction'] = all_dec
     print("Plotting")
-    main(new_df, source="CRAB", output="crab_skymap_10000.pdf")
+    main(new_df, source="CRAB", output="crab_background_skymap_10000.pdf")
 
 
     #source_x = f['events']['source_position']
