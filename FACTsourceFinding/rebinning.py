@@ -168,7 +168,11 @@ pickle.dump(position_dict, open(path_store_mapping_dict, 'wb'))
 
 import shapely
 from shapely.geometry import Point, Polygon, MultiPoint
+from shapely.affinity import translate
+from shapely.strtree import STRtree
 from descartes import PolygonPatch
+
+
 
 p = Point(0.0, 0.0)
 PIXEL_EDGE = 9.51/np.sqrt(3)
@@ -185,25 +189,72 @@ p5 = Point(PIXEL_EDGE*(np.sqrt(3)/2), -PIXEL_EDGE*.5)
 #  left
 p6 = Point(-PIXEL_EDGE*(np.sqrt(3)/2), PIXEL_EDGE*.5)
 
-print(p.buffer(9.51/np.sqrt(3), 6).area)
-
 hexagon = MultiPoint([p1, p2, p3, p4, p5, p6]).convex_hull
-print(hexagon.area)
-print(hexagon.centroid)
-new_hexagon = Polygon(hexagon)
-new_hexagon.translate = (1,0)
-patch1 = PolygonPatch(new_hexagon)
 
+
+square_start = 186
+square_size = 5
+square = Polygon([(-square_start,square_start), (-square_start+square_size,square_start),
+                  (-square_start+square_size,square_start-square_size), (-square_start, square_start-square_size),
+                  (-square_start,square_start)])
+
+grid = False
+list_of_squares = [square]
+m = 0
+
+steps = int(np.ceil(np.abs(square_start*2) / square_size))
+print(steps)
+# Generate tessellation of grid
+for x_step in range(steps):
+    for y_step in range(steps):
+        new_square = translate(square, xoff=x_step*square_size, yoff=-square_size*y_step)
+        list_of_squares.append(new_square)
+
+x, y = get_pixel_coords()
+list_hexagons = []
+for index, x_coor in enumerate(x):
+    list_hexagons.append(translate(hexagon, x_coor, y[index]))
 
 fig = plt.figure(1, dpi=90)
 
 # 1
-ax = fig.add_subplot(121)
-ax.add_patch(patch1)
+ax = fig.add_subplot(111)
+for patch in list_hexagons:
+    ax.add_patch(PolygonPatch(patch))
 
-ax.set_ylim(top=10, bottom=-10)
-ax.set_xlim(left=-10, right=10)
+for patch in list_of_squares:
+    ax.add_patch(PolygonPatch(patch))
+
+#ax.add_patch(PolygonPatch(square))
+ax.set_ylim(top=186, bottom=-186)
+ax.set_xlim(left=-186, right=186)
 plt.show()
 
+factplot.camera(df['CHID'])
+plt.show()
 
-# Now take the hexagon, and center it at every point
+# Now take squares and build grid over the whole thing
+
+# Have grid, now convert to get intersection between each square and every hexagon, saving the intersection.area / hex.area
+# to data structure
+# DS has to have grid where each square is a pixel, every pixel has a CHID num plus fraction in tuple, kinda hard to do but oh well
+
+list_pixels_and_fractions = {}
+for i in range(len(list_of_squares)):
+    list_pixels_and_fractions[i] = []
+
+for pixel_index, pixel in enumerate(list_of_squares):
+    for chid, hexagon in enumerate(list_hexagons):
+        # Do the dirty work, hexagons should be in CHID order because translate in that order and append
+        if pixel.intersects(hexagon):
+            intersection = pixel.intersection(hexagon)
+            fraction_whole = intersection.area/hexagon.area
+            print(fraction_whole)
+            print(chid)
+            if not np.isclose(fraction_whole,0.0):
+                # so not close to zero overlap, add to list for that pixel
+                list_pixels_and_fractions[pixel_index].append((chid, fraction_whole))
+
+print(list_pixels_and_fractions)
+
+# HAVE IT!!!
