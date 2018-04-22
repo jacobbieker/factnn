@@ -106,10 +106,10 @@ def batchYielder(path_runs_to_use):
                         input_matrix = np.zeros([186,186])
                         chid_to_pixel = id_position[0]
                         pixel_index_to_grid = id_position[1]
-                        for index in range(1440):
-                            for element in chid_to_pixel[index]:
+                        for i in range(1440):
+                            for element in chid_to_pixel[i]:
                                 coords = pixel_index_to_grid[element[0]]
-                                input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
+                                input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[i])
                         #batch_size_index += 1
                         #if batch_size_index >= 5000:
                         #    print("Batch Size Reached")
@@ -123,6 +123,7 @@ def batchYielder(path_runs_to_use):
             yield data
 
     except:
+     #   print(e)
         if file_index >= len(used_list):
             print("Overrun events")
             data.append([np.fliplr(np.rot90(input_matrix, 3)), night, run, event, zd_deg, az_deg, trigger, time])
