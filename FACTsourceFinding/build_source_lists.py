@@ -90,7 +90,7 @@ def read_in_source_csvs(directory):
 
 # go through all the ones on the WDRed8Tb1
 
-disk_one = "/projects/sventeklab/jbieker/raw_data/ihp-pc41.ethz.ch/public/phs/obs/"
+disk_one = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/phs/obs/"
 
 # Go through all the ones on the WDRed8Tb2
 
@@ -103,7 +103,7 @@ disk_three = "/run/media/jacob/Seagate/ihp-pc41.ethz.ch/public/phs/obs/"
 
 disk_four = "/run/media/jacob/HDD/2014/"
 
-disks = [disk_one]
+disks = [disk_one, disk_two, disk_three, disk_four]
 file_index = 0
 disk_index = 0
 
