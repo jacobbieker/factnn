@@ -1,5 +1,5 @@
 h5py
 pyfact
 photon_stream
-keras
+keras==2.1.6
 fact_plots
