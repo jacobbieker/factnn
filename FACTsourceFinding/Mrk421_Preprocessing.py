@@ -20,7 +20,7 @@ path_raw_crab_folder = "/run/media/jacob/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/o
 path_runs_to_use = "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/runs/Mrk 421.csv"
 path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict.p"
 #path_mc_images = sys.argv[3]
-path_crab_images = "/run/media/jacob/WDRed8Tb1/Rebinned_2_mrk421_preprocessed_images.h5"
+path_crab_images = "/run/media/jacob/WDRed8Tb1/Rebinned_2_mrk421_event_preprocessed_images.h5"
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
@@ -82,15 +82,16 @@ def batchYielder():
                     az_deg = line_data['Az_deg']
                     trigger = line_data['Trigger']
                     time = line_data['UnixTime_s_us'][0] + 1e-6*line_data['UnixTime_s_us'][1]
+                    if trigger == 4:
 
-                    input_matrix = np.zeros([186,186])
-                    chid_to_pixel = id_position[0]
-                    pixel_index_to_grid = id_position[1]
-                    for index in range(1440):
-                        for element in chid_to_pixel[index]:
-                            coords = pixel_index_to_grid[element[0]]
-                            input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
-                    data.append([np.fliplr(np.rot90(input_matrix, 3)), night, run, event, zd_deg, az_deg, trigger, time])
+                        input_matrix = np.zeros([186,186])
+                        chid_to_pixel = id_position[0]
+                        pixel_index_to_grid = id_position[1]
+                        for index in range(1440):
+                            for element in chid_to_pixel[index]:
+                                coords = pixel_index_to_grid[element[0]]
+                                input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
+                        data.append([np.fliplr(np.rot90(input_matrix, 3)), night, run, event, zd_deg, az_deg, trigger, time])
             yield data
 
         except:
