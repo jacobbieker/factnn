@@ -17,10 +17,10 @@ import sys
 
 path_raw_crab_folder = "/run/media/jacob/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/"
 #path_store_mapping_dict = sys.argv[2]
-path_runs_to_use = "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/runs/Mrk 501.csv"
+path_runs_to_use = "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/runs/1ES 1959+650.csv"
 path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict.p"
 #path_mc_images = sys.argv[3]
-path_crab_images = "/run/media/jacob/WDRed8Tb1/Rebinned_2_mrk501_preprocessed_images.h5"
+path_crab_images = "/run/media/jacob/WDRed8Tb1/Rebinned_2_1es1959+650_event_preprocessed_images.h5"
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
@@ -34,7 +34,7 @@ def batchYielder():
         # Select the paths from each file that are data paths for training
         # Crab had 20 million events in 1344 files, so maybe go for 2000 files for each, randomly chosen from 2013 or later
         for line in file:
-            if "/obs/2014" in line:# and "/obs/2012" not in line:
+            if "/obs/2011" not in line and "/obs/2012" not in line:
                 # Storing the path to every run file
                 l = line.split('\n')[0]
                 paths.append(l)
