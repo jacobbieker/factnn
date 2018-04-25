@@ -6,6 +6,8 @@ import json
 import sys
 import os
 
+from fact.io import read_h5py
+
 
 #First input: Path to the raw mc_folder
 #Second input: Path to the raw_mc_diffuse_folder
@@ -16,21 +18,54 @@ import os
 #path_store_mapping_dict = sys.argv[3]
 #path_mc_diffuse_images = sys.argv[4]
 
-path_raw_mc_proton_folder = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/phs/sim/"
-path_raw_mc_gamma_folder = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/phs/sim/"
+path_raw_mc_proton_folder = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/phs/sim/proton/"
+path_raw_mc_gamma_folder = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/phs/sim/gamma/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict.p"
 #path_mc_images = sys.argv[3]
 path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_2_MC_Diffuse_Images.h5"
+path_diffuse = "/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/gamma_diffuse.hdf5"
 
 
 def getMetadata(path_folder):
     '''
     Gathers the file paths of the training data
     '''
-    # Iterate over every file in the subdirs and check if it has the right file extension
-    file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(os.path.expanduser(path_folder)) for file in fileName if '.json' in file]
-    return file_paths
+    if "gamma" in path_folder:
+        diffuse_df = read_h5py(path_diffuse, key="events", columns=["@source"])
+
+        list_paths = diffuse_df["@source"].values
+
+        gustav_paths = []
+        werner_paths = []
+        for path in list_paths:
+            new_path = path.split("diffuse/gamma_")[1]
+            sub_one = new_path.split("/")[0]
+            sub_two = new_path.split("/")[1]
+            if "werner" in sub_one:
+                werner_paths.append(sub_two)
+            elif "gustav" in sub_one:
+                gustav_paths.append(sub_two)
+            else:
+                print("Problem, not in either")
+        # Iterate over every file in the subdirs and check if it has the right file extension
+        file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(os.path.expanduser(path_folder))
+                      for file in fileName if '.json' in file]
+        file_paths = file_paths
+        latest_paths = []
+        for path in file_paths:
+            if "gustav" in path:
+                if any(number in path for number in gustav_paths):
+                    latest_paths.append(path)
+            elif "werner" in path:
+                if any(number in path for number in werner_paths):
+                    latest_paths.append(path)
+        print(latest_paths)
+    else:
+        file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(os.path.expanduser(path_folder))
+                      for file in fileName if '.json' in file]
+        latest_paths = file_paths
+    return latest_paths
 
 
 def reformat(dataset):

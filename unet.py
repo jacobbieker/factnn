@@ -21,8 +21,8 @@ else:
     thesis_base = base_dir + '/thesis'
 
 NUM_ALGOS = 1
-INPUT_DIM_0 = 48
-INPUT_DIM_1 = 48
+INPUT_DIM_0 = 188
+INPUT_DIM_1 = 188
 
 
 input_img = Input(shape=(INPUT_DIM_0, INPUT_DIM_1, NUM_ALGOS))
@@ -82,20 +82,20 @@ import numpy as np
 # Print test images from source pos
 np.random.seed(0)
 
-with h5py.File(base_dir + "/FACTSources/crab_1314_std_analysis_v1.0.0_preprocessed_source.hdf5_55") as f:
+with h5py.File(base_dir + "/Rebinned_2_crab1314_preprocessed_images.h5") as f:
     # Get some truth data for now, just use Crab images
     items = list(f.items())[0][1].shape[0]
     # Build up images with same source
-    total_num = 400000
+    total_num = 200000
     source_one_images = []
     source_pos_one = []
-    tmp_arr = np.zeros((46,45,1))
+    tmp_arr = np.zeros((INPUT_DIM_0,INPUT_DIM_1,1))
     k = 1
     source_truth = f['Source_Position'][0]
-    for i in range(0, items):
+    for i in range(0, total_num):
         if not np.array_equal(f['Source_Position'][i], source_truth) and f['Trigger'][i] == 4:
             source_truth_two = f['Source_Position'][i]
-    for i in range(0, items):
+    for i in range(0, total_num):
         if np.array_equal(f['Source_Position'][i], source_truth) and f['Trigger'][i] == 4:
             # arrays are the same, add to source images and ones
             # Randomly flip the array twice to augment training
@@ -109,9 +109,9 @@ with h5py.File(base_dir + "/FACTSources/crab_1314_std_analysis_v1.0.0_preprocess
                 #print("5000 Hit")
                 tmp_arr = f['Image'][i]
                 # REsize correctly
-                tmp_arr = np.c_[tmp_arr.reshape((46,45)), np.zeros((46,3))]
-                tmp_arr = np.r_[tmp_arr, np.zeros((2,48))]
-                tmp_arr = tmp_arr.reshape((48,48,1))
+                tmp_arr = np.c_[tmp_arr.reshape((186,186)), np.zeros((186,2))]
+                tmp_arr = np.r_[tmp_arr, np.zeros((2,INPUT_DIM_1))]
+                tmp_arr = tmp_arr.reshape((INPUT_DIM_0,INPUT_DIM_1,1))
                 #tmp_arr.resize((48,48,1))
                 source_one_images.append(tmp_arr)
                 source_arr = f['Source_Position'][i]

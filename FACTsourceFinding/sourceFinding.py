@@ -10,6 +10,8 @@ from keras.regularizers import l2
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard
 
+tf.logging.set_verbosity(tf.logging.ERROR)
+
 from fact.analysis.binning import bin_runs
 from fact.io import read_h5py, to_h5py
 import h5py
@@ -18,7 +20,7 @@ import yaml
 import pandas as pd
 from FACTsourceFinding.fact_generators import SimDataGenerator, DataGenerator
 
-architecture = yaml.load("../envs.yaml")['arch']
+architecture = 'manjaro'
 
 if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
@@ -206,49 +208,104 @@ params = {'dim': (64),
 #training_generator = DataGenerator(**params)
 #validating_generator = DataGenerator(**params)
 
-adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.1, amsgrad=False)
+#adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.1, amsgrad=False)
 
+kernel_size = (3,3)
 
 model = Sequential()
-model.add(Conv2D(32, kernel_size=(5, 5), strides=(1, 1),
-                 activation='relu',
-                 input_shape=(46,45,1)))
-model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-model.add(Dropout(0.8))
-model.add(Conv2D(16, (5, 5), strides=(1, 1),  activation='relu'))
-model.add(Dropout(0.8))
-model.add(Conv2D(32, (3, 3), strides=(1, 1), activation='relu'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Dropout(0.8))
-model.add(Conv2D(16, (5, 5),strides=(1, 1),  activation='relu'))
+model.add(Conv2D(32, kernel_size=kernel_size, strides=(1, 1),
+                 activation='relu', padding='same',
+                 input_shape=(186,186,1)))
+model.add(Dropout(0.9))
+model.add(Conv2D(32, kernel_size, strides=(1, 1),  activation='relu', padding='same'))
+model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+model.add(Dropout(0.9))
+model.add(Conv2D(32, kernel_size, strides=(1, 1),  activation='relu', padding='same'))
+model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+model.add(Dropout(0.9))
+model.add(Conv2D(32, kernel_size, strides=(1, 1),  activation='relu', padding='same'))
+model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+model.add(Dropout(0.9))
+model.add(Conv2D(32, kernel_size, strides=(1, 1),  activation='relu', padding='same'))
+model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+model.add(Dropout(0.9))
+model.add(Conv2D(32, kernel_size, strides=(1, 1),  activation='relu', padding='same'))
+model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+model.add(Dropout(0.75))
 model.add(Flatten())
+model.add(Dense(128, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(128, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(128, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(128, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(num_labels, activation='softmax'))
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
+
+#model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+#model.add(Dropout(0.5))
+#model.add(Conv2D(16, (5, 5), strides=(1, 1),  activation='relu'))
+#model.add(Dropout(0.5))
+#model.add(Conv2D(32, (3, 3), strides=(1, 1), activation='relu'))
+#model.add(MaxPooling2D(pool_size=(2, 2)))
+#model.add(Dropout(0.5))
+#model.add(Conv2D(16, (5, 5),strides=(1, 1),  activation='relu'))
+#model.add(Flatten())
 #model.add(Dense(1000, activation='relu', input_shape=(64)))
 #model.add(Dense(1000, activation='relu'))
-model.add(Dense(512, activation='relu'))
-model.add(Dense(num_labels, activation='softmax'))
-model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['categorical_accuracy', 'binary_accuracy', 'mae'])
+#model.add(Dense(512, activation='relu'))
+
 
 #x, x_label, y, y_label = Dategenerator("/run/media/jacob/WDRed8Tb1/FACTSources/Mrk 421_preprocessed_images.h5", "/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5")
+import matplotlib.pyplot as plt
 
-with h5py.File(base_dir + "/FACTSources/Crab_preprocessed_images.h5", 'r') as f:
-    with h5py.File(base_dir + "/FACTSources/Crab_background_preprocessed_images.h5", 'r') as f_1:
-        # Get some truth data for now, just use Crab images
-        items = list(f.items())[0][1].shape[0]
-        images = f['Image'][0:400000]
-        images_false = f_1['Image'][0:400000]
-        # TODO: Add label based on the trigger type, 1024 is False, 4 is True if from preprocessed, False otherwise
-        validating_dataset = np.concatenate((images, images_false), axis=0)
-        labels = np.array([True]*(len(images))+[False]*len(images_false))
-        validation_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
-        x = validating_dataset
-        x_label = validation_labels
-        print("Finished getting data")
+with h5py.File(base_dir + "/Rebinned_2_MC_Preprocessed_Images.h5", 'r') as f:
+    # Get some truth data for now, just use Crab images
+    items = list(f.items())[0][1].shape[0]
+    number_of_training = 10000
+    num_validate = 2500
+    batch_num = 0
+
+    images = f['Gamma'][-10000:-1]
+    images_false = f['Hadron'][-10000:-1]
+    # TODO: Add label based on the trigger type, 1024 is False, 4 is True if from preprocessed, False otherwise
+    validating_dataset = np.concatenate([images, images_false], axis=0)
+    labels = np.array([True]*(len(images))+[False]*len(images_false))
+    del images
+    del images_false
+    validation_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
+    y = validating_dataset
+    y_label = validation_labels
+    print("Finished getting data")
+
+def batchYielder():
+    while True:
+        with h5py.File(base_dir + "/Rebinned_2_MC_Preprocessed_Images.h5", 'r') as f:
+                # Get some truth data for now, just use Crab images
+                items = list(f.items())[0][1].shape[0]
+                number_of_training = 64
+                batch_num = 0
+                while (number_of_training)*(batch_num+1) < items/2:
+
+                    images = f['Gamma'][batch_num*number_of_training:(batch_num+1)*number_of_training]
+                    images_false = f['Hadron'][batch_num*number_of_training:(batch_num+1)*number_of_training]
+                    # TODO: Add label based on the trigger type, 1024 is False, 4 is True if from preprocessed, False otherwise
+                    validating_dataset = np.concatenate([images, images_false], axis=0)
+                    labels = np.array([True]*(len(images))+[False]*len(images_false))
+                    del images
+                    del images_false
+                    validation_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
+                    x = validating_dataset
+                    x_label = validation_labels
+                    #print("Finished getting data")
+                    yield (x, x_label)
+
+model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor((130000/64)), epochs=100, verbose=2, validation_data=(y, y_label))
 
 
-model.fit(x=x, y=x_label, batch_size=64, epochs=200, verbose=2, validation_split=0.9, shuffle=True)
-
-
-model.save("Crab_source_background_model.h5")
+model.save("MC_jan_model.h5")
 
 #model.fit_generator(generator=training_generator,
 #                    validation_data=validating_generator,
