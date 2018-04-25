@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 import h5py
 import sys
+from fact.io import read_h5py
 
 
 #First input: Path to the raw crab1314_folder
@@ -21,6 +22,8 @@ path_runs_to_use = "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/ru
 path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict.p"
 #path_mc_images = sys.argv[3]
 path_crab_images = "/run/media/jacob/WDRed8Tb1/Rebinned_2_mrk501_preprocessed_images.h5"
+path_std_analysis = "/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/std_analysis/mrk501_2014_std_analysis_v1.0.0.hdf5"
+path_store_runlist = "Mrk501_std_analysis.p"
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
@@ -29,43 +32,29 @@ def reformat(dataset):
 
 def batchYielder():
     paths = []
+    std_df = read_h5py(path_std_analysis, key="events", columns=["event_num", "run_id", "night"])
+    events = std_df["event_num"].values
+    runs = std_df["run_id"].values
+    nights = std_df["night"].values
     #Create paths to the runs to be processed
     with open(path_runs_to_use) as file:
         # Select the paths from each file that are data paths for training
         # Crab had 20 million events in 1344 files, so maybe go for 2000 files for each, randomly chosen from 2013 or later
         for line in file:
-            if "/obs/2014" in line:# and "/obs/2012" not in line:
-                # Storing the path to every run file
-                l = line.split('\n')[0]
-                paths.append(l)
+            if any(str(night) in line for night in nights):# and "/obs/2012" not in line:
+                if any(str(run_id) in line for run_id in runs):
+                    # Storing the path to every run file
+                    l = line.split('\n')[0]
+                    paths.append(l)
 
     print(paths)
     # Now select a subset of those paths to use
-    num_of_files_to_use = 2000
-    try:
-        used_list = np.random.choice(paths, size=num_of_files_to_use, replace=False)
-        used_list = paths[0:num_of_files_to_use]
-        not_enough = 0
-    except:
-        try:
-            used_list = np.random.choice(paths, size=int(num_of_files_to_use/2), replace=False)
-            used_list = paths[0:int(num_of_files_to_use/2)]
-            not_enough = 0
-        except:
-            try:
-                used_list = np.random.choice(paths, size=int(num_of_files_to_use/4), replace=False)
-                used_list = paths[0:int(num_of_files_to_use/4)]
-                not_enough = 0
-            except:
-                print("Not Enough Events")
-                not_enough = 1
-                used_list = np.random.choice(paths, size=1, replace=False)
-
-    paths = used_list
+    with open(path_store_runlist, "wb") as path_store:
+        pickle.dump(paths, path_store)
     # Load mapping-dict to switch from hexagonal to matrix
     id_position = pickle.load(open(path_store_mapping_dict, "rb"))
 
-    for file in paths:
+    for file_index, file in enumerate(paths):
         try:
             with gzip.open(file) as f:
                 print(file)
@@ -73,11 +62,13 @@ def batchYielder():
 
                 for line in f:
                     line_data = json.loads(line.decode('utf-8'))
+                    event = line_data['Event']
+
+                    #if event == events[file_index]:
 
                     event_photons = line_data['PhotonArrivals_500ps']
                     night = line_data['Night']
                     run = line_data['Run']
-                    event = line_data['Event']
                     zd_deg = line_data['Zd_deg']
                     az_deg = line_data['Az_deg']
                     trigger = line_data['Trigger']

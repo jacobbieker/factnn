@@ -20,7 +20,7 @@ path_raw_crab_folder = "/run/media/jacob/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/o
 path_runs_to_use = "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/runs/1ES 2344+51.4.csv"
 path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict.p"
 #path_mc_images = sys.argv[3]
-path_crab_images = "/run/media/jacob/WDRed8Tb1/Rebinned_2_1es2344_preprocessed_images.h5"
+path_crab_images = "/run/media/jacob/WDRed8Tb1/Rebinned_2_1es2344_preprocessed_images_2.h5"
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
