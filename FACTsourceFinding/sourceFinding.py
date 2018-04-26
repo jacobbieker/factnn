@@ -100,10 +100,10 @@ def lima_sig_loss(on_events, off_events):
 source_file = "/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5"
 sim_source_file = "/run/media/jacob//WDRed8Tb1/FACTSources/MC_2D_Images.h5"
 length_data = 0
-#with h5py.File(source_file, 'r') as hdf:
+# with h5py.File(source_file, 'r') as hdf:
 #    length_data = len(hdf['Night'])
 
-#with h5py.File(sim_source_file, 'r') as hdf:
+# with h5py.File(sim_source_file, 'r') as hdf:
 #    sim_length_data = len(hdf['Hadron']) # Hadron has less event, so this ensures it won't go out of bounds on the hadron events, need better way to do this
 
 '''
@@ -151,7 +151,6 @@ def getValidationTesting(path_mc_images):
     return valid_dataset, valid_labels, test_dataset, test_labels
 '''
 
-
 # TODO: Addd the other labels for source and significance
 
 num_source_pixels = 7
@@ -159,7 +158,7 @@ num_source_pixels = 7
 source_labels = []
 
 
-#TODO: Bounding box finding for the source? Find the box where more photons are than outside of it, centered on source pixel
+# TODO: Bounding box finding for the source? Find the box where more photons are than outside of it, centered on source pixel
 
 # Could do something like take the source, make a box around it, and ratio of box photons to outside of box photons
 
@@ -170,8 +169,6 @@ source_labels = []
 # Still hard to figure out
 
 
-
-
 def Dategenerator(path_to_truth_images_1, path_to_truth_images_2):
     with h5py.File(path_to_truth_images_1, 'r') as f:
         with h5py.File(path_to_truth_images_2, 'r') as f_1:
@@ -179,22 +176,23 @@ def Dategenerator(path_to_truth_images_1, path_to_truth_images_2):
             items = list(f.items())[0][1].shape[0]
             i = 0
 
-            #while (i+1)*batch_size < items/160:
-             #   images = f['Image'][ i*(batch_size/2):(i+1)*(batch_size/2) ]
-             #   images_false = f_1['Image'][ i*(batch_size/2):(i+1)*(batch_size/2) ]
-             #   test_dataset = np.concatenate((images, images_false), axis=0)
-             #   labels = np.array([True]*(len(images))+[False]*len(images_false))
-             #   test_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
-             #   i += 1
-            while (i+1)*batch_size < items/10000:
-                images = f['Image'][ i*(batch_size/2):(i+1)*(batch_size/2) ]
-                images_false = f_1['Image'][ i*(batch_size/2):(i+1)*(batch_size/2) ]
+            # while (i+1)*batch_size < items/160:
+            #   images = f['Image'][ i*(batch_size/2):(i+1)*(batch_size/2) ]
+            #   images_false = f_1['Image'][ i*(batch_size/2):(i+1)*(batch_size/2) ]
+            #   test_dataset = np.concatenate((images, images_false), axis=0)
+            #   labels = np.array([True]*(len(images))+[False]*len(images_false))
+            #   test_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
+            #   i += 1
+            while (i + 1) * batch_size < items / 10000:
+                images = f['Image'][i * (batch_size / 2):(i + 1) * (batch_size / 2)]
+                images_false = f_1['Image'][i * (batch_size / 2):(i + 1) * (batch_size / 2)]
                 validating_dataset = np.concatenate((images, images_false), axis=0)
-                labels = np.array([True]*(len(images))+[False]*len(images_false))
-                validation_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
+                labels = np.array([True] * (len(images)) + [False] * len(images_false))
+                validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
                 i += 1
 
     return validating_dataset, validation_labels
+
 
 params = {'dim': (64),
           'batch_size': 64,
@@ -205,65 +203,70 @@ params = {'dim': (64),
           'length_dataset': length_data,
           }
 
-#training_generator = DataGenerator(**params)
-#validating_generator = DataGenerator(**params)
+# training_generator = DataGenerator(**params)
+# validating_generator = DataGenerator(**params)
 
-#adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.1, amsgrad=False)
+# adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.1, amsgrad=False)
 
-kernel_size = (3,3)
+kernel_size = (5, 5)
+batch_size = 16
+
+early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=4, verbose=0, mode='auto')
+
 
 model = Sequential()
 model.add(Conv2D(32, kernel_size=kernel_size, strides=(1, 1),
                  activation='relu', padding='same',
-                 input_shape=(186,186,1)))
-model.add(Dropout(0.9))
-model.add(Conv2D(32, kernel_size, strides=(1, 1),  activation='relu', padding='same'))
+                 input_shape=(186, 186, 1)))
+# model.add(Dropout(0.3))
+model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-model.add(Dropout(0.9))
-model.add(Conv2D(32, kernel_size, strides=(1, 1),  activation='relu', padding='same'))
+# model.add(Dropout(0.3))
+model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-model.add(Dropout(0.9))
-model.add(Conv2D(32, kernel_size, strides=(1, 1),  activation='relu', padding='same'))
+# model.add(Dropout(0.3))
+model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-model.add(Dropout(0.9))
-model.add(Conv2D(32, kernel_size, strides=(1, 1),  activation='relu', padding='same'))
+# model.add(Dropout(0.3))
+model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-model.add(Dropout(0.9))
-model.add(Conv2D(32, kernel_size, strides=(1, 1),  activation='relu', padding='same'))
+# model.add(Dropout(0.3))
+model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-model.add(Dropout(0.75))
+# model.add(Dropout(0.15))
 model.add(Flatten())
-model.add(Dense(128, activation='relu'))
-model.add(Dropout(0.5))
-model.add(Dense(128, activation='relu'))
-model.add(Dropout(0.5))
-model.add(Dense(128, activation='relu'))
-model.add(Dropout(0.5))
-model.add(Dense(128, activation='relu'))
-model.add(Dropout(0.5))
+model.add(Dense(256, activation='relu'))
+# model.add(Dropout(0.25))
+model.add(Dense(256, activation='relu'))
+# model.add(Dropout(0.25))
+model.add(Dense(256, activation='relu'))
+model.add(Dropout(0.25))
+model.add(Dense(256, activation='relu'))
+model.add(Dropout(0.25))
 model.add(Dense(num_labels, activation='softmax'))
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
 
-#model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-#model.add(Dropout(0.5))
-#model.add(Conv2D(16, (5, 5), strides=(1, 1),  activation='relu'))
-#model.add(Dropout(0.5))
-#model.add(Conv2D(32, (3, 3), strides=(1, 1), activation='relu'))
-#model.add(MaxPooling2D(pool_size=(2, 2)))
-#model.add(Dropout(0.5))
-#model.add(Conv2D(16, (5, 5),strides=(1, 1),  activation='relu'))
-#model.add(Flatten())
-#model.add(Dense(1000, activation='relu', input_shape=(64)))
-#model.add(Dense(1000, activation='relu'))
-#model.add(Dense(512, activation='relu'))
+# model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+# model.add(Dropout(0.5))
+# model.add(Conv2D(16, (5, 5), strides=(1, 1),  activation='relu'))
+# model.add(Dropout(0.5))
+# model.add(Conv2D(32, (3, 3), strides=(1, 1), activation='relu'))
+# model.add(MaxPooling2D(pool_size=(2, 2)))
+# model.add(Dropout(0.5))
+# model.add(Conv2D(16, (5, 5),strides=(1, 1),  activation='relu'))
+# model.add(Flatten())
+# model.add(Dense(1000, activation='relu', input_shape=(64)))
+# model.add(Dense(1000, activation='relu'))
+# model.add(Dense(512, activation='relu'))
 
 
-#x, x_label, y, y_label = Dategenerator("/run/media/jacob/WDRed8Tb1/FACTSources/Mrk 421_preprocessed_images.h5", "/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5")
+# x, x_label, y, y_label = Dategenerator("/run/media/jacob/WDRed8Tb1/FACTSources/Mrk 421_preprocessed_images.h5", "/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5")
 import matplotlib.pyplot as plt
 
 with h5py.File(base_dir + "/Rebinned_2_MC_Preprocessed_Images.h5", 'r') as f:
     # Get some truth data for now, just use Crab images
-    items = list(f.items())[0][1].shape[0]
+    items = list(f.items())[1][1].shape[0]
+    print(items)
     number_of_training = 10000
     num_validate = 2500
     batch_num = 0
@@ -272,50 +275,57 @@ with h5py.File(base_dir + "/Rebinned_2_MC_Preprocessed_Images.h5", 'r') as f:
     images_false = f['Hadron'][-10000:-1]
     # TODO: Add label based on the trigger type, 1024 is False, 4 is True if from preprocessed, False otherwise
     validating_dataset = np.concatenate([images, images_false], axis=0)
-    labels = np.array([True]*(len(images))+[False]*len(images_false))
+    labels = np.array([True] * (len(images)) + [False] * len(images_false))
     del images
     del images_false
-    validation_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
+    validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
     y = validating_dataset
     y_label = validation_labels
     print("Finished getting data")
 
+
 def batchYielder():
     while True:
         with h5py.File(base_dir + "/Rebinned_2_MC_Preprocessed_Images.h5", 'r') as f:
-                # Get some truth data for now, just use Crab images
-                items = list(f.items())[0][1].shape[0]
-                number_of_training = 64
-                batch_num = 0
-                while (number_of_training)*(batch_num+1) < items/2:
+            # Get some truth data for now, just use Crab images
+            items = list(f.items())[1][1].shape[0]
+            items = items - 10000
+            number_of_training = batch_size
+            batch_num = 0
+            # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
+            gamma_train = (5*number_of_training)
+            while (number_of_training) * (batch_num + 1) < items:
+                images = f['Gamma'][batch_num * gamma_train:(batch_num + 1) * gamma_train]
+                images_false = f['Hadron'][batch_num * number_of_training:(batch_num + 1) * number_of_training]
+                # TODO: Add label based on the trigger type, 1024 is False, 4 is True if from preprocessed, False otherwise
+                validating_dataset = np.concatenate([images, images_false], axis=0)
+                labels = np.array([True] * (len(images)) + [False] * len(images_false))
+                del images
+                del images_false
+                validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
+                x = validating_dataset
+                x_label = validation_labels
+                # print("Finished getting data")
+                batch_num += 1
+                yield (x, x_label)
 
-                    images = f['Gamma'][batch_num*number_of_training:(batch_num+1)*number_of_training]
-                    images_false = f['Hadron'][batch_num*number_of_training:(batch_num+1)*number_of_training]
-                    # TODO: Add label based on the trigger type, 1024 is False, 4 is True if from preprocessed, False otherwise
-                    validating_dataset = np.concatenate([images, images_false], axis=0)
-                    labels = np.array([True]*(len(images))+[False]*len(images_false))
-                    del images
-                    del images_false
-                    validation_labels = (np.arange(2) == labels[:,None]).astype(np.float32)
-                    x = validating_dataset
-                    x_label = validation_labels
-                    #print("Finished getting data")
-                    yield (x, x_label)
+model_checkpoint = keras.callbacks.ModelCheckpoint("Jantype_allgamma_k5_5_model.h5", monitor='val_loss', verbose=0,
+                                                   save_best_only=True, save_weights_only=False, mode='auto', period=1)
 
-model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor((130000/64)), epochs=100, verbose=2, validation_data=(y, y_label))
+model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((items - 10000) / batch_size)), epochs=100,
+                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, model_checkpoint])
 
+model.save("MC_jan_allgamma_k5_5_model.h5")
 
-model.save("MC_jan_model.h5")
-
-#model.fit_generator(generator=training_generator,
+# model.fit_generator(generator=training_generator,
 #                    validation_data=validating_generator,
 #                    use_multiprocessing=False)
 
-#model.save("crab_trained_model.h5")
+# model.save("crab_trained_model.h5")
 
 # Now do it with the simulated data
 
-#params = {'dim': (46,45),
+# params = {'dim': (46,45),
 #          'batch_size': 64,
 #          'n_classes': 2,
 #          'n_channels': 1,
@@ -324,14 +334,14 @@ model.save("MC_jan_model.h5")
 #          'length_dataset': sim_length_data,
 #          }
 
-#training_generator = SimDataGenerator(**params)
-#validating_generator = SimDataGenerator(**params)
+# training_generator = SimDataGenerator(**params)
+# validating_generator = SimDataGenerator(**params)
 
-#model.fit_generator(generator=training_generator,
+# model.fit_generator(generator=training_generator,
 #                    validation_data=validating_generator,
 #                    use_multiprocessing=True)
 
-#model.save("sim_trained_model.h5")
+# model.save("sim_trained_model.h5")
 
 '''
 crab_sample = read_h5py("/run/media/jacob/SSD/Development/open_crab_sample_analysis/dl2/crab.hdf5", "events")
