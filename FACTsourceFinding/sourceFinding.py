@@ -211,7 +211,7 @@ params = {'dim': (64),
 kernel_size = (5, 5)
 batch_size = 16
 
-early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=4, verbose=0, mode='auto')
+early_stop = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=4, verbose=0, mode='auto')
 
 
 model = Sequential()
@@ -221,7 +221,7 @@ model.add(Conv2D(32, kernel_size=kernel_size, strides=(1, 1),
 # model.add(Dropout(0.3))
 model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-# model.add(Dropout(0.3))
+model.add(Dropout(0.3))
 model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
 # model.add(Dropout(0.3))
@@ -230,7 +230,7 @@ model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
 # model.add(Dropout(0.3))
 model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-# model.add(Dropout(0.3))
+model.add(Dropout(0.3))
 model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
 # model.add(Dropout(0.15))
@@ -238,10 +238,10 @@ model.add(Flatten())
 model.add(Dense(256, activation='relu'))
 # model.add(Dropout(0.25))
 model.add(Dense(256, activation='relu'))
-# model.add(Dropout(0.25))
-model.add(Dense(256, activation='relu'))
 model.add(Dropout(0.25))
-model.add(Dense(256, activation='relu'))
+model.add(Dense(512, activation='relu'))
+model.add(Dropout(0.25))
+model.add(Dense(1024, activation='relu'))
 model.add(Dropout(0.25))
 model.add(Dense(num_labels, activation='softmax'))
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
@@ -309,7 +309,7 @@ def batchYielder():
                 batch_num += 1
                 yield (x, x_label)
 
-model_checkpoint = keras.callbacks.ModelCheckpoint("Jantype_allgamma_k5_5_model.h5", monitor='val_loss', verbose=0,
+model_checkpoint = keras.callbacks.ModelCheckpoint("Jantype_allgamma_k5_5_drop_dense2014_model.h5", monitor='val_acc', verbose=0,
                                                    save_best_only=True, save_weights_only=False, mode='auto', period=1)
 
 model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((items - 10000) / batch_size)), epochs=100,

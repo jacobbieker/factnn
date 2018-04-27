@@ -13,9 +13,9 @@ import os
 #path_raw_mc_folder = sys.argv[1]
 path_raw_mc_folder = "/run/media/jacob/WDRed8Tb1/sim/"
 #path_store_mapping_dict = sys.argv[2]
-path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict.p"
+path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_images = "/run/media/jacob/WDRed8Tb1/MC_Holy_Squished_prebatched_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb1/Rebinned_2_flipped_MC_prebatched_Images.h5"
 
 
 def getMetadata():
