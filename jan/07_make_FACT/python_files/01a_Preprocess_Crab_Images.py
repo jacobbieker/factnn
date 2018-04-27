@@ -15,12 +15,12 @@ import sys
 #path_store_mapping_dict = sys.argv[3]
 #path_crab_images = sys.argv[4]
 
-path_raw_crab_folder = "/run/media/jacob/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/"
+path_raw_crab_folder = "/projects/sventeklab/jbieker/raw_data/ihp-pc41.ethz.ch/public/phs/obs/"
 #path_store_mapping_dict = sys.argv[2]
-path_runs_to_use = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/Crab1314_runs_to_use.csv"
-path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict.p"
+path_runs_to_use = "/projects/sventeklab/jbieker/git-thesis/jan/07_make_FACT/Crab1314_runs_to_use.csv"
+path_store_mapping_dict = "/projects/sventeklab/jbieker/git-thesis/jan/07_make_FACT/rebinned_mapping_dict_flipped.p"
 #path_mc_images = sys.argv[3]
-path_crab_images = "/run/media/jacob/WDRed8Tb1/Rebinned_2_crab1314_preprocessed_images.h5"
+path_crab_images = "/projects/sventeklab/jbieker/FACTSources/Rebinned_2_flipped_crab1314_preprocessed_images.h5"
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
