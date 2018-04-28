@@ -156,7 +156,7 @@ hexagon = MultiPoint([p1, p2, p3, p4, p5, p6]).convex_hull
 
 
 square_start = 186
-square_size = 5
+square_size = 2
 square = Polygon([(-square_start,square_start), (-square_start+square_size,square_start),
                   (-square_start+square_size,square_start-square_size), (-square_start, square_start-square_size),
                   (-square_start,square_start)])
@@ -233,7 +233,7 @@ for pixel_index, pixel in enumerate(list_of_squares):
 
 hex_to_grid = [chid_to_pixel, pixel_index_to_grid]
 
-path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
+path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict_2_flipped.p"
 pickle.dump(hex_to_grid, open(path_store_mapping_dict, 'wb'))
 
 # To get back to original orientation, need to do a fliplr, after a rot90, 3
