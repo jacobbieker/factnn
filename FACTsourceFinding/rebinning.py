@@ -12,7 +12,7 @@ from fact.instrument import get_pixel_dataframe, get_pixel_coords
 
 from scipy.stats import binned_statistic_2d
 
-from fact_plots.skymap import plot_skymap
+#from fact_plots.skymap import plot_skymap
 import matplotlib.pyplot as plt
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -24,8 +24,8 @@ from astropy.coordinates import SkyCoord
 from fact.io import read_h5py
 import fact.plotting as factplot
 
-from fact_plots.plotting import add_preliminary
-from fact_plots.time import read_timestamp
+#from fact_plots.plotting import add_preliminary
+#from fact_plots.time import read_timestamp
 
 df = get_pixel_dataframe()
 
@@ -128,6 +128,42 @@ plt.title("Lerge Ones")
 plt.show()
 '''
 
+
+print(counts)
+#plt.imshow(np.rot90(counts), extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]])
+#plt.show()
+
+print(binNum)
+print(binNum.shape)
+print(counts.shape)
+print(xedges.shape)
+print(yedges.shape)
+
+test = np.zeros((45, 40))
+
+position_dict = {}
+for index in range(1439, -1, -1):
+    # Should swap 90 degrees, I think
+    print(index)
+    x_pos = binNum[0][index]
+    y_pos = binNum[1][index]
+    # Now get the center of the in in x and y for the actual thing
+
+    position_dict[index] = [y_pos-1, x_pos-1]
+
+
+for i in range(1440):
+    element = position_dict[i]
+    print(element)
+    test[element[0]][element[1]] = i
+
+#test = np.flip(test, axis=0)
+#plt.imshow(np.flip(test, 0))
+#plt.title("Normal Ones")
+#plt.show()
+
+path_store_mapping_dict = "/home/jacob/Development/thesis/jan/07_make_FACT/holy_mapping_dict.p"
+pickle.dump(position_dict, open(path_store_mapping_dict, 'wb'))
 
 import shapely
 from shapely.geometry import Point, Polygon, MultiPoint
@@ -233,7 +269,7 @@ for pixel_index, pixel in enumerate(list_of_squares):
 
 hex_to_grid = [chid_to_pixel, pixel_index_to_grid]
 
-path_store_mapping_dict = "/projects/sventeklab/jbieker/git-thesis/jan/07_make_FACT/rebinned_mapping_dict_flipped.p"
+path_store_mapping_dict = "/home/jacob/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict_9.p"
 pickle.dump(hex_to_grid, open(path_store_mapping_dict, 'wb'))
 
 # To get back to original orientation, need to do a fliplr, after a rot90, 3
@@ -251,9 +287,7 @@ for index in range(1440):
         coords = pixel_index_to_grid[element[0]]
         test_rebin[coords[0]][coords[1]] += element[1]*index
 
-
-plt.imshow(np.fliplr(np.rot90(test_rebin, 3)), cmap="Greys")
-plt.title("Testing Rebin at " + str(square_size))
-plt.show()
-#plt.savefig("Rebin_size_test.png", dpi=300)
+plt.imshow(np.rot90(test_rebin, 3), cmap='Greys')
+#plt.title("Rebinned Dectector with Squares of area " + str(square_size**2))
+plt.savefig("Rebin_size_2.png", dpi=300)
 # HAVE IT!!!
