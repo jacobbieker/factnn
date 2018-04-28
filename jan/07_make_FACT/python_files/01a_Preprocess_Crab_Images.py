@@ -18,13 +18,13 @@ import sys
 path_raw_crab_folder = "/run/media/jacob/WDRed8Tb2/ihp-pc41.ethz.ch/public/phs/obs/"
 #path_store_mapping_dict = sys.argv[2]
 path_runs_to_use = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/Crab1314_runs_to_use.csv"
-path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
+path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict_2_flipped.p"
 #path_mc_images = sys.argv[3]
-path_crab_images = "/run/media/jacob/HDD/Rebinned_5_flipped_crab1314_preprocessed_images.h5"
+path_crab_images = "/run/media/jacob/WDRed8Tb2/Rebinned_2_flipped_crab1314_preprocessed_images.h5"
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
-    return dataset.reshape((-1, 75, 75, 1)).astype(np.float32)
+    return dataset.reshape((-1,186, 186, 1)).astype(np.float32)
 
 
 def batchYielder():
@@ -60,7 +60,7 @@ def batchYielder():
                     trigger = line_data['Trigger']
                     time = line_data['UnixTime_s_us'][0] + 1e-6*line_data['UnixTime_s_us'][1]
 
-                    input_matrix = np.zeros([75,75])
+                    input_matrix = np.zeros([186,186])
                     chid_to_pixel = id_position[0]
                     pixel_index_to_grid = id_position[1]
                     for index in range(1440):
