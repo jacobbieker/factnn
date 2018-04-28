@@ -15,7 +15,7 @@ if architecture == 'manjaro':
     thesis_base = '/run/media/jacob/SSD/Development/thesis'
 else:
     base_dir = '/projects/sventeklab/jbieker'
-    thesis_base = base_dir + '/thesis'
+    thesis_base = base_dir + '/git-thesis/thesis'
 
 # Hyperparameters
 
@@ -32,7 +32,7 @@ number_of_training = 200000
 number_of_testing = 10000
 num_labels = 2
 
-path_mc_images = base_dir + "/Rebinned_2_MC_Preprocessed_Images.h5"
+path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Preprocessed_Images.h5"
 for batch_size in batch_sizes:
     for patch_size in patch_sizes:
         for dropout_layer in dropout_layers:
