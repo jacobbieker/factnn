@@ -28,13 +28,14 @@ num_dense_layers = [0,1,2,3,4,5]
 num_conv_neurons = [8, 16, 32, 64, 128]
 num_dense_neuron = [64, 128, 256, 512, 1024]
 num_pooling_layers = [0,1]
-number_of_training = 640000*(0.6)
-number_of_testing = 640000*(0.2)
-number_validate = 640000*(0.2)
+number_of_training = 550000*(0.6)
+number_of_testing = 550000*(0.2)
+number_validate = 550000*(0.2)
 optimizers = ['rmsprop', 'sgd', 'adam']
 activations = ['relu', 'linear', 'sigmoid'] # Only for the last layer
+epoch = 100
 
-path_mc_images = base_dir + "/FACTSources/Rebinned_5_Diffuse_Preprocessed_Images.h5"
+path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Gamma_1_Diffuse_Images.h5"
 for batch_size in batch_sizes:
     for patch_size in patch_sizes:
         for dropout_layer in dropout_layers:
@@ -53,15 +54,9 @@ for batch_size in batch_sizes:
                                             if not os.path.isfile(model_name):
                                                 model_checkpoint = keras.callbacks.ModelCheckpoint(model_name, monitor='val_loss', verbose=0,
                                                                                                    save_best_only=True, save_weights_only=False, mode='auto', period=1)
-                                                early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=4, verbose=0, mode='auto')
+                                                early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=0, mode='auto')
                                                 def metaYielder():
-                                                    with h5py.File(path_mc_images, 'r') as f:
-                                                        keys = list(f.keys())
-                                                        events = []
-                                                        for key in keys:
-                                                            events.append(len(f[key]))
-
-                                                    gamma_anteil = events[0]/np.sum(events)
+                                                    gamma_anteil = 1
                                                     gamma_count = int(round(number_of_training*gamma_anteil))
 
                                                     return gamma_anteil, gamma_count
@@ -98,14 +93,14 @@ for batch_size in batch_sizes:
                                                             items = items - number_of_testing
                                                             batch_num = 0
                                                             # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
-                                                            while (number_of_training) * (batch_num + 1) < items:
+                                                            while (batch_size) * (batch_num + 1) < items:
                                                                 gamma_anteil, gamma_count = metaYielder()
                                                                 # Get some truth data for now, just use Crab images
-                                                                images = f['Image'][-(gamma_anteil*number_of_training):-1]
-                                                                images_source_zd = f['Theta'][-(gamma_anteil*number_of_training):-1]
-                                                                images_source_az = f['Phi'][-(gamma_anteil*number_of_training):-1]
-                                                                images_point_az = f['Az_deg'][-(gamma_anteil*number_of_training):-1]
-                                                                images_point_zd = f['Zd_deg'][-(gamma_anteil*number_of_training):-1]
+                                                                images = f['Image'][batch_num*batch_size:(batch_num+1)*batch_size]
+                                                                images_source_zd = f['Theta'][batch_num*batch_size:(batch_num+1)*batch_size]
+                                                                images_source_az = f['Phi'][batch_num*batch_size:(batch_num+1)*batch_size]
+                                                                images_point_az = f['Az_deg'][-batch_num*batch_size:(batch_num+1)*batch_size]
+                                                                images_point_zd = f['Zd_deg'][batch_num*batch_size:(batch_num+1)*batch_size]
                                                                 source = horizontal_to_camera(
                                                                     az=images_source_az, zd=images_source_zd,
                                                                     az_pointing=images_point_az, zd_pointing=images_point_zd
@@ -146,7 +141,7 @@ for batch_size in batch_sizes:
                                                 # 2 so have one for x and one for y
                                                 model.add(Dense(2, activation=activation))
                                                 model.compile(optimizer=optimizer, loss='mse', metrics=['mse'])
-                                                model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=100,
+                                                model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
                                                                     verbose=2, validation_data=(y, y_label), callbacks=[early_stop, model_checkpoint])
 
                                         except Exception as e:
