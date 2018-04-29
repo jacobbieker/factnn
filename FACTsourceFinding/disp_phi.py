@@ -85,11 +85,10 @@ for batch_size in batch_sizes:
 
                                             def batchYielder():
                                                 gamma_anteil, gamma_count = metaYielder()
-                                                while True:
-                                                    with h5py.File(path_mc_images, 'r') as f:
-                                                        # Get some truth data for now, just use Crab images
-                                                        items = list(f.items())[1][1].shape[0]
-                                                        items = items - number_of_testing
+                                                with h5py.File(path_mc_images, 'r') as f:
+                                                    items = list(f.items())[1][1].shape[0]
+                                                    items = items - number_of_testing
+                                                    while True:
                                                         batch_num = 0
                                                         # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
                                                         while (batch_size) * (batch_num + 1) < items:
