@@ -28,8 +28,9 @@ num_dense_layers = [0,1,2,3,4,5]
 num_conv_neurons = [8, 16, 32, 64, 128]
 num_dense_neuron = [64, 128, 256, 512, 1024]
 num_pooling_layers = [0,1]
-number_of_training = 200000
-number_of_testing = 10000
+number_of_training = 1000000*(0.6)
+number_of_testing = 1000000*(0.2)
+number_validate = 1000000*(0.2)
 num_labels = 2
 
 path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Preprocessed_Images.h5"
@@ -43,7 +44,7 @@ for batch_size in batch_sizes:
                             for dense_neuron in num_dense_neuron:
                                 for gamma_train in gamma_trains:
                                     try:
-                                        model_name = "MC_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+                                        model_name = base_dir + "/MC_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                                                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_gamma_" + \
                                                      str(gamma_train) + "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons) + ".h5"
                                         if not os.path.isfile(model_name):
@@ -67,9 +68,10 @@ for batch_size in batch_sizes:
 
 
                                             with h5py.File(path_mc_images, 'r') as f:
+                                                gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
                                                 # Get some truth data for now, just use Crab images
-                                                images = f['Gamma'][-number_of_testing:-1]
-                                                images_false = f['Hadron'][-number_of_testing:-1]
+                                                images = f['Gamma'][-(gamma_anteil*number_of_testing):-1]
+                                                images_false = f['Hadron'][-(hadron_anteil*number_of_testing):-1]
                                                 validating_dataset = np.concatenate([images, images_false], axis=0)
                                                 labels = np.array([True] * (len(images)) + [False] * len(images_false))
                                                 del images
@@ -117,6 +119,8 @@ for batch_size in batch_sizes:
                                                 if num_pooling_layer == 1:
                                                     model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
                                                 model.add(Dropout(dropout_layer))
+
+                                            model.add(Flatten())
 
                                             # Now do the dense layers
                                             for i in range(num_dense):
