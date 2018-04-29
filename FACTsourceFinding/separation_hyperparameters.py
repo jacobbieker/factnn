@@ -19,14 +19,14 @@ else:
 
 # Hyperparameters
 
-batch_sizes = [8, 16, 32, 64, 128, 256]
+batch_sizes = [8, 256, 32, 64, 128, 16]
 gamma_trains = [1]
 patch_sizes = [(3, 3), (5, 5)]
-dropout_layers = [0.0, 0.1, 0.3, 0.5, 0.7, 0.9]
-num_conv_layers = [0,1,2,3,4,5]
-num_dense_layers = [0,1,2,3,4]
-num_conv_neurons = [8, 16, 32, 64, 128]
-num_dense_neuron = [64, 128, 256, 512]
+dropout_layers = [0.0, 0.1, 0.9, 0.5, 0.7, 0.3]
+num_conv_layers = [0,1,4,3,2,5]
+num_dense_layers = [0,1,4,3,2]
+num_conv_neurons = [8, 64, 32, 16, 128]
+num_dense_neuron = [64, 512, 256, 128]
 num_pooling_layers = [0,1]
 number_of_training = 800000*(0.6)
 number_of_testing = 800000*(0.2)
@@ -53,13 +53,12 @@ for batch_size in batch_sizes:
                                             early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=4, verbose=0, mode='auto')
                                             def metaYielder():
                                                 with h5py.File(path_mc_images, 'r') as f:
-                                                    keys = list(f.keys())
-                                                    events = []
-                                                    for key in keys:
-                                                        events.append(len(f[key]))
+                                                    gam = len(f['GammaImage'])
+                                                    had = len(f['Image'])
+                                                    sumEvt = gam + had
 
-                                                gamma_anteil = events[0]/np.sum(events)
-                                                hadron_anteil = events[1]/np.sum(events)
+                                                gamma_anteil = gam/sumEvt
+                                                hadron_anteil = had/sumEvt
 
                                                 gamma_count = int(round(number_of_training*gamma_anteil))
                                                 hadron_count = int(round(number_of_training*hadron_anteil))
@@ -84,16 +83,16 @@ for batch_size in batch_sizes:
 
                                             def batchYielder():
                                                 gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
-                                                while True:
-                                                    with h5py.File(path_mc_images, 'r') as f:
+                                                with h5py.File(path_mc_images, 'r') as f:
+                                                    items = list(f.items())[1][1].shape[0]
+                                                    items = items - number_of_testing
+                                                    while True:
                                                         # Get some truth data for now, just use Crab images
-                                                        items = list(f.items())[1][1].shape[0]
-                                                        items = items - number_of_testing
                                                         batch_num = 0
                                                         # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
                                                         while (hadron_count) * (batch_num + 1) < items:
-                                                            images = f['GammaImage'][batch_num * gamma_count:(batch_num + 1) * gamma_count]
-                                                            images_false = f['Image'][batch_num * hadron_count:(batch_num + 1) * hadron_count]
+                                                            images = f['GammaImage'][np.floor((batch_num) * (batch_size * gamma_anteil)):np.floor((batch_num + 1) * (batch_size * gamma_anteil))]
+                                                            images_false = f['Image'][np.floor(batch_num * batch_size * hadron_anteil):(batch_num + 1) * batch_size * hadron_anteil]
                                                             validating_dataset = np.concatenate([images, images_false], axis=0)
                                                             labels = np.array([True] * (len(images)) + [False] * len(images_false))
                                                             del images
@@ -104,6 +103,7 @@ for batch_size in batch_sizes:
                                                             # print("Finished getting data")
                                                             batch_num += 1
                                                             yield (x, x_label)
+
 
                                             gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
                                             # Make the model
