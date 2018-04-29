@@ -42,87 +42,93 @@ for batch_size in batch_sizes:
                         for conv_neurons in num_conv_neurons:
                             for dense_neuron in num_dense_neuron:
                                 for gamma_train in gamma_trains:
-                                    model_name = "MC_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
-                                                 + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_gamma_" + \
-                                                 str(gamma_train) + "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons) + ".h5"
-                                    model_checkpoint = keras.callbacks.ModelCheckpoint(model_name, monitor='val_loss', verbose=0,
-                                                                                       save_best_only=True, save_weights_only=False, mode='auto', period=1)
-                                    early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=4, verbose=0, mode='auto')
-                                    def metaYielder():
-                                        with h5py.File(path_mc_images, 'r') as f:
-                                            keys = list(f.keys())
-                                            events = []
-                                            for key in keys:
-                                                events.append(len(f[key]))
+                                    try:
+                                        model_name = "MC_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+                                                     + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_gamma_" + \
+                                                     str(gamma_train) + "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons) + ".h5"
+                                        if not os.path.isfile(model_name):
+                                            model_checkpoint = keras.callbacks.ModelCheckpoint(model_name, monitor='val_loss', verbose=0,
+                                                                                               save_best_only=True, save_weights_only=False, mode='auto', period=1)
+                                            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=4, verbose=0, mode='auto')
+                                            def metaYielder():
+                                                with h5py.File(path_mc_images, 'r') as f:
+                                                    keys = list(f.keys())
+                                                    events = []
+                                                    for key in keys:
+                                                        events.append(len(f[key]))
 
-                                        gamma_anteil = events[0]/np.sum(events)
-                                        hadron_anteil = events[1]/np.sum(events)
+                                                gamma_anteil = events[0]/np.sum(events)
+                                                hadron_anteil = events[1]/np.sum(events)
 
-                                        gamma_count = int(round(number_of_training*gamma_anteil))
-                                        hadron_count = int(round(number_of_training*hadron_anteil))
+                                                gamma_count = int(round(number_of_training*gamma_anteil))
+                                                hadron_count = int(round(number_of_training*hadron_anteil))
 
-                                        return gamma_anteil, hadron_anteil, gamma_count, hadron_count
-
-
-                                    with h5py.File(path_mc_images, 'r') as f:
-                                        # Get some truth data for now, just use Crab images
-                                        images = f['Gamma'][-number_of_testing:-1]
-                                        images_false = f['Hadron'][-number_of_testing:-1]
-                                        validating_dataset = np.concatenate([images, images_false], axis=0)
-                                        labels = np.array([True] * (len(images)) + [False] * len(images_false))
-                                        del images
-                                        del images_false
-                                        validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
-                                        y = validating_dataset
-                                        y_label = validation_labels
-                                        print("Finished getting data")
+                                                return gamma_anteil, hadron_anteil, gamma_count, hadron_count
 
 
-                                    def batchYielder():
-                                        gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
-                                        while True:
                                             with h5py.File(path_mc_images, 'r') as f:
                                                 # Get some truth data for now, just use Crab images
-                                                items = list(f.items())[1][1].shape[0]
-                                                items = items - number_of_testing
-                                                batch_num = 0
-                                                # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
-                                                while (hadron_count) * (batch_num + 1) < items:
-                                                    images = f['Gamma'][batch_num * gamma_count:(batch_num + 1) * gamma_count]
-                                                    images_false = f['Hadron'][batch_num * hadron_count:(batch_num + 1) * hadron_count]
-                                                    validating_dataset = np.concatenate([images, images_false], axis=0)
-                                                    labels = np.array([True] * (len(images)) + [False] * len(images_false))
-                                                    del images
-                                                    del images_false
-                                                    validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
-                                                    x = validating_dataset
-                                                    x_label = validation_labels
-                                                    # print("Finished getting data")
-                                                    batch_num += 1
-                                                    yield (x, x_label)
+                                                images = f['Gamma'][-number_of_testing:-1]
+                                                images_false = f['Hadron'][-number_of_testing:-1]
+                                                validating_dataset = np.concatenate([images, images_false], axis=0)
+                                                labels = np.array([True] * (len(images)) + [False] * len(images_false))
+                                                del images
+                                                del images_false
+                                                validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
+                                                y = validating_dataset
+                                                y_label = validation_labels
+                                                print("Finished getting data")
 
-                                    gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
-                                    # Make the model
-                                    model = Sequential()
 
-                                    # Base Conv layer
-                                    model.add(Conv2D(conv_neurons, kernel_size=patch_size, strides=(1, 1),
-                                                     activation='relu', padding='same',
-                                                     input_shape=(75, 75, 1)))
+                                            def batchYielder():
+                                                gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
+                                                while True:
+                                                    with h5py.File(path_mc_images, 'r') as f:
+                                                        # Get some truth data for now, just use Crab images
+                                                        items = list(f.items())[1][1].shape[0]
+                                                        items = items - number_of_testing
+                                                        batch_num = 0
+                                                        # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
+                                                        while (hadron_count) * (batch_num + 1) < items:
+                                                            images = f['Gamma'][batch_num * gamma_count:(batch_num + 1) * gamma_count]
+                                                            images_false = f['Hadron'][batch_num * hadron_count:(batch_num + 1) * hadron_count]
+                                                            validating_dataset = np.concatenate([images, images_false], axis=0)
+                                                            labels = np.array([True] * (len(images)) + [False] * len(images_false))
+                                                            del images
+                                                            del images_false
+                                                            validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
+                                                            x = validating_dataset
+                                                            x_label = validation_labels
+                                                            # print("Finished getting data")
+                                                            batch_num += 1
+                                                            yield (x, x_label)
 
-                                    for i in range(num_conv):
-                                        model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same'))
-                                        if num_pooling_layer == 1:
-                                            model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-                                        model.add(Dropout(dropout_layer))
+                                            gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
+                                            # Make the model
+                                            model = Sequential()
 
-                                    # Now do the dense layers
-                                    for i in range(num_dense):
-                                        model.add(Dense(dense_neuron, activation='relu'))
-                                        model.add(Dropout(dropout_layer))
+                                            # Base Conv layer
+                                            model.add(Conv2D(conv_neurons, kernel_size=patch_size, strides=(1, 1),
+                                                             activation='relu', padding='same',
+                                                             input_shape=(75, 75, 1)))
 
-                                    # Final Dense layer
-                                    model.add(Dense(num_labels, activation='sigmoid'))
-                                    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
-                                    model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=100,
-                                                        verbose=2, validation_data=(y, y_label), callbacks=[early_stop, model_checkpoint])
+                                            for i in range(num_conv):
+                                                model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same'))
+                                                if num_pooling_layer == 1:
+                                                    model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+                                                model.add(Dropout(dropout_layer))
+
+                                            # Now do the dense layers
+                                            for i in range(num_dense):
+                                                model.add(Dense(dense_neuron, activation='relu'))
+                                                model.add(Dropout(dropout_layer))
+
+                                            # Final Dense layer
+                                            model.add(Dense(num_labels, activation='softmax'))
+                                            model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
+                                            model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=100,
+                                                                verbose=2, validation_data=(y, y_label), callbacks=[early_stop, model_checkpoint])
+
+                                    except Exception as e:
+                                        print(e)
+                                        pass
