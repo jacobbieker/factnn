@@ -9,10 +9,6 @@ from keras.utils import to_categorical, Sequence
 from keras.regularizers import l2
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard
-from hyperopt import Trials, STATUS_OK, tpe
-from hyperas import optim
-from hyperas.distrubutions import choice, uniform, conditional
-
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 from fact.analysis.binning import bin_runs
