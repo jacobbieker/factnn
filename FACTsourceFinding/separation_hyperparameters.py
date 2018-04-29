@@ -19,7 +19,7 @@ else:
 
 # Hyperparameters
 
-batch_sizes = [4, 8, 16, 32, 64, 128, 256]
+batch_sizes = [4, 8, 16, 32, 64, 128, 256, 512]
 gamma_trains = [1, 2, 3, 4, 5]
 patch_sizes = [(3, 3), (5, 5)]
 dropout_layers = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
