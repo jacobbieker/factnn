@@ -19,21 +19,21 @@ else:
 
 # Hyperparameters
 
-batch_sizes = [4, 8, 16, 32, 64, 128, 256, 512]
-gamma_trains = [1, 2, 3, 4, 5]
+batch_sizes = [8, 16, 32, 64, 128, 256]
+gamma_trains = [1]
 patch_sizes = [(3, 3), (5, 5)]
-dropout_layers = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+dropout_layers = [0.0, 0.1, 0.3, 0.5, 0.7, 0.9]
 num_conv_layers = [0,1,2,3,4,5]
-num_dense_layers = [0,1,2,3,4,5]
+num_dense_layers = [0,1,2,3,4]
 num_conv_neurons = [8, 16, 32, 64, 128]
-num_dense_neuron = [64, 128, 256, 512, 1024]
+num_dense_neuron = [64, 128, 256, 512]
 num_pooling_layers = [0,1]
-number_of_training = 1000000*(0.6)
-number_of_testing = 1000000*(0.2)
-number_validate = 1000000*(0.2)
+number_of_training = 800000*(0.6)
+number_of_testing = 800000*(0.2)
+number_validate = 800000*(0.2)
 num_labels = 2
 
-path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Preprocessed_Images.h5"
+path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Phi_Images.h5"
 for batch_size in batch_sizes:
     for patch_size in patch_sizes:
         for dropout_layer in dropout_layers:
@@ -44,7 +44,7 @@ for batch_size in batch_sizes:
                             for dense_neuron in num_dense_neuron:
                                 for gamma_train in gamma_trains:
                                     try:
-                                        model_name = base_dir + "/MC_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+                                        model_name = base_dir + "/MC_Sep_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                                                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_gamma_" + \
                                                      str(gamma_train) + "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons) + ".h5"
                                         if not os.path.isfile(model_name):
@@ -70,8 +70,8 @@ for batch_size in batch_sizes:
                                             with h5py.File(path_mc_images, 'r') as f:
                                                 gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
                                                 # Get some truth data for now, just use Crab images
-                                                images = f['Gamma'][-(gamma_anteil*number_of_testing):-1]
-                                                images_false = f['Hadron'][-(hadron_anteil*number_of_testing):-1]
+                                                images = f['GammaImage'][-(gamma_anteil*number_of_testing):-1]
+                                                images_false = f['Image'][-(hadron_anteil*number_of_testing):-1]
                                                 validating_dataset = np.concatenate([images, images_false], axis=0)
                                                 labels = np.array([True] * (len(images)) + [False] * len(images_false))
                                                 del images
@@ -92,8 +92,8 @@ for batch_size in batch_sizes:
                                                         batch_num = 0
                                                         # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
                                                         while (hadron_count) * (batch_num + 1) < items:
-                                                            images = f['Gamma'][batch_num * gamma_count:(batch_num + 1) * gamma_count]
-                                                            images_false = f['Hadron'][batch_num * hadron_count:(batch_num + 1) * hadron_count]
+                                                            images = f['GammaImage'][batch_num * gamma_count:(batch_num + 1) * gamma_count]
+                                                            images_false = f['Image'][batch_num * hadron_count:(batch_num + 1) * hadron_count]
                                                             validating_dataset = np.concatenate([images, images_false], axis=0)
                                                             labels = np.array([True] * (len(images)) + [False] * len(images_false))
                                                             del images
