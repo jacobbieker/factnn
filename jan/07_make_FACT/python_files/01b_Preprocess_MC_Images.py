@@ -23,7 +23,7 @@ path_raw_mc_gamma_folder = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/p
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Gamma_Images.h5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Images.h5"
 path_mc_proton_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_Images.h5"
 path_diffuse = "/run/media/jacob/Seagate/open_crab_sample_analysis/dl2/gamma.hdf5"
 path_proton = "/run/media/jacob/Seagate/open_crab_sample_analysis/dl2/proton.hdf5"
@@ -130,19 +130,19 @@ row_count = trigger.shape[0]
 
 with h5py.File(path_mc_diffuse_images, 'w') as hdf:
     maxshape_pic = (None,) + pic.shape[1:]
-    dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
+    dset_pic = hdf.create_dataset('GammaImage', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
     maxshape_run = (None,) + run.shape[1:]
-    dset_run = hdf.create_dataset('Run', shape=run.shape, maxshape=maxshape_run, chunks=run.shape, dtype=run.dtype)
+    dset_run = hdf.create_dataset('GammaRun', shape=run.shape, maxshape=maxshape_run, chunks=run.shape, dtype=run.dtype)
     maxshape_event = (None,) + event.shape[1:]
-    dset_event = hdf.create_dataset('Event', shape=event.shape, maxshape=maxshape_event, chunks=event.shape, dtype=event.dtype)
+    dset_event = hdf.create_dataset('GammaEvent', shape=event.shape, maxshape=maxshape_event, chunks=event.shape, dtype=event.dtype)
     maxshape_zd_deg = (None,) + zd_deg.shape[1:]
-    dset_zd_deg = hdf.create_dataset('Zd_deg', shape=zd_deg.shape, maxshape=maxshape_zd_deg, chunks=zd_deg.shape, dtype=zd_deg.dtype)
+    dset_zd_deg = hdf.create_dataset('GammaZd_deg', shape=zd_deg.shape, maxshape=maxshape_zd_deg, chunks=zd_deg.shape, dtype=zd_deg.dtype)
     maxshape_az_deg = (None,) + az_deg.shape[1:]
-    dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
+    dset_az_deg = hdf.create_dataset('GammaAz_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
     maxshape_trigger = (None,) + trigger.shape[1:]
-    dset_trigger = hdf.create_dataset('Pointing_Az', shape=trigger.shape, maxshape=maxshape_trigger, chunks=trigger.shape, dtype=trigger.dtype)
+    dset_trigger = hdf.create_dataset('GammaPointing_Az', shape=trigger.shape, maxshape=maxshape_trigger, chunks=trigger.shape, dtype=trigger.dtype)
     maxshape_time = (None,) + time.shape[1:]
-    dset_time = hdf.create_dataset('Pointing_Zd', shape=time.shape, maxshape=maxshape_time, chunks=time.shape, dtype=time.dtype)
+    dset_time = hdf.create_dataset('GammaPointing_Zd', shape=time.shape, maxshape=maxshape_time, chunks=time.shape, dtype=time.dtype)
 
     dset_pic[:] = pic
     dset_run[:] = run
@@ -183,7 +183,7 @@ batch = next(gen)
 pic, run, event, zd_deg, az_deg, trigger, time = batchFormatter(batch)
 row_count = trigger.shape[0]
 
-with h5py.File(path_mc_proton_images, 'w') as hdf:
+with h5py.File(path_mc_diffuse_images, 'a') as hdf:
     maxshape_pic = (None,) + pic.shape[1:]
     dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
     maxshape_run = (None,) + run.shape[1:]
