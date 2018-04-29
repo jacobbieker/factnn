@@ -9,7 +9,6 @@ from keras.utils import to_categorical, Sequence
 from keras.regularizers import l2
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard
-
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 from fact.analysis.binning import bin_runs
@@ -209,35 +208,36 @@ params = {'dim': (64),
 # adam = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.1, amsgrad=False)
 
 kernel_size = (5, 5)
-batch_size = 16
+batch_size = 8
+inpurt_shape = (75, 75, 1)
 
 early_stop = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=4, verbose=0, mode='auto')
 
 
 model = Sequential()
-model.add(Conv2D(32, kernel_size=kernel_size, strides=(1, 1),
+model.add(Conv2D(64, kernel_size=kernel_size, strides=(1, 1),
                  activation='relu', padding='same',
-                 input_shape=(186, 186, 1)))
+                 input_shape=inpurt_shape))
 # model.add(Dropout(0.3))
-model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
+model.add(Conv2D(64, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
 model.add(Dropout(0.3))
-model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
+model.add(Conv2D(128, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
 # model.add(Dropout(0.3))
-model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
+model.add(Conv2D(64, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
 # model.add(Dropout(0.3))
-model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
+model.add(Conv2D(64, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
 model.add(Dropout(0.3))
-model.add(Conv2D(32, kernel_size, strides=(1, 1), activation='relu', padding='same'))
+model.add(Conv2D(64, kernel_size, strides=(1, 1), activation='relu', padding='same'))
 model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-# model.add(Dropout(0.15))
+model.add(Dropout(0.15))
 model.add(Flatten())
-model.add(Dense(256, activation='relu'))
+model.add(Dense(512, activation='relu'))
 # model.add(Dropout(0.25))
-model.add(Dense(256, activation='relu'))
+model.add(Dense(512, activation='relu'))
 model.add(Dropout(0.25))
 model.add(Dense(512, activation='relu'))
 model.add(Dropout(0.25))
@@ -263,7 +263,7 @@ model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc']
 # x, x_label, y, y_label = Dategenerator("/run/media/jacob/WDRed8Tb1/FACTSources/Mrk 421_preprocessed_images.h5", "/run/media/jacob/WDRed8Tb1/FACTSources/Crab_preprocessed_images.h5")
 import matplotlib.pyplot as plt
 
-with h5py.File(base_dir + "/Rebinned_2_MC_Preprocessed_Images.h5", 'r') as f:
+with h5py.File("/run/media/jacob/HDD/Rebinned_5_flipped_MC_prebatched_Images.h5", 'r') as f:
     # Get some truth data for now, just use Crab images
     items = list(f.items())[1][1].shape[0]
     print(items)
@@ -286,7 +286,7 @@ with h5py.File(base_dir + "/Rebinned_2_MC_Preprocessed_Images.h5", 'r') as f:
 
 def batchYielder():
     while True:
-        with h5py.File(base_dir + "/Rebinned_2_MC_Preprocessed_Images.h5", 'r') as f:
+        with h5py.File("/run/media/jacob/HDD/Rebinned_5_flipped_MC_prebatched_Images.h5", 'r') as f:
             # Get some truth data for now, just use Crab images
             items = list(f.items())[1][1].shape[0]
             items = items - 10000
