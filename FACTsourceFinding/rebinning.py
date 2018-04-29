@@ -140,6 +140,9 @@ ax.set_ylim(top=186, bottom=-186)
 ax.set_xlim(left=-186, right=186)
 plt.show()
 '''
+#factplot.camera(df['CHID'])
+#plt.show()
+
 # Now take squares and build grid over the whole thing
 
 # Have grid, now convert to get intersection between each square and every hexagon, saving the intersection.area / hex.area
@@ -172,10 +175,11 @@ for pixel_index, pixel in enumerate(list_of_squares):
 
 hex_to_grid = [chid_to_pixel, pixel_index_to_grid]
 
-path_store_mapping_dict = "/projects/sventeklab/jbieker/git-thesis/thesis/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
+path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict_2_flipped.p"
 pickle.dump(hex_to_grid, open(path_store_mapping_dict, 'wb'))
 
 # To get back to original orientation, need to do a fliplr, after a rot90, 3
+
 
 #pickle.dump(diffuse_thing, open("Diffuse_Ordering.p", "wb"))
 
@@ -187,3 +191,10 @@ for index in range(1440):
     for element in chid_to_pixel[index]:
         coords = pixel_index_to_grid[element[0]]
         test_rebin[coords[0]][coords[1]] += element[1]*index
+
+plt.clf()
+plt.imshow(np.fliplr(np.rot90(test_rebin, 3)), cmap="Greys")
+#plt.title("Testing Rebin at " + str(square_size))
+plt.show()
+#plt.savefig("Rebin_size_5.png", dpi=300)
+# HAVE IT!!!
