@@ -23,8 +23,8 @@ path_raw_mc_gamma_folder = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/p
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Gamma_Diffuse_Images.h5"
-path_mc_proton_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_Diffuse_Images.h5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Gamma_1_Diffuse_Images.h5"
+path_mc_proton_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_1_Diffuse_Images.h5"
 path_diffuse = "/run/media/jacob/Seagate/open_crab_sample_analysis/dl2/gamma_diffuse.hdf5"
 
 
@@ -84,31 +84,55 @@ def batchYielder(paths, diffuse_df):
             with gzip.open(file) as f:
                 print(file)
                 data = []
+                temp_phi = []
+                temp_theta = []
+                tmp_az = []
+                tmp_zd = []
 
                 for line in f:
                     line_data = json.loads(line.decode('utf-8'))
                     run = line_data['Run']
                     event = line_data['Event']
 
-                    if event in diffuse_df['event_num'].values and run in diffuse_df['run_id'].values:
-                        element = diffuse_df[(diffuse_df['run_id'] == run) & (diffuse_df['event_num'] == event)]
-                        if not element.empty:
-                            event_photons = line_data['PhotonArrivals_500ps']
-                            #print(element)
-                            az_deg = element["source_position_az"].values
-                            zd_deg = element["source_position_zd"].values
+                    element = diffuse_df[(diffuse_df['run_id'] == run) & (diffuse_df['event_num'] == event)]
+                    if element.empty and temp_phi != []:
+                        event_photons = line_data['PhotonArrivals_500ps']
+                        #print(element)
+                        az_deg = tmp_az
+                        zd_deg = tmp_zd
 
-                            phi = element["pointing_position_az"].values
-                            theta = element["pointing_position_zd"].values
+                        phi = temp_phi
+                        theta = temp_theta
 
-                            input_matrix = np.zeros([75,75])
-                            chid_to_pixel = id_position[0]
-                            pixel_index_to_grid = id_position[1]
-                            for index in range(1440):
-                                for element in chid_to_pixel[index]:
-                                    coords = pixel_index_to_grid[element[0]]
-                                    input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
-                            data.append([np.fliplr(np.rot90(input_matrix, 3)), run, event, zd_deg, az_deg, phi, theta])
+                        input_matrix = np.zeros([75,75])
+                        chid_to_pixel = id_position[0]
+                        pixel_index_to_grid = id_position[1]
+                        for index in range(1440):
+                            for element in chid_to_pixel[index]:
+                                coords = pixel_index_to_grid[element[0]]
+                                input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
+                    else:
+                        event_photons = line_data['PhotonArrivals_500ps']
+                        #print(element)
+                        az_deg = element["source_position_az"].values
+                        zd_deg = element["source_position_zd"].values
+                        tmp_az = az_deg
+                        tmp_zd = zd_deg
+
+                        phi = element["pointing_position_az"].values
+                        theta = element["pointing_position_zd"].values
+                        temp_phi = phi
+                        temp_theta = theta
+
+                        input_matrix = np.zeros([75,75])
+                        chid_to_pixel = id_position[0]
+                        pixel_index_to_grid = id_position[1]
+                        for index in range(1440):
+                            for element in chid_to_pixel[index]:
+                                coords = pixel_index_to_grid[element[0]]
+                                input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
+
+                    data.append([np.fliplr(np.rot90(input_matrix, 3)), run, event, zd_deg, az_deg, phi, theta])
             yield data
 
         except Exception as e:
