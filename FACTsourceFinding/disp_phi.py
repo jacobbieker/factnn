@@ -46,7 +46,7 @@ for batch_size in batch_sizes:
                             for dense_neuron in num_dense_neuron:
                                 for activation in activations:
                                     try:
-                                        model_name = base_dir + "/MC_dispPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+                                        model_name = base_dir + "/Models/MC_dispPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                                                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_act_" + \
                                                      str(activation) + "_denseN_" + str(dense_neuron) + "_convN_" + \
                                                      str(conv_neurons) + "_opt_" + str(optimizer) + ".h5"
