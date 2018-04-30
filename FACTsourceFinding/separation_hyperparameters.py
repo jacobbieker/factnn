@@ -19,10 +19,10 @@ else:
 
 # Hyperparameters
 
-batch_sizes = [8, 256, 32, 64, 128, 16]
+batch_sizes = [512, 16, 256, 64]
 gamma_trains = [1]
 patch_sizes = [(3, 3), (5, 5)]
-dropout_layers = [0.0, 0.1, 0.9, 0.5, 0.7, 0.3]
+dropout_layers = [0.0, 0.9, 0.2, 0.7, 0.5]
 num_conv_layers = [0,1,4,3,2,5]
 num_dense_layers = [0,1,4,3,2]
 num_conv_neurons = [8, 64, 32, 16, 128]
