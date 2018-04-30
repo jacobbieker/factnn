@@ -42,7 +42,7 @@ for batch_size in batch_sizes:
                         for conv_neurons in num_conv_neurons:
                             for dense_neuron in num_dense_neuron:
                                 try:
-                                    model_name = base_dir + "/MC_Sep_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+                                    model_name = base_dir + "/Models/MC_Sep_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                                                  + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) +\
                                                  "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons) + ".h5"
                                     if not os.path.isfile(model_name):
