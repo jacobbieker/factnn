@@ -10,6 +10,5 @@ sim_reader = ps.SimulationReader(
 
 
 for event in sim_reader:
-    print(event.az)
-    print(event.simulation_truth.air_shower.theta)
-    SkyCoord(representation_type="spherical")
+    print(event.photon_stream)
+    print(event.simulation_truth)
