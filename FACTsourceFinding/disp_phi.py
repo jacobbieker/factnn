@@ -20,13 +20,13 @@ else:
 
 # Hyperparameters
 
-batch_sizes = [16, 32, 64, 128, 256]
+batch_sizes = [512, 16, 256, 64]
 patch_sizes = [(3, 3), (5, 5)]
-dropout_layers = [0.0, 0.1, 0.3, 0.5, 0.7, 0.9]
-num_conv_layers = [0,1,2,3,4]
-num_dense_layers = [0,1,2,3]
-num_conv_neurons = [8, 16, 32, 64, 128]
-num_dense_neuron = [64, 128, 256, 512]
+dropout_layers = [0.0, 0.9, 0.2, 0.7, 0.5]
+num_conv_layers = [0,1,4,3,2,5]
+num_dense_layers = [0,1,4,3,2]
+num_conv_neurons = [8, 64, 32, 16, 128]
+num_dense_neuron = [64, 512, 256, 128]
 num_pooling_layers = [0,1]
 number_of_training = 550000*(0.6)
 number_of_testing = 550000*(0.2)
