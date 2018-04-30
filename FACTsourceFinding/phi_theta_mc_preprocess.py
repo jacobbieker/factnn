@@ -27,15 +27,14 @@ if architecture == 'manjaro':
     thesis_base = '/run/media/jacob/SSD/Development/thesis'
 else:
     base_dir = '/projects/sventeklab/jbieker'
-    thesis_base = base_dir + '/git-thesis/thesis'
+    thesis_base = base_dir + '/thesis'
 
-path_raw_mc_proton_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/proton/"
-path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/gamma/"
+path_raw_mc_proton_folder = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/phs/sim/proton/"
+path_raw_mc_gamma_folder = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/phs/sim/gamma/"
 #path_store_mapping_dict = sys.argv[2]
-path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
+path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = base_dir + "/Rebinned_5_MC_Gamma_1_Diffuse_Images.h5"
-path_mc_proton_images = base_dir + "/Rebinned_5_MC_Proton_1_Diffuse_Images.h5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 
 def getMetadata(path_folder):
     '''
@@ -121,17 +120,17 @@ row_count = az_deg.shape[0]
 
 with h5py.File(path_mc_diffuse_images, 'w') as hdf:
     maxshape_pic = (None,) + pic.shape[1:]
-    dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
+    dset_pic = hdf.create_dataset('GammaImage', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
     maxshape_run = (None,) + energy.shape[1:]
-    dset_run = hdf.create_dataset('Energy', shape=energy.shape, maxshape=maxshape_run, chunks=energy.shape, dtype=energy.dtype)
+    dset_run = hdf.create_dataset('GammaEnergy', shape=energy.shape, maxshape=maxshape_run, chunks=energy.shape, dtype=energy.dtype)
     maxshape_event = (None,) + zd_deg.shape[1:]
-    dset_zd_deg = hdf.create_dataset('Zd_deg', shape=zd_deg.shape, maxshape=maxshape_event, chunks=zd_deg.shape, dtype=zd_deg.dtype)
+    dset_zd_deg = hdf.create_dataset('GammaZd_deg', shape=zd_deg.shape, maxshape=maxshape_event, chunks=zd_deg.shape, dtype=zd_deg.dtype)
     maxshape_az_deg = (None,) + az_deg.shape[1:]
-    dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
+    dset_az_deg = hdf.create_dataset('GammaAz_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
     maxshape_phi = (None,) + phi.shape[1:]
-    dset_phi = hdf.create_dataset('Phi', shape=phi.shape, maxshape=maxshape_phi, chunks=phi.shape, dtype=phi.dtype)
+    dset_phi = hdf.create_dataset('GammaPhi', shape=phi.shape, maxshape=maxshape_phi, chunks=phi.shape, dtype=phi.dtype)
     maxshape_theta = (None,) + theta.shape[1:]
-    dset_theta = hdf.create_dataset('Theta', shape=theta.shape, maxshape=maxshape_theta, chunks=theta.shape, dtype=theta.dtype)
+    dset_theta = hdf.create_dataset('GammaTheta', shape=theta.shape, maxshape=maxshape_theta, chunks=theta.shape, dtype=theta.dtype)
 
     dset_pic[:] = pic
     dset_run[:] = energy
@@ -164,7 +163,7 @@ batch = next(gen)
 pic, energy, zd_deg, az_deg, phi, theta = batchFormatter(batch)
 row_count = az_deg.shape[0]
 
-with h5py.File(path_mc_proton_images, 'w') as hdf:
+with h5py.File(path_mc_diffuse_images, 'a') as hdf:
     maxshape_pic = (None,) + pic.shape[1:]
     dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
     maxshape_run = (None,) + energy.shape[1:]
