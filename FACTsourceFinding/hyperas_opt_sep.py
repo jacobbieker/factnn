@@ -120,7 +120,7 @@ def create_model(x_train, x_labels, y, y_labels):
                   metrics=['acc'])
 
     model.fit(x_train, x_labels,
-              batch_size={{choice([16, 128])}},
+              batch_size={{choice([64, 128])}},
               epochs=20,
               verbose=2,
               validation_data=(y, y_labels))
