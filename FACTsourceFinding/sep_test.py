@@ -20,12 +20,12 @@ else:
 
 # Hyperparameters
 
-batch_sizes = [512, 16, 256, 64, 1024]
+batch_sizes = [256, 16, 512, 64, 1024]
 patch_sizes = [(3, 3), (5, 5)]
 dropout_layers = [0.0, 0.9, 0.2, 0.5]
 num_conv_layers = [0, 1, 4, 3, 2, 5]
 num_dense_layers = [0, 1, 4, 3, 2]
-num_conv_neurons = [64, 32, 16, 128]
+num_conv_neurons = [32, 64, 16, 128]
 num_dense_neuron = [64, 512, 256, 128]
 num_pooling_layers = [0, 1]
 number_of_training = 1000000 * (0.6)
@@ -76,9 +76,9 @@ for batch_size in batch_sizes:
         for dropout_layer in dropout_layers:
             for dense_neuron in num_dense_neuron:
                 for conv_neurons in num_conv_neurons:
-                    for num_pooling_layer in num_pooling_layers:
+                    for num_dense in num_dense_layers:
                         for num_conv in num_conv_layers:
-                            for num_dense in num_dense_layers:
+                            for num_pooling_layer in num_pooling_layers:
                                 try:
                                     model_name = base_dir + "/Models/MC_Sep_b" + str(batch_size) + "_p_" + str(
                                         patch_size) + "_drop_" + str(dropout_layer) + "_numDense_" + str(num_dense) \
@@ -166,4 +166,6 @@ for batch_size in batch_sizes:
 
                                 except Exception as e:
                                     print(e)
+                                    K.clear_session()
+                                    tf.reset_default_graph()
                                     pass
