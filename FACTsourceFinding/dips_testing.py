@@ -30,7 +30,7 @@ patch_sizes = [(3, 3), (5, 5)]
 dropout_layers = [0.0, 0.9, 0.2, 0.7, 0.5]
 num_conv_layers = [5,1,4,3,2,5]
 num_dense_layers = [4,1,4,3,2]
-num_conv_neurons = [32, 64, 32, 16, 128]
+num_conv_neurons = [64, 32, 32, 16, 128]
 num_dense_neuron = [128, 512, 256, 128]
 num_pooling_layers = [0,1]
 number_of_training = 100000*(0.6)
@@ -61,13 +61,9 @@ with h5py.File(path_mc_images, 'r') as f:
         az=images_source_az, zd=images_source_zd,
         az_pointing=images_point_az, zd_pointing=images_point_zd
     )
-    del images_point_zd
-    del images_point_az
-    del images_source_zd
-    del images_source_az
 
     y = images
-    y_label = np.asarray([source_x, source_y]).reshape( -1, 2)
+    y_label = np.asarray([images_source_az, images_source_zd]).reshape(-1, 2)
     print(y_label.shape)
     print("Finished getting data")
 
@@ -112,13 +108,10 @@ for batch_size in batch_sizes:
                                                                 az=images_source_az, zd=images_source_zd,
                                                                 az_pointing=images_point_az, zd_pointing=images_point_zd
                                                             )
-                                                            del images_point_zd
-                                                            del images_point_az
-                                                            del images_source_zd
-                                                            del images_source_az
 
                                                             x = images
-                                                            x_label = np.asarray([source_x, source_y]).reshape(( -1, 2))
+                                                            x_label = np.asarray([images_source_az, images_source_zd]).reshape((-1, 2))
+                                                            #print(x_label)
                                                             batch_num += 1
                                                             yield (x, x_label)
 

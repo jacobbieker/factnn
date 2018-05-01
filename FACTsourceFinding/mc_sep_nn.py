@@ -80,7 +80,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                                                                save_weights_only=False,
                                                                mode='auto', period=1)
             early_stop = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0,
-                                                       patience=10 * frac_per_epoch,
+                                                       patience=15 * frac_per_epoch,
                                                        verbose=0, mode='auto')
 
             def batchYielder():
