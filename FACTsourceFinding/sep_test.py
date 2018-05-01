@@ -28,13 +28,13 @@ num_dense_layers = [0, 1, 4, 3, 2]
 num_conv_neurons = [32, 64, 16, 128]
 num_dense_neuron = [64, 512, 256, 128]
 num_pooling_layers = [0, 1]
-number_of_training = 1000000 * (0.6)
-number_of_testing = 1000000 * (0.2)
-number_validate = 1000000 * (0.2)
+number_of_training = 100000 * (0.6)
+number_of_testing = 100000 * (0.2)
+number_validate = 100000 * (0.2)
 num_labels = 2
 
 # Total fraction to use per epoch of training data, need inverse
-frac_per_epoch = 5
+frac_per_epoch = 1
 num_epochs = 100*frac_per_epoch
 
 path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Phi_Images.h5"
@@ -101,17 +101,26 @@ for batch_size in batch_sizes:
                                             with h5py.File(path_mc_images, 'r') as f:
                                                 items = len(f['Image'])
                                                 items = items - (hadron_anteil * number_of_testing) - (hadron_anteil  * number_validate)
+
+                                                #Now make sure the amount of items is within
                                                 # Shuffle every time it starts from the beginning again
                                                 #rng_state = np.random.get_state()
                                                 image = f['GammaImage'][0:int(np.floor((gamma_anteil * number_of_training)))]
                                                 #np.random.set_state(rng_state)
                                                 image_false = f['Image'][0:int(np.floor((hadron_anteil * number_of_training)))]
+
+                                                if items > len(image_false):
+                                                    items = len(image_false)
                                                 while True:
                                                     # Get some truth data for now, just use Crab images
                                                     batch_num = 0
 
                                                     np.random.shuffle(image)
                                                     np.random.shuffle(image_false)
+
+                                                    print(len(image))
+                                                    print(len(image_false))
+                                                    print(items)
 
                                                     # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
                                                     while (hadron_anteil * batch_size) * (batch_num + 1) < items:
@@ -127,6 +136,8 @@ for batch_size in batch_sizes:
                                                         x_label = validation_labels
                                                         # print("Finished getting data")
                                                         batch_num += 1
+                                                        #print(len(x))
+                                                        #print(len(x_label))
                                                         yield (x, x_label)
                                         # Make the model
                                         model = Sequential()

@@ -1,3 +1,8 @@
+import os
+# to force on CPU
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 from keras import backend as K
 import h5py
 from fact.io import read_h5py
@@ -23,14 +28,14 @@ else:
 batch_sizes = [512, 16, 256, 64]
 patch_sizes = [(3, 3), (5, 5)]
 dropout_layers = [0.0, 0.9, 0.2, 0.7, 0.5]
-num_conv_layers = [0,1,4,3,2,5]
-num_dense_layers = [0,1,4,3,2]
-num_conv_neurons = [8, 64, 32, 16, 128]
-num_dense_neuron = [64, 512, 256, 128]
+num_conv_layers = [5,1,4,3,2,5]
+num_dense_layers = [4,1,4,3,2]
+num_conv_neurons = [32, 64, 32, 16, 128]
+num_dense_neuron = [128, 512, 256, 128]
 num_pooling_layers = [0,1]
-number_of_training = 850000*(0.6)
-number_of_testing = 850000*(0.2)
-number_validate = 850000*(0.2)
+number_of_training = 100000*(0.6)
+number_of_testing = 100000*(0.2)
+number_validate = 100000*(0.2)
 optimizer = 'adam'
 activations = ['relu', 'linear'] # Only for the last layer
 epoch = 100
@@ -62,7 +67,7 @@ with h5py.File(path_mc_images, 'r') as f:
     del images_source_az
 
     y = images
-    y_label = np.asarray([source_x, source_y]).reshape(1, 1, -1, 2)
+    y_label = np.asarray([source_x, source_y]).reshape( -1, 2)
     print(y_label.shape)
     print("Finished getting data")
 
@@ -78,7 +83,7 @@ for batch_size in batch_sizes:
                                     #try:
                                         model_name = base_dir + "/Models/MC_dispPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                                                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_act_" + \
-                                                     str(activation) + "_denseN_" + str(dense_neuron) + "_convN_" + \
+                                                     str(activation) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                                                      str(conv_neurons) + "_opt_" + str(optimizer) + ".h5"
                                         if not os.path.isfile(model_name):
                                             model_checkpoint = keras.callbacks.ModelCheckpoint(model_name, monitor='val_loss', verbose=0,
@@ -90,6 +95,8 @@ for batch_size in batch_sizes:
                                                 with h5py.File(path_mc_images, 'r') as f:
                                                     items = list(f.items())[1][1].shape[0]
                                                     items = items - number_of_testing
+                                                    if items > number_of_training:
+                                                        items = number_of_training
                                                     while True:
                                                         batch_num = 0
                                                         # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
@@ -99,7 +106,7 @@ for batch_size in batch_sizes:
                                                             images = f['Image'][batch_num*batch_size:(batch_num+1)*batch_size]
                                                             images_source_zd = f['Theta'][batch_num*batch_size:(batch_num+1)*batch_size]
                                                             images_source_az = f['Phi'][batch_num*batch_size:(batch_num+1)*batch_size]
-                                                            images_point_az = f['Az_deg'][-batch_num*batch_size:(batch_num+1)*batch_size]
+                                                            images_point_az = f['Az_deg'][batch_num*batch_size:(batch_num+1)*batch_size]
                                                             images_point_zd = f['Zd_deg'][batch_num*batch_size:(batch_num+1)*batch_size]
                                                             source_x, source_y = horizontal_to_camera(
                                                                 az=images_source_az, zd=images_source_zd,
@@ -111,7 +118,7 @@ for batch_size in batch_sizes:
                                                             del images_source_az
 
                                                             x = images
-                                                            x_label = np.asarray([source_x, source_y]).reshape((1, 1, -1, 2))
+                                                            x_label = np.asarray([source_x, source_y]).reshape(( -1, 2))
                                                             batch_num += 1
                                                             yield (x, x_label)
 
@@ -130,7 +137,7 @@ for batch_size in batch_sizes:
                                                     model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
                                                 model.add(Dropout(dropout_layer))
 
-                                            #model.add(Flatten())
+                                            model.add(Flatten())
 
                                             # Now do the dense layers
                                             for i in range(num_dense):
