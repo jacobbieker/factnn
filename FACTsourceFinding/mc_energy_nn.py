@@ -35,13 +35,13 @@ num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 100000*(0.6)
-number_of_testing = 100000*(0.2)
-number_validate = 100000*(0.2)
+number_of_training = 300000*(0.6)
+number_of_testing = 300000*(0.2)
+number_validate = 300000*(0.2)
 optimizer = 'adam'
 epoch = 100
 
-path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Gamma_1_Diffuse_Images.h5"
+path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Energy_Images.h5"
 
 def metaYielder():
     gamma_anteil = 1
@@ -63,13 +63,14 @@ with h5py.File(path_mc_images, 'r') as f:
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons):
     try:
-        model_name = base_dir + "/Models/Energy/MC_energyPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+        model_base = base_dir + "/Models/Energy/"
+        model_name = "MC_energyPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
-        if not os.path.isfile(model_name + ".csv"):
-            csv_logger = keras.callbacks.CSVLogger(model_name + ".csv")
+        if not os.path.isfile(model_base + model_name + ".csv"):
+            csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
             reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=0.001)
-            model_checkpoint = keras.callbacks.ModelCheckpoint(model_name + "_{val_loss:.3f}.h5", monitor='val_loss', verbose=0,
+            model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_loss:.3f}_" + model_name + ".h5", monitor='val_loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
             early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=15, verbose=0, mode='auto')
 
