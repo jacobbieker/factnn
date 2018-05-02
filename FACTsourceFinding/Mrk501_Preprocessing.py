@@ -46,7 +46,6 @@ def batchYielder():
     # Iterate over every file in the subdirs and check if it has the right file extension
     file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(os.path.expanduser(path_raw_crab_folder))
                   for file in fileName if '.json' in file]
-    file_paths = file_paths
     latest_paths = []
     for path in file_paths:
         if any(number in path for number in list_events):
@@ -57,8 +56,7 @@ def batchYielder():
     with open(path_store_runlist, "wb") as path_store:
         pickle.dump(latest_paths, path_store)
 
-    print(paths)
-
+    print(latest_paths)
     # Load mapping-dict to switch from hexagonal to matrix
     id_position = pickle.load(open(path_store_mapping_dict, "rb"))
 

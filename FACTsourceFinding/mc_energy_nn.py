@@ -69,7 +69,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
-            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=0.001)
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_loss:.3f}_" + model_name + ".h5", monitor='val_loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
             early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=15, verbose=0, mode='auto')
@@ -78,23 +78,37 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                 gamma_anteil, gamma_count = metaYielder()
                 with h5py.File(path_mc_images, 'r') as f:
                     items = list(f.items())[1][1].shape[0]
-                    items = items - number_of_testing
+                    items = items - number_of_testing - number_validate
+                    # Number of times number of training fits within the total shape
+                    times_train_in_items = int(np.floor(items / number_of_training))
                     if items > number_of_training:
                         items = number_of_training
+                    section = 0
                     while True:
                         batch_num = 0
+                        section = section % times_train_in_items
+                        offset = section * items
+                        image = f['Image'][offset:int(offset + items)]
+                        image_energy = f['Energy'][offset:int(offset + items)]
+                        rng_state = np.random.get_state()
+                        np.random.shuffle(image)
+                        np.random.set_state(rng_state)
+                        np.random.shuffle(image_energy)
                         # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
                         while (batch_size) * (batch_num + 1) < items:
-                            gamma_anteil, gamma_count = metaYielder()
                             # Get some truth data for now, just use Crab images
-                            images = f['Image'][batch_num*batch_size:(batch_num+1)*batch_size]
-                            images_energy = f['Energy'][batch_num*batch_size:(batch_num+1)*batch_size]
-
+                            images = image[batch_num*batch_size:(batch_num+1)*batch_size]
+                            images_energy = image_energy[batch_num*batch_size:(batch_num+1)*batch_size]
+                            rng_state = np.random.get_state()
+                            np.random.shuffle(images)
+                            np.random.set_state(rng_state)
+                            np.random.shuffle(images_energy)
                             x = images
                             x_label = np.asarray(images_energy).reshape((-1, 1))
                             #print(x_label)
                             batch_num += 1
                             yield (x, x_label)
+                        section += 1
 
             gamma_anteil, gamma_count = metaYielder()
             # Make the model
