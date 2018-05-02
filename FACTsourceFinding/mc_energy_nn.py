@@ -41,7 +41,7 @@ number_validate = 300000*(0.2)
 optimizer = 'adam'
 epoch = 100
 
-path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Energy_Images.h5"
+path_mc_images = base_dir + "/Rebinned_5_MC_Energy_Images.h5"
 
 def metaYielder():
     gamma_anteil = 1
@@ -87,7 +87,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     while True:
                         batch_num = 0
                         section = section % times_train_in_items
-                        offset = section * items
+                        offset = int(section * items)
                         image = f['Image'][offset:int(offset + items)]
                         image_energy = f['Energy'][offset:int(offset + items)]
                         rng_state = np.random.get_state()
