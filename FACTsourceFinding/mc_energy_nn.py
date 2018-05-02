@@ -54,17 +54,9 @@ with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
     # Get some truth data for now, just use Crab images
     images = f['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_zd = f['Theta'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_az = f['Phi'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    source_x, source_y = horizontal_to_camera(
-        az=images_source_az, zd=images_source_zd,
-        az_pointing=images_point_az, zd_pointing=images_point_zd
-    )
-
+    images_energy = f['Energy'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     y = images
-    y_label = np.asarray([images_source_az, images_source_zd]).reshape(-1, 2)
+    y_label = np.asarray(images_energy).reshape(-1, 1)
     print(y_label.shape)
     print("Finished getting data")
 
@@ -95,17 +87,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                             gamma_anteil, gamma_count = metaYielder()
                             # Get some truth data for now, just use Crab images
                             images = f['Image'][batch_num*batch_size:(batch_num+1)*batch_size]
-                            images_source_zd = f['Theta'][batch_num*batch_size:(batch_num+1)*batch_size]
-                            images_source_az = f['Phi'][batch_num*batch_size:(batch_num+1)*batch_size]
-                            images_point_az = f['Az_deg'][batch_num*batch_size:(batch_num+1)*batch_size]
-                            images_point_zd = f['Zd_deg'][batch_num*batch_size:(batch_num+1)*batch_size]
-                            source_x, source_y = horizontal_to_camera(
-                                az=images_source_az, zd=images_source_zd,
-                                az_pointing=images_point_az, zd_pointing=images_point_zd
-                            )
+                            images_energy = f['Energy'][batch_num*batch_size:(batch_num+1)*batch_size]
 
                             x = images
-                            x_label = np.asarray([images_source_az, images_source_zd]).reshape((-1, 2))
+                            x_label = np.asarray(images_energy).reshape((-1, 1))
                             #print(x_label)
                             batch_num += 1
                             yield (x, x_label)
@@ -134,8 +119,8 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
             # Final Dense layer
             # 2 so have one for x and one for y
-            model.add(Dense(2, activation='relu'))
-            model.compile(optimizer=optimizer, loss='mse', metrics=['mse'])
+            model.add(Dense(1, activation='relu'))
+            model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
                                 verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 
