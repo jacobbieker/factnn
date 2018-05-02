@@ -71,13 +71,14 @@ with h5py.File(path_mc_images, 'r') as f:
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons):
     try:
-        model_name = base_dir + "/Models/Disp/MC_dispPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+        model_base = base_dir + "/Models/Disp/"
+        model_name = "MC_dispPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
-        if not os.path.isfile(model_name + ".csv"):
-            csv_logger = keras.callbacks.CSVLogger(model_name + ".csv")
+        if not os.path.isfile(model_base + model_name + ".csv"):
+            csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
             reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=0.001)
-            model_checkpoint = keras.callbacks.ModelCheckpoint(model_name + "_{val_loss:.3f}.h5", monitor='val_loss', verbose=0,
+            model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_loss:.3f}_" + model_name + ".h5", monitor='val_loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
             early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=15, verbose=0, mode='auto')
 
@@ -135,7 +136,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # Final Dense layer
             # 2 so have one for x and one for y
             model.add(Dense(2, activation='relu'))
-            model.compile(optimizer=optimizer, loss='mse', metrics=['mse'])
+            model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
                                 verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 

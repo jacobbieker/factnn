@@ -68,14 +68,15 @@ with h5py.File(path_mc_images, 'r') as f:
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch):
     try:
-        model_name = base_dir + "/Models/Sep/MC_Sep_b" + str(batch_size) + "_p_" + str(
+        model_base = base_dir + "/Models/Sep/"
+        model_name = "MC_Sep_b" + str(batch_size) + "_p_" + str(
             patch_size) + "_drop_" + str(dropout_layer) + "_numDense_" + str(num_dense) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + \
                      "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons)
-        if not os.path.isfile(model_name + ".csv"):
-            csv_logger = keras.callbacks.CSVLogger(model_name + ".csv")
+        if not os.path.isfile(model_base + model_name + ".csv"):
+            csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
             reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.1, patience=5, min_lr=0.001)
-            model_checkpoint = keras.callbacks.ModelCheckpoint(model_name + "_{val_acc:.3f}.h5",
+            model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_acc:.3f}_" + model_name + ".h5",
                                                                monitor='val_acc',
                                                                verbose=0,
                                                                save_best_only=True,

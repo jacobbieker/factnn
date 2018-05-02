@@ -38,12 +38,10 @@ def batchYielder():
                                                                 "pointing_position_zd"])
     list_paths = diffuse_df["night"].values
     list_paths2 = diffuse_df['run_id'].values
-    gustav_paths = []
-    for num in list_paths:
-        gustav_paths.append((str(num)))
-    werner_paths = []
-    for num in list_paths2:
-        werner_paths.append((str(num)))
+    list_events = []
+    for index, night in enumerate(list_paths):
+        # Night and run_id are in same index, so make them pay
+        list_events.append(str(night) + "_" + str(list_paths2[index]))
 
     # Iterate over every file in the subdirs and check if it has the right file extension
     file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(os.path.expanduser(path_raw_crab_folder))
@@ -51,10 +49,9 @@ def batchYielder():
     file_paths = file_paths
     latest_paths = []
     for path in file_paths:
-        if any(number in path for number in gustav_paths):
-            if any(number in path for number in werner_paths):
-                print(path)
-                latest_paths.append(path)
+        if any(number in path for number in list_events):
+            print(path)
+            latest_paths.append(path)
     #Create paths to the runs to be processed
 
     with open(path_store_runlist, "wb") as path_store:

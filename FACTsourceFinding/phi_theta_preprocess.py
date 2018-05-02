@@ -34,8 +34,8 @@ path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/gamma/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = base_dir + "/Rebinned_5_MC_Gamma_1_Diffuse_Images.h5"
-path_mc_proton_images = base_dir + "/Rebinned_5_MC_Proton_1_Diffuse_Images.h5"
+path_mc_diffuse_images = base_dir + "/Rebinned_5_MC_Energy_Images.h5"
+path_mc_proton_images = base_dir + "/Rebinned_5_MC_Energy_Images.h5"
 
 def getMetadata(path_folder):
     '''
@@ -164,7 +164,7 @@ batch = next(gen)
 pic, energy, zd_deg, az_deg, phi, theta = batchFormatter(batch)
 row_count = az_deg.shape[0]
 
-with h5py.File(path_mc_proton_images, 'w') as hdf:
+with h5py.File(path_mc_proton_images, 'a') as hdf:
     maxshape_pic = (None,) + pic.shape[1:]
     dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
     maxshape_run = (None,) + energy.shape[1:]
