@@ -72,7 +72,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             patch_size) + "_drop_" + str(dropout_layer) + "_numDense_" + str(num_dense) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + \
                      "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons)
-        if not os.path.isfile(model_name + ".h5"):
+        if not os.path.isfile(model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_name + ".csv")
             reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.1, patience=5, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_name + "_{val_acc:.3f}.h5",
