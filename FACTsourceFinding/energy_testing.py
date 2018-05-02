@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from keras import backend as K
 import h5py
@@ -25,7 +25,7 @@ else:
 
 # Hyperparameters
 
-batch_sizes = [512, 16, 256, 64]
+batch_sizes = [64, 16, 256, 64]
 patch_sizes = [(3, 3), (5, 5)]
 dropout_layers = [0.0, 0.9, 0.2, 0.7, 0.5]
 num_conv_layers = [5,1,4,3,2,5]
@@ -33,9 +33,9 @@ num_dense_layers = [4,1,4,3,2]
 num_conv_neurons = [64, 32, 32, 16, 128]
 num_dense_neuron = [128, 512, 256, 128]
 num_pooling_layers = [0,1]
-number_of_training = 100000*(0.6)
-number_of_testing = 100000*(0.2)
-number_validate = 100000*(0.2)
+number_of_training = 850000*(0.8)
+number_of_testing = 850000*(0.2)
+number_validate = 100000*(0)
 optimizer = 'adam'
 activations = ['relu', 'linear'] # Only for the last layer
 epoch = 100
@@ -69,12 +69,13 @@ for batch_size in batch_sizes:
                             for dense_neuron in num_dense_neuron:
                                 for activation in activations:
                                     #try:
-                                    model_name = base_dir + "/Models/MC_dispPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+                                    model_name = base_dir + "/Models/MC_energyPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                                                  + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_act_" + \
                                                  str(activation) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
-                                                 str(conv_neurons) + "_opt_" + str(optimizer) + ".h5"
-                                    if not os.path.isfile(model_name):
-                                        model_checkpoint = keras.callbacks.ModelCheckpoint(model_name, monitor='val_loss', verbose=0,
+                                                 str(conv_neurons) + "_opt_" + str(optimizer)
+                                    if not os.path.isfile(model_name + ".h5"):
+                                        csv_logger = keras.callbacks.CSVLogger(model_name + ".csv")
+                                        model_checkpoint = keras.callbacks.ModelCheckpoint(model_name + ".h5", monitor='val_loss', verbose=0,
                                                                                            save_best_only=True, save_weights_only=False, mode='auto', period=1)
                                         early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=0, mode='auto')
 
@@ -126,7 +127,7 @@ for batch_size in batch_sizes:
                                         model.add(Dense(1, activation=activation))
                                         model.compile(optimizer=optimizer, loss='mse', metrics=['mse'])
                                         model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
-                                                            verbose=2, validation_data=(y, y_label), callbacks=[early_stop, model_checkpoint])
+                                                            verbose=2, validation_data=(y, y_label), callbacks=[early_stop, model_checkpoint, csv_logger])
 
                                 #except Exception as e:
                                 #    print(e)
