@@ -74,7 +74,8 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                      "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons)
         if not os.path.isfile(model_name + ".h5"):
             csv_logger = keras.callbacks.CSVLogger(model_name + ".csv")
-            model_checkpoint = keras.callbacks.ModelCheckpoint(model_name + ".h5",
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.1, patience=5, min_lr=0.001)
+            model_checkpoint = keras.callbacks.ModelCheckpoint(model_name + "_{val_acc:.3f}.h5",
                                                                monitor='val_acc',
                                                                verbose=0,
                                                                save_best_only=True,
@@ -152,7 +153,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                 np.floor(((number_of_training / (frac_per_epoch * batch_size)))))
                                 , epochs=num_epochs,
                                 verbose=2, validation_data=(y, y_label),
-                                callbacks=[early_stop, csv_logger, model_checkpoint])
+                                callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
             K.clear_session()
             tf.reset_default_graph()
 

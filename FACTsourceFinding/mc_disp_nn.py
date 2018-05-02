@@ -76,9 +76,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_name + ".h5"):
             csv_logger = keras.callbacks.CSVLogger(model_name + ".csv")
-            model_checkpoint = keras.callbacks.ModelCheckpoint(model_name + ".h5", monitor='val_loss', verbose=0,
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=0.001)
+            model_checkpoint = keras.callbacks.ModelCheckpoint(model_name + "_{val_loss:.3f}.h5", monitor='val_loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
-            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=0, mode='auto')
+            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=15, verbose=0, mode='auto')
 
             def batchYielder():
                 gamma_anteil, gamma_count = metaYielder()
@@ -136,7 +137,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model.add(Dense(2, activation='relu'))
             model.compile(optimizer=optimizer, loss='mse', metrics=['mse'])
             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
-                                verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, model_checkpoint])
+                                verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 
             K.clear_session()
             tf.reset_default_graph()
