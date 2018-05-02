@@ -1,3 +1,8 @@
+import os
+# to force on CPU
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 from keras import backend as K
 import h5py
 from fact.io import read_h5py
@@ -75,7 +80,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                      "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
-            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.1, patience=5, min_lr=0.001)
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.1, patience=10, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_acc:.3f}_" + model_name + ".h5",
                                                                monitor='val_acc',
                                                                verbose=0,
@@ -93,15 +98,18 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     items = items - (hadron_anteil * number_of_testing) - (hadron_anteil  * number_validate)
                     # Shuffle every time it starts from the beginning again
                     #rng_state = np.random.get_state()
-                    image = f['GammaImage'][0:int(np.floor((gamma_anteil * number_of_training)))]
-                    #np.random.set_state(rng_state)
-                    image_false = f['Image'][0:int(np.floor((hadron_anteil * number_of_training)))]
-                    if items > len(image_false):
-                        items = len(image_false)
+                    times_train_in_items = int(np.floor(items / number_of_training))
+                    if items > (hadron_anteil * number_of_training):
+                        items = int(np.floor((hadron_anteil * number_of_training)))
+                    section = 0
                     while True:
                         # Get some truth data for now, just use Crab images
                         batch_num = 0
-
+                        section = section % times_train_in_items
+                        offset = section * items
+                        image = f['GammaImage'][offset:int(offset + items)]
+                        #np.random.set_state(rng_state)
+                        image_false = f['Image'][offset:int(offset + items)]
                         np.random.shuffle(image)
                         np.random.shuffle(image_false)
 
@@ -120,6 +128,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                             # print("Finished getting data")
                             batch_num += 1
                             yield (x, x_label)
+                        section += 1
             # Make the model
             model = Sequential()
 
