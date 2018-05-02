@@ -74,7 +74,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         model_name = base_dir + "/Models/Disp/MC_dispPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
-        if not os.path.isfile(model_name + ".h5"):
+        if not os.path.isfile(model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_name + ".csv")
             reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_name + "_{val_loss:.3f}.h5", monitor='val_loss', verbose=0,
