@@ -80,9 +80,10 @@ for batch_size in batch_sizes:
                                         model_name = base_dir + "/Models/MC_dispPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                                                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_act_" + \
                                                      str(activation) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
-                                                     str(conv_neurons) + "_opt_" + str(optimizer) + ".h5"
-                                        if not os.path.isfile(model_name):
-                                            model_checkpoint = keras.callbacks.ModelCheckpoint(model_name, monitor='val_loss', verbose=0,
+                                                     str(conv_neurons) + "_opt_" + str(optimizer)
+                                        if not os.path.isfile(model_name + ".h5"):
+                                            csv_logger = keras.callbacks.CSVLogger(model_name + ".csv")
+                                            model_checkpoint = keras.callbacks.ModelCheckpoint(model_name + ".h5", monitor='val_loss', verbose=0,
                                                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
                                             early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=0, mode='auto')
 
@@ -142,7 +143,7 @@ for batch_size in batch_sizes:
                                             model.add(Dense(2, activation=activation))
                                             model.compile(optimizer=optimizer, loss='mse', metrics=['mse'])
                                             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
-                                                                verbose=2, validation_data=(y, y_label), callbacks=[early_stop, model_checkpoint])
+                                                                verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, model_checkpoint])
 
                                     #except Exception as e:
                                     #    print(e)
