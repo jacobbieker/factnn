@@ -27,7 +27,7 @@ else:
 # Hyperparameters
 
 batch_sizes = [16, 64, 256]
-patch_sizes = [(2, 2), (3, 3), (4, 4), (5, 5)]
+patch_sizes = [(2, 2), (3, 3), (5, 5), (4, 4)]
 dropout_layers = [0.0, 1.0]
 num_conv_layers = [0, 6]
 num_dense_layers = [0, 6]
