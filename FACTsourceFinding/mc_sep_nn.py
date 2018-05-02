@@ -165,7 +165,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
 
 batch_sizes = [16,256]
-patch_sizes = [(2, 2), (3, 3), (4, 4), (5, 5)]
+patch_sizes = [(2, 2), (3, 3), (5, 5), (4, 4)]
 dropout_layers = [0.0, 1.0]
 num_conv_layers = [0, 6]
 num_dense_layers = [0, 6]
@@ -231,7 +231,7 @@ else:
         batch_size = np.random.randint(batch_sizes[0], batch_sizes[1])
         num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
         num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
-        patch_size = patch_sizes[1]
+        patch_size = patch_sizes[np.random.randint(0, 3)]
         num_pooling_layer = np.random.randint(num_pooling_layers[0], num_pooling_layers[1])
         dense_neuron = np.random.randint(num_dense_neuron[0], num_dense_neuron[1])
         conv_neurons = np.random.randint(num_conv_neurons[0], num_conv_neurons[1])
