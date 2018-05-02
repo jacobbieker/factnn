@@ -80,7 +80,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                      "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
-            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.1, patience=10, min_lr=0.001)
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.1, patience=15, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_acc:.3f}_" + model_name + ".h5",
                                                                monitor='val_acc',
                                                                verbose=0,
@@ -88,7 +88,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                                                                save_weights_only=False,
                                                                mode='auto', period=1)
             early_stop = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0,
-                                                       patience=15 * frac_per_epoch,
+                                                       patience=20 * frac_per_epoch,
                                                        verbose=0, mode='auto')
 
             def batchYielder():
@@ -177,11 +177,11 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 batch_sizes = [16,256]
 patch_sizes = [(2, 2), (3, 3), (5, 5), (4, 4)]
 dropout_layers = [0.0, 1.0]
-num_conv_layers = [0, 6]
-num_dense_layers = [0, 6]
+num_conv_layers = [3, 6]
+num_dense_layers = [1, 6]
 num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
-num_pooling_layers = [0, 2]
+num_pooling_layers = [1, 2]
 num_runs = 500
 
 if architecture == "intel":
