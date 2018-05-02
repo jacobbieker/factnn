@@ -82,7 +82,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                 gamma_anteil, gamma_count = metaYielder()
                 with h5py.File(path_mc_images, 'r') as f:
                     items = list(f.items())[1][1].shape[0]
-                    items = items - number_of_testing
+                    items = items - number_of_testing - number_validate
                     times_train_in_items = int(np.floor(items / number_of_training))
                     length_dataset = len(f['Image'])
                     if items > number_of_training:
