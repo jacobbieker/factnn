@@ -77,7 +77,7 @@ for batch_size in batch_sizes:
                             for dense_neuron in num_dense_neuron:
                                 for activation in activations:
                                     #try:
-                                        model_name = base_dir + "/Models/MC_dispPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+                                        model_name = base_dir + "/Models/Disp/MC_dispPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                                                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_act_" + \
                                                      str(activation) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                                                      str(conv_neurons) + "_opt_" + str(optimizer)
@@ -141,7 +141,7 @@ for batch_size in batch_sizes:
                                             # Final Dense layer
                                             # 2 so have one for x and one for y
                                             model.add(Dense(2, activation=activation))
-                                            model.compile(optimizer=optimizer, loss='mse', metrics=['mse'])
+                                            model.compile(optimizer=optimizer, loss='mae', metrics=['mse'])
                                             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
                                                                 verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, model_checkpoint])
 
