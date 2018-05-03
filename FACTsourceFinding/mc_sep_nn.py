@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from keras import backend as K
 import h5py
@@ -16,7 +16,7 @@ from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, B
 
 architecture = 'manjaro'
 
-if architecture == 'manjaro':
+if architecture == 'manjar':
     base_dir = '/run/media/jacob/WDRed8Tb1'
     thesis_base = '/run/media/jacob/SSD/Development/thesis'
 else:
@@ -175,12 +175,12 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
 
 batch_sizes = [16,256]
-patch_sizes = [(2, 2), (3, 3), (5, 5), (4, 4)]
+patch_sizes = [(3, 3), (5, 5), (4, 4)]
 dropout_layers = [0.0, 1.0]
 num_conv_layers = [3, 6]
 num_dense_layers = [1, 6]
-num_conv_neurons = [8,128]
-num_dense_neuron = [8,256]
+num_conv_neurons = [27,128]
+num_dense_neuron = [27,256]
 num_pooling_layers = [1, 2]
 num_runs = 500
 
@@ -241,7 +241,7 @@ else:
         batch_size = np.random.randint(batch_sizes[0], batch_sizes[1])
         num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
         num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
-        patch_size = patch_sizes[np.random.randint(0, 3)]
+        patch_size = patch_sizes[np.random.randint(0, 2)]
         num_pooling_layer = np.random.randint(num_pooling_layers[0], num_pooling_layers[1])
         dense_neuron = np.random.randint(num_dense_neuron[0], num_dense_neuron[1])
         conv_neurons = np.random.randint(num_conv_neurons[0], num_conv_neurons[1])
