@@ -130,7 +130,7 @@ row_count = trigger.shape[0]
 
 with h5py.File(path_mc_diffuse_images, 'w') as hdf:
     maxshape_pic = (None,) + pic.shape[1:]
-    dset_pic = hdf.create_dataset('GammaImage', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
+    dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
     maxshape_run = (None,) + run.shape[1:]
     dset_run = hdf.create_dataset('GammaRun', shape=run.shape, maxshape=maxshape_run, chunks=run.shape, dtype=run.dtype)
     maxshape_event = (None,) + event.shape[1:]

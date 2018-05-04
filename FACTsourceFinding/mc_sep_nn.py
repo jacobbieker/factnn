@@ -34,7 +34,7 @@ num_labels = 2
 frac_per_epoch = 1
 num_epochs = 100*frac_per_epoch
 
-path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Phi_Images.h5"
+path_mc_images = base_dir + "/Rebinned_5_MC_Phi_Images.h5"
 
 np.random.seed(0)
 

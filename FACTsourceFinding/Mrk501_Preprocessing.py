@@ -33,28 +33,32 @@ def reformat(dataset):
 
 def batchYielder():
     paths = []
-    diffuse_df = read_h5py(path_diffuse, key="events", columns=["event_num", "night", "run_id", "source_position_az",
-                                                                "source_position_zd", "pointing_position_az",
-                                                                "pointing_position_zd"])
-    list_paths = diffuse_df["night"].values
-    list_paths2 = diffuse_df['run_id'].values
-    list_events = []
-    for index, night in enumerate(list_paths):
-        # Night and run_id are in same index, so make them pay
-        list_events.append(str(night) + "_" + str(list_paths2[index]))
+    if not os.path.isfile(path_store_runlist):
+        diffuse_df = read_h5py(path_diffuse, key="events", columns=["event_num", "night", "run_id", "source_position_az",
+                                                                    "source_position_zd", "pointing_position_az",
+                                                                    "pointing_position_zd"])
+        list_paths = diffuse_df["night"].values
+        list_paths2 = diffuse_df['run_id'].values
+        list_events = []
+        for index, night in enumerate(list_paths):
+            # Night and run_id are in same index, so make them pay
+            list_events.append(str(night) + "_" + str(list_paths2[index]))
 
-    # Iterate over every file in the subdirs and check if it has the right file extension
-    file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(os.path.expanduser(path_raw_crab_folder))
-                  for file in fileName if '.json' in file]
-    latest_paths = []
-    for path in file_paths:
-        if any(number in path for number in list_events):
-            print(path)
-            latest_paths.append(path)
-    #Create paths to the runs to be processed
+        # Iterate over every file in the subdirs and check if it has the right file extension
+        file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(os.path.expanduser(path_raw_crab_folder))
+                      for file in fileName if '.json' in file]
+        latest_paths = []
+        for path in file_paths:
+            if any(number in path for number in list_events):
+                print(path)
+                latest_paths.append(path)
+        #Create paths to the runs to be processed
 
-    with open(path_store_runlist, "wb") as path_store:
-        pickle.dump(latest_paths, path_store)
+        with open(path_store_runlist, "wb") as path_store:
+            pickle.dump(latest_paths, path_store)
+    else:
+        with open(path_store_runlist, "rb") as path_store:
+            latest_paths = pickle.load(path_store)
 
     print(latest_paths)
     # Load mapping-dict to switch from hexagonal to matrix
@@ -71,35 +75,30 @@ def batchYielder():
                     run = line_data['Run']
                     event = line_data['Event']
                     night = line_data['Night']
-                    if event in diffuse_df['event_num'].values and run in diffuse_df['run_id'].values:
-                        element = diffuse_df[(diffuse_df['run_id'] == run) & (diffuse_df['event_num'] == event) & (diffuse_df['night'] == night)]
-                        if not element.empty:
-                            event_photons = line_data['PhotonArrivals_500ps']
-                            zd_deg = line_data['Zd_deg']
-                            az_deg = line_data['Az_deg']
-                            trigger = line_data['Trigger']
-                            time = line_data['UnixTime_s_us'][0] + 1e-6*line_data['UnixTime_s_us'][1]
-                            source_az_deg = element["source_position_az"].values
-                            source_zd_deg = element["source_position_zd"].values
-
-                            input_matrix = np.zeros([75,75])
-                            chid_to_pixel = id_position[0]
-                            pixel_index_to_grid = id_position[1]
-                            for index in range(1440):
-                                for element in chid_to_pixel[index]:
-                                    coords = pixel_index_to_grid[element[0]]
-                                    input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
-                            data.append([np.fliplr(np.rot90(input_matrix, 3)), night, run, event, zd_deg, az_deg,
-                                         trigger, time, source_az_deg, source_zd_deg])
+                    event_photons = line_data['PhotonArrivals_500ps']
+                    zd_deg = line_data['Zd_deg']
+                    az_deg = line_data['Az_deg']
+                    trigger = line_data['Trigger']
+                    time = line_data['UnixTime_s_us'][0] + 1e-6*line_data['UnixTime_s_us'][1]
+                    input_matrix = np.zeros([75,75])
+                    chid_to_pixel = id_position[0]
+                    pixel_index_to_grid = id_position[1]
+                    for index in range(1440):
+                        for element in chid_to_pixel[index]:
+                            coords = pixel_index_to_grid[element[0]]
+                            input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
+                    data.append([np.fliplr(np.rot90(input_matrix, 3)), night, run, event, zd_deg, az_deg,
+                                 trigger, time])
             yield data
 
-        except:
+        except Exception as e:
+            print(e)
             pass
 
 
 # Change the datatype to np-arrays
 def batchFormatter(batch):
-    pic, night, run, event, zd_deg, az_deg, trigger, time, source_az, source_zd = zip(*batch)
+    pic, night, run, event, zd_deg, az_deg, trigger, time = zip(*batch)
     pic = reformat(np.array(pic))
     night = np.array(night)
     run = np.array(run)
@@ -108,16 +107,14 @@ def batchFormatter(batch):
     az_deg = np.array(az_deg)
     trigger = np.array(trigger)
     time = np.array(time)
-    source_zd = np.array(source_zd)
-    source_az = np.array(source_az)
-    return (pic, night, run, event, zd_deg, az_deg, trigger, time, source_az, source_zd)
+    return (pic, night, run, event, zd_deg, az_deg, trigger, time)
 
 
 # Use the batchYielder to concatenate every batch and store it into a single h5 file
 
 gen = batchYielder()
 batch = next(gen)
-pic, night, run, event, zd_deg, az_deg, trigger, time, source_az, source_zd = batchFormatter(batch)
+pic, night, run, event, zd_deg, az_deg, trigger, time = batchFormatter(batch)
 row_count = trigger.shape[0]
 
 with h5py.File(path_crab_images, 'w') as hdf:
@@ -137,10 +134,6 @@ with h5py.File(path_crab_images, 'w') as hdf:
     dset_trigger = hdf.create_dataset('Trigger', shape=trigger.shape, maxshape=maxshape_trigger, chunks=trigger.shape, dtype=trigger.dtype)
     maxshape_time = (None,) + time.shape[1:]
     dset_time = hdf.create_dataset('Time', shape=time.shape, maxshape=maxshape_time, chunks=time.shape, dtype=time.dtype)
-    maxshape_Szd_deg = (None,) + source_zd.shape[1:]
-    dset_Szd_deg = hdf.create_dataset('Source_Zd_deg', shape=source_zd.shape, maxshape=maxshape_Szd_deg, chunks=source_zd.shape, dtype=source_zd.dtype)
-    maxshape_Saz_deg = (None,) + source_az.shape[1:]
-    dset_Saz_deg = hdf.create_dataset('Source_Az_deg', shape=source_az.shape, maxshape=maxshape_Saz_deg, chunks=source_az.shape, dtype=source_az.dtype)
 
     dset_pic[:] = pic
     dset_night[:] = night
@@ -150,11 +143,9 @@ with h5py.File(path_crab_images, 'w') as hdf:
     dset_az_deg[:] = az_deg
     dset_trigger[:] = trigger
     dset_time[:] = time
-    dset_Saz_deg[:] = source_az
-    dset_Szd_deg[:] = source_zd
 
     for batch in gen:
-        pic, night, run, event, zd_deg, az_deg, trigger, time, source_az, source_zd = batchFormatter(batch)
+        pic, night, run, event, zd_deg, az_deg, trigger, time = batchFormatter(batch)
 
         dset_pic.resize(row_count + trigger.shape[0], axis=0)
         dset_night.resize(row_count + trigger.shape[0], axis=0)
@@ -164,8 +155,6 @@ with h5py.File(path_crab_images, 'w') as hdf:
         dset_az_deg.resize(row_count + trigger.shape[0], axis=0)
         dset_trigger.resize(row_count + trigger.shape[0], axis=0)
         dset_time.resize(row_count + trigger.shape[0], axis=0)
-        dset_Szd_deg.resize(row_count + trigger.shape[0], axis=0)
-        dset_Saz_deg.resize(row_count + trigger.shape[0], axis=0)
 
         dset_pic[row_count:] = pic
         dset_night[row_count:] = night
@@ -175,7 +164,5 @@ with h5py.File(path_crab_images, 'w') as hdf:
         dset_az_deg[row_count:] = az_deg
         dset_trigger[row_count:] = trigger
         dset_time[row_count:] = time
-        dset_Szd_deg[row_count:] = source_zd
-        dset_Saz_deg[row_count:] = source_az
 
         row_count += trigger.shape[0]
