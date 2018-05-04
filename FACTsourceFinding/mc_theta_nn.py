@@ -29,15 +29,15 @@ else:
 batch_sizes = [16, 64, 256]
 patch_sizes = [(2, 2), (3, 3), (5, 5), (4, 4)]
 dropout_layers = [0.0, 1.0]
-num_conv_layers = [0, 6]
+num_conv_layers = [3, 6]
 num_dense_layers = [0, 6]
 num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 300000*(0.6)
-number_of_testing = 300000*(0.2)
-number_validate = 300000*(0.2)
+number_of_training = 100000*(0.6)
+number_of_testing = 100000*(0.2)
+number_validate = 100000*(0.2)
 optimizer = 'adam'
 epoch = 100
 
@@ -77,10 +77,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
-            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.1, patience=25, min_lr=0.001)
-            model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{loss:.3f}_" + model_name + ".h5", monitor='loss', verbose=0,
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=15, min_lr=0.001)
+            model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_loss:.3f}_" + model_name + ".h5", monitor='val_loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
-            early_stop = keras.callbacks.EarlyStopping(monitor='loss', min_delta=0, patience=30, verbose=0, mode='auto')
+            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=20, verbose=0, mode='auto')
 
             def batchYielder():
                 gamma_anteil, gamma_count = metaYielder()
@@ -159,7 +159,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # Final Dense layer
             # 2 so have one for x and one for y
             model.add(Dense(2, activation='relu'))
-            model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
+            model.compile(optimizer=optimizer, loss='mae', metrics=['mse'])
             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
                                 verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 

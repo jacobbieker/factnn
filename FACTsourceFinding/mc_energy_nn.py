@@ -1,3 +1,6 @@
+#!/bin/env /projects/sventeklab/jbieker/virtualenv/thesis
+
+
 import os
 # to force on CPU
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -15,7 +18,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
 
-architecture = 'manjar'
+architecture = 'manjaro'
 
 if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
@@ -41,7 +44,7 @@ number_validate = 100000*(0.2)
 optimizer = 'adam'
 epoch = 100
 
-path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Energy_Images.h5"
+path_mc_images = base_dir + "/Rebinned_5_MC_Energy_Images.h5"
 
 def metaYielder():
     gamma_anteil = 1
@@ -69,10 +72,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
-            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, min_lr=0.001)
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=15, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_loss:.3f}_" + model_name + ".h5", monitor='val_loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
-            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=15, verbose=0, mode='auto')
+            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=20, verbose=0, mode='auto')
 
             def batchYielder():
                 gamma_anteil, gamma_count = metaYielder()
@@ -135,7 +138,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # Final Dense layer
             # 2 so have one for x and one for y
             model.add(Dense(1, activation='relu'))
-            model.compile(optimizer=optimizer, loss='mae', metrics=['mse'])
+            model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
                                 verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 

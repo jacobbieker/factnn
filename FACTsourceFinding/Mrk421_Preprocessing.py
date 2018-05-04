@@ -5,7 +5,7 @@ import numpy as np
 import h5py
 import sys
 from fact.io import read_h5py
-
+import os
 #First input: Path to the raw crab1314_folder
 #Second input: Path to the list of runs to use 'Crab1314_runs_to_use.csv'
 #Third input: Path to the 'hexagonal_to_quadratic_mapping_dict.p'
@@ -21,39 +21,46 @@ path_runs_to_use = "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/ru
 path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
 path_crab_images = "/run/media/jacob/WDRed8Tb1/Rebinned_2_mrk421_std_analysis_preprocessed_images.h5"
-path_std_analysis = "/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/std_analysis/Mrk421_1516_std_analysis_0.17.2.hdf5"
+path_diffuse = "/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/std_analysis/Mrk421_1516_std_analysis_0.17.2.hdf5"
 path_store_runlist = "Mrk421_std_analysis.p"
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
-    return dataset.reshape((-1, 75, 75, 1)).astype(np.float32)
+    return dataset.reshape((-1,75, 75, 1)).astype(np.float32)
 
 
 def batchYielder():
     paths = []
-    std_df = read_h5py(path_std_analysis, key="events", columns=["event_num", "run_id", "night"])
-    events = std_df["event_num"].values
-    runs = std_df["run_id"].values
-    nights = std_df["night"].values
-    #Create paths to the runs to be processed
-    with open(path_runs_to_use) as file:
-        # Select the paths from each file that are data paths for training
-        # Crab had 20 million events in 1344 files, so maybe go for 2000 files for each, randomly chosen from 2013 or later
-        for line in file:
-            if any(str(night) in line for night in nights):# and "/obs/2012" not in line:
-                if any(str(run_id) in line for run_id in runs):
-                    # Storing the path to every run file
-                    l = line.split('\n')[0]
-                    paths.append(l)
+    if not os.path.isfile(path_store_runlist):
+        diffuse_df = read_h5py(path_diffuse, key="events", columns=["event_num", "night", "run_id"])
+        list_paths = diffuse_df["night"].values
+        list_paths2 = diffuse_df['run_id'].values
+        list_events = []
+        for index, night in enumerate(list_paths):
+            # Night and run_id are in same index, so make them pay
+            list_events.append(str(night) + "_" + str(list_paths2[index]))
 
-    print(paths)
-    # Now select a subset of those paths to use
-    with open(path_store_runlist, "wb") as path_store:
-        pickle.dump(paths, path_store)
+        # Iterate over every file in the subdirs and check if it has the right file extension
+        file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(os.path.expanduser(path_raw_crab_folder))
+                      for file in fileName if '.json' in file]
+        latest_paths = []
+        for path in file_paths:
+            if any(number in path for number in list_events):
+                print(path)
+                latest_paths.append(path)
+        #Create paths to the runs to be processed
+
+        with open(path_store_runlist, "wb") as path_store:
+            pickle.dump(latest_paths, path_store)
+    else:
+        with open(path_store_runlist, "rb") as path_store:
+            latest_paths = pickle.load(path_store)
+
+    print(latest_paths)
     # Load mapping-dict to switch from hexagonal to matrix
     id_position = pickle.load(open(path_store_mapping_dict, "rb"))
 
-    for file_index, file in enumerate(paths):
+    for file in latest_paths:
         try:
             with gzip.open(file) as f:
                 print(file)
@@ -61,18 +68,14 @@ def batchYielder():
 
                 for line in f:
                     line_data = json.loads(line.decode('utf-8'))
-                    event = line_data['Event']
-
-                    #if event == events[file_index]:
-
-                    event_photons = line_data['PhotonArrivals_500ps']
-                    night = line_data['Night']
                     run = line_data['Run']
+                    event = line_data['Event']
+                    night = line_data['Night']
+                    event_photons = line_data['PhotonArrivals_500ps']
                     zd_deg = line_data['Zd_deg']
                     az_deg = line_data['Az_deg']
                     trigger = line_data['Trigger']
                     time = line_data['UnixTime_s_us'][0] + 1e-6*line_data['UnixTime_s_us'][1]
-
                     input_matrix = np.zeros([75,75])
                     chid_to_pixel = id_position[0]
                     pixel_index_to_grid = id_position[1]
@@ -80,10 +83,12 @@ def batchYielder():
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
                             input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
-                    data.append([np.fliplr(np.rot90(input_matrix, 3)), night, run, event, zd_deg, az_deg, trigger, time])
+                    data.append([np.fliplr(np.rot90(input_matrix, 3)), night, run, event, zd_deg, az_deg,
+                                 trigger, time])
             yield data
 
-        except:
+        except Exception as e:
+            print(e)
             pass
 
 
