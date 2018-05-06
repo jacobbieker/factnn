@@ -35,13 +35,13 @@ num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 100000*(0.6)
-number_of_testing = 100000*(0.2)
-number_validate = 100000*(0.2)
-optimizer = 'adam'
+number_of_training = 800000*(0.6)
+number_of_testing = 800000*(0.2)
+number_validate = 800000*(0.2)
+optimizers = ['same', 'valid']
 epoch = 100
 
-path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Gamma_1_Diffuse_Images.h5"
+path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Energy_Images.h5"
 
 def metaYielder():
     gamma_anteil = 1
@@ -70,7 +70,7 @@ with h5py.File(path_mc_images, 'r') as f:
     print("Finished getting data")
 
 
-def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons):
+def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     try:
         model_base = base_dir + "/Models/Disp/"
         model_name = "MC_dispPhi_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
@@ -140,40 +140,40 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
             # Base Conv layer
             model.add(Conv2D(conv_neurons, kernel_size=patch_size, strides=(1, 1),
-                             activation='relu', padding='same',
+                             activation='relu', padding=optimizer,
                              input_shape=(75, 75, 1)))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same'))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
 
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same'))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same'))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
 
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same'))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same'))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
 
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same'))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same'))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
 
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same'))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same'))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
 
             model.add(Flatten())
 
-            model.add(Dense(dense_neuron, activation=None))
-            model.add(Dropout(0.8))
-            model.add(Dense(dense_neuron, activation=None))
-            model.add(Dropout(0.8))
-            model.add(Dense(dense_neuron, activation=None))
-            model.add(Dropout(0.8))
+            model.add(Dense(dense_neuron, activation='linear'))
+            model.add(Dropout(dropout_layer))
+            model.add(Dense(dense_neuron, activation='linear'))
+            model.add(Dropout(dropout_layer))
+            model.add(Dense(dense_neuron, activation='linear'))
+            model.add(Dropout(dropout_layer))
 
             # Final Dense layer
             # 2 so have one for x and one for y
             model.add(Dense(2, activation=None))
-            model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
+            model.compile(optimizer='adam', loss='mse', metrics=['mae'])
             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
                                 verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 
@@ -196,4 +196,5 @@ for i in range(num_runs):
     num_pooling_layer = np.random.randint(num_pooling_layers[0], num_pooling_layers[1])
     dense_neuron = np.random.randint(num_dense_neuron[0], num_dense_neuron[1])
     conv_neurons = np.random.randint(num_conv_neurons[0], num_conv_neurons[1])
-    create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons)
+    optimizer = optimizers[np.random.randint(0,2)]
+    create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer)
