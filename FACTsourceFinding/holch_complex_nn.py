@@ -58,6 +58,7 @@ with h5py.File(path_mc_images, 'r') as f:
     images_source_az = f['Phi'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    images_source_az = (-1.*images_source_az + 540) % 360
     source_x, source_y = horizontal_to_camera(
         zd=images_source_zd, az=images_source_az,
         az_pointing=images_point_az, zd_pointing=images_point_zd
@@ -101,7 +102,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                         source_az = f['Phi'][offset:int(offset + items)]
                         point_az = f['Az_deg'][offset:int(offset + items)]
                         point_zd = f['Zd_deg'][offset:int(offset + items)]
-
+                        source_az = (-1.*source_az + 540) % 360
                         source_x, source_y = horizontal_to_camera(
                             zd=source_zd, az=source_az,
                             az_pointing=point_az, zd_pointing=point_zd
