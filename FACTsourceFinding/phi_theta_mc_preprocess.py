@@ -9,6 +9,11 @@ import photon_stream as ps
 from astropy.coordinates import PhysicsSphericalRepresentation, AltAz, SkyCoord
 
 from fact.io import read_h5py
+from fact.coordinates import horizontal_to_camera
+
+
+def euclidean_distance(x1, y1, x2, y2):
+    return np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
 
 #First input: Path to the raw mc_folder
@@ -30,12 +35,52 @@ else:
     thesis_base = base_dir + '/thesis'
 
 path_raw_mc_proton_folder = base_dir + "/raw_data/ihp-pc41.ethz.ch/public/phs/sim/proton/"
-path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/"
+path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/gamma/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = base_dir + "/FACTSources/Rebinned_5_MC_Combined_Images.h5"
+path_mc_diffuse_images = base_dir + "/FACTSources/Rebinned_5_MC_Precut_Images.h5"
+path_to_diffuse = "/run/media/jacob/WDRed8Tb1/open_crab_sample_analysis/build/gamma_precuts.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
+
+diffuse_df = read_h5py(path_to_diffuse, key="events", columns=["event_num", "@source", "az_source", "zd_source", "az_tracking", "zd_tracking", "cog_x", "cog_y", "delta"])
+
+run_ids_long = np.array(diffuse_df['@source'].values)
+event_nums = np.array(diffuse_df['event_num'].values)
+
+source_x, source_y = horizontal_to_camera(
+    az=diffuse_df["az_source"], zd=diffuse_df["zd_source"],
+    az_pointing=diffuse_df["az_pointing"], zd_pointing=diffuse_df["zd_pointing"],
+)
+
+diffuse_df['true_disp'] = euclidean_distance(
+    source_x, source_y,
+    diffuse_df.cog_x, diffuse_df.cog_y
+)
+
+true_delta = np.arctan2(
+    diffuse_df.cog_y - source_y,
+    diffuse_df.cog_x - source_x,
+    )
+diffuse_df['true_sign'] = np.sign(np.abs(diffuse_df.delta - true_delta) - np.pi / 2)
+
+run_ids = []
+for id in run_ids_long:
+    tmp = id.split("_12/")[1]
+    tmp = tmp.split("/")[0]
+    run_ids.append(int(tmp))
+
+# Go through and get all the event_num that belong to a given run_id
+events_in_run = {}
+for index, run_id in enumerate(run_ids):
+    indicies = np.where(run_ids == run_id)[0]
+    if run_id not in events_in_run.keys():
+        events_in_run[run_id] = []
+        for sub_index in indicies:
+            events_in_run[run_id].append(event_nums[sub_index])
+
+print(events_in_run)
+
 
 def getMetadata(path_folder):
     '''
@@ -68,35 +113,42 @@ def batchYielder(paths):
     id_position = pickle.load(open(path_store_mapping_dict, "rb"))
 
     for file in paths:
-        mc_truth = file.split(".phs")[0] + ".ch.gz"
-        print(mc_truth)
-        #try:
-        sim_reader = ps.SimulationReader(
-            photon_stream_path=file,
-            mmcs_corsika_path=mc_truth
-        )
-        data = []
-        for event in sim_reader:
-            # Each event is the same as each line below
-            phi = event.simulation_truth.air_shower.phi
-            theta = event.simulation_truth.air_shower.theta
-            energy = event.simulation_truth.air_shower.energy
-            event_photons = event.photon_stream.list_of_lists
-            zd_deg = event.zd
-            az_deg = event.az
-            input_matrix = np.zeros([75,75])
-            chid_to_pixel = id_position[0]
-            pixel_index_to_grid = id_position[1]
-            for index in range(1440):
-                for element in chid_to_pixel[index]:
-                    coords = pixel_index_to_grid[element[0]]
-                    input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
+        for number in events_in_run.keys():
+            if str(number) in file:
+                mc_truth = file.split(".phs")[0] + ".ch.gz"
+                print(mc_truth)
+                try:
+                    sim_reader = ps.SimulationReader(
+                        photon_stream_path=file,
+                        mmcs_corsika_path=mc_truth
+                    )
+                    data = []
+                    event_number = 0
+                    for event in sim_reader:
+                        if event_number in events_in_run[number]:
+                            # In the event chosen from the file
+                            source_x =
+                            # Each event is the same as each line below
+                            phi = event.simulation_truth.air_shower.phi
+                            theta = event.simulation_truth.air_shower.theta
+                            energy = event.simulation_truth.air_shower.energy
+                            event_photons = event.photon_stream.list_of_lists
+                            zd_deg = event.zd
+                            az_deg = event.az
+                            input_matrix = np.zeros([75,75])
+                            chid_to_pixel = id_position[0]
+                            pixel_index_to_grid = id_position[1]
+                            for index in range(1440):
+                                for element in chid_to_pixel[index]:
+                                    coords = pixel_index_to_grid[element[0]]
+                                    input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
 
-            data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, phi, theta])
-        yield data
+                            data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, phi, theta])
+                            event_number += 1
+                        yield data
 
-        #except Exception as e:
-        #    print(str(e))
+                except Exception as e:
+                    print(str(e))
 
 
 # Use the batchYielder to concatenate every batch and store it into one h5 file

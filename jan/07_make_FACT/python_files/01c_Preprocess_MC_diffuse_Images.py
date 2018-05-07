@@ -23,9 +23,9 @@ path_raw_mc_gamma_folder = "/run/media/jacob/WDRed8Tb1/ihp-pc41.ethz.ch/public/p
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = "/run/media/jacob/SSD/Development/thesis/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Gamma_1_Diffuse_Images.h5"
-path_mc_proton_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_1_Diffuse_Images.h5"
-path_diffuse = "/run/media/jacob/Seagate/open_crab_sample_analysis/dl2/gamma_diffuse.hdf5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Gamma_1_Diffuse_PreCuts_Images.h5"
+path_mc_proton_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_1_Diffuse_PreCuts_Images.h5"
+path_diffuse = "/run/media/jacob/WDRed8Tb1/open_crab_sample_analysis/build/gamma_diffuse_precuts.hdf5"
 
 
 def getMetadata(path_folder):

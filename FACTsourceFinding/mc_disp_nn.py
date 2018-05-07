@@ -35,11 +35,11 @@ num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 300000*(0.6)
-number_of_testing = 300000*(0.2)
-number_validate = 300000*(0.2)
+number_of_training = 400000*(0.6)
+number_of_testing = 800000*(0.2)
+number_validate = 800000*(0.2)
 optimizer = 'adam'
-epoch = 100
+epoch = 300
 
 path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Gamma_1_Diffuse_Images.h5"
 

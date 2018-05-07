@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from keras import backend as K
 import h5py
@@ -12,7 +12,7 @@ import os
 import keras
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
+from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D, Input
 from fact.coordinates.utils import horizontal_to_camera
 
 architecture = 'manjaro'
@@ -138,36 +138,42 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model = Sequential()
 
             # Base Conv layer
+            #model.add(Conv2D(conv_neurons, kernel_size=patch_size, strides=(1, 1),
+
+            #                 activation='relu', padding=optimizer,
+            #                 input_shape=(75, 75, 1)))
+            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            #model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
+
+            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            #model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
+
+            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            #model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
+
+            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            #model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
+
+            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            #model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
+
+            #model.add(Flatten())
+            # Convert input to flattened thing
+            #model.add(Reshape((-1), input_shape=(75,75,1)))
             model.add(Conv2D(conv_neurons, kernel_size=patch_size, strides=(1, 1),
-                             activation='relu', padding=optimizer,
-                             input_shape=(75, 75, 1)))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
+                                             activation='linear', padding=optimizer,
+                                             input_shape=(75, 75, 1)))
             model.add(Flatten())
-
-            #model.add(Dense(dense_neuron, activation='linear'))
-            #model.add(Dropout(dropout_layer))
-            #model.add(Dense(dense_neuron, activation='linear'))
-            #model.add(Dropout(dropout_layer))
-            #model.add(Dense(dense_neuron, activation='linear'))
-            #model.add(Dropout(dropout_layer))
+            model.add(Dense(2*dense_neuron, activation='linear'))
+            model.add(Dropout(dropout_layer))
+            model.add(Dense(dense_neuron, activation='linear'))
+            model.add(Dropout(dropout_layer))
+            model.add(Dense(int(.5*dense_neuron), activation='linear'))
+            model.add(Dropout(dropout_layer))
 
             # Final Dense layer
             # 2 so have one for x and one for y
