@@ -183,7 +183,7 @@ batch = next(gen)
 pic, run, event, zd_deg, az_deg, trigger, time = batchFormatter(batch)
 row_count = trigger.shape[0]
 
-with h5py.File(path_mc_diffuse_images, 'a') as hdf:
+with h5py.File(path_mc_diffuse_images, 'w') as hdf:
     maxshape_pic = (None,) + pic.shape[1:]
     dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
     maxshape_run = (None,) + run.shape[1:]
