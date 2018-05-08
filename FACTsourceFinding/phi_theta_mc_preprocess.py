@@ -39,8 +39,8 @@ path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/gamma/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = base_dir + "/Rebinned_5_MC_Precut_Images.h5"
-path_to_diffuse = "/run/media/jacob/WDRed8Tb1/open_crab_sample_analysis/build/gamma_precuts.hdf5"
+path_mc_diffuse_images = base_dir + "/Rebinned_5_MC_Diffuse_Precut_Images.h5"
+path_to_diffuse = "/run/media/jacob/WDRed8Tb1/open_crab_sample_analysis/dl2/gamma_diffuse.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 
 diffuse_df = read_h5py(path_to_diffuse, key="events", columns=["event_num", "@source", "source_position", "cog_x", "cog_y", "delta"])
@@ -63,9 +63,12 @@ diffuse_df['true_sign'] = np.sign(np.abs(diffuse_df.delta - true_delta) - np.pi 
 
 run_ids = []
 for id in run_ids_long:
-    tmp = id.split("_12/")[1]
+    tmp = id.split("/")[12]
+    #print(tmp)
     tmp = tmp.split("/")[0]
     run_ids.append(int(tmp))
+
+run_ids = np.asarray(run_ids)
 
 diffuse_df['@source'] = run_ids
 
@@ -74,7 +77,7 @@ print(diffuse_df)
 events_in_run = {}
 for index, run_id in enumerate(run_ids):
     indicies = np.where(run_ids == run_id)[0]
-    print(indicies)
+    #print(indicies)
     if run_id not in events_in_run.keys():
         events_in_run[run_id] = []
         for sub_index in indicies:
@@ -87,6 +90,11 @@ def getMetadata(path_folder):
     '''
     Gathers the file paths of the training data
     '''
+    run_ids = []
+    for id in run_ids_long:
+        tmp = id.split("/")[12]
+        tmp = tmp.split("/")[0]
+        run_ids.append(tmp)
     # Iterate over every file in the subdirs and check if it has the right file extension
     file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(path_folder)
                   for file in fileName if '.json' in file]

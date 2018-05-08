@@ -36,11 +36,13 @@ num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 50000*(0.6)
-number_of_testing = 50000*(0.2)
-number_validate = 50000*(0.2)
+number_of_training = 300000*(0.6)
+number_of_testing = 300000*(0.2)
+number_validate = 300000*(0.2)
 optimizers = ['same']
 epoch = 300
+frac_test = 1
+frac_train = 1
 
 path_mc_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_mrk501_preprocessed_images.h5"
 path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
@@ -57,101 +59,112 @@ def metaYielder():
 
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
-    if not os.path.isfile("mrk501_precut_testing.p"):
-        raw_event_nums = np.asarray(f['Event'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
-        raw_nights = np.asarray(f['Night'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
-        raw_run_ids = np.asarray(f['Run'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
-
-        #raw_df = pd.DataFrame(data=[raw_images, raw_event_nums, raw_nights, raw_run_ids])
-        #raw_df.columns = ["Image", "Event", "Night", "Run"]
-        #print(raw_df)
-
-        # Get some truth data for now, just use Mrk501 images
-        #images = mrk501['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-        #images_source_zd = mrk501['source_x_prediction'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-        #images_source_az = mrk501['source_y_prediction'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-        # now get the photon stream data
-        #event_nums = mrk501['event_num'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-        #nights = mrk501['night'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-        #run_ids = mrk501['run_id'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-
-        night_images = []
-        source_label_x = []
-        source_label_y = []
-        indicies_that_work = []
-
-        for index, night in enumerate(raw_nights):
-            night_index = index
-            raw_run_id = raw_run_ids[night_index]
-            raw_event_num = raw_event_nums[night_index]
-
-            #print(night)
-            #print(raw_run_id)
-            #print(raw_event_num)
-
-            #print("Now Both")
-            #print("Night: ")
-            #print(night)
-            testing = mrk501.loc[(mrk501['event_num'] == raw_event_num) & (mrk501['run_id'] == raw_run_id) & (mrk501['night'] == night)]
-            if not testing.empty:
-                indicies_that_work.append(index)
-                #print(testing)
-            exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
-            #print(exact_position)
-            # now get range of nights from run_id and event_num
-            if not exact_position.empty:
-                # got the exact event now, need the image
-                night_images.append(f['Image'][index])
-                source_label_x.append(exact_position['source_x_prediction'].values)
-                source_label_y.append(exact_position['source_y_prediction'].values)
-
-        # After done with that convert to Numpy
-        night_images = np.asarray(night_images)
-        source_label_x = np.asarray(source_label_x)
-        source_label_y = np.asarray(source_label_y)
-        with open("mrk501_precut_testing_small.p", "wb") as path_store:
-            pickle.dump(indicies_that_work, path_store)
-            #images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-            #images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-            #images_source_az = (-1.*images_source_az + 540) % 360
-            #source_x, source_y = horizontal_to_camera(
-            #    zd=images_source_zd, az=images_source_az,
-            #    az_pointing=images_point_az, zd_pointing=images_point_zd
-            #)
+    if os.path.isfile(base_dir + "/mrk501_testing_images.npy"):
+        # Just load from that
+        image = np.load(base_dir + "/mrk501_testing_images.npy")
+        source_label_x = np.load(base_dir + "/mrk501_testing_x.npy")
+        source_label_y = np.load(base_dir + "/mrk501_testing_y.npy")
     else:
-        # It does exits
-        with open("mrk501_precut_testing.p", "rb") as path_store:
-            indicies_that_work = pickle.load(path_store)
-        total_testing = len(indicies_that_work)
-        raw_event_nums = np.asarray(f['Event'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
-        raw_nights = np.asarray(f['Night'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
-        raw_run_ids = np.asarray(f['Run'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
-        night_images = []
-        source_label_x = []
-        source_label_y = []
-        for index in indicies_that_work:
-            night_index = index
-            night = raw_nights[index]
-            raw_run_id = raw_run_ids[night_index]
-            raw_event_num = raw_event_nums[night_index]
-                #print(testing)
-            exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
-            #print(exact_position)
-            # now get range of nights from run_id and event_num
-            if not exact_position.empty:
-                # got the exact event now, need the image
-                night_images.append(f['Image'][index])
-                source_label_x.append(exact_position['source_x_prediction'].values)
-                source_label_y.append(exact_position['source_y_prediction'].values)
+        if not os.path.isfile("mrk501_precut_testing.p"):
+            raw_event_nums = np.asarray(f['Event'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
+            raw_nights = np.asarray(f['Night'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
+            raw_run_ids = np.asarray(f['Run'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
 
-        # After done with that convert to Numpy
-        night_images = np.asarray(night_images)
-        source_label_x = np.asarray(source_label_x)
-        source_label_y = np.asarray(source_label_y)
+            #raw_df = pd.DataFrame(data=[raw_images, raw_event_nums, raw_nights, raw_run_ids])
+            #raw_df.columns = ["Image", "Event", "Night", "Run"]
+            #print(raw_df)
+
+            # Get some truth data for now, just use Mrk501 images
+            #images = mrk501['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+            #images_source_zd = mrk501['source_x_prediction'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+            #images_source_az = mrk501['source_y_prediction'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+            # now get the photon stream data
+            #event_nums = mrk501['event_num'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+            #nights = mrk501['night'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+            #run_ids = mrk501['run_id'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+
+            night_images = []
+            source_label_x = []
+            source_label_y = []
+            indicies_that_work = []
+
+            for index, night in enumerate(raw_nights):
+                night_index = index
+                raw_run_id = raw_run_ids[night_index]
+                raw_event_num = raw_event_nums[night_index]
+
+                #print(night)
+                #print(raw_run_id)
+                #print(raw_event_num)
+
+                #print("Now Both")
+                #print("Night: ")
+                #print(night)
+                testing = mrk501.loc[(mrk501['event_num'] == raw_event_num) & (mrk501['run_id'] == raw_run_id) & (mrk501['night'] == night)]
+                if not testing.empty:
+                    indicies_that_work.append(index)
+                    #print(testing)
+                exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
+                #print(exact_position)
+                # now get range of nights from run_id and event_num
+                if not exact_position.empty:
+                    # got the exact event now, need the image
+                    night_images.append(f['Image'][index])
+                    source_label_x.append(exact_position['source_x_prediction'].values)
+                    source_label_y.append(exact_position['source_y_prediction'].values)
+
+            # After done with that convert to Numpy
+            night_images = np.asarray(night_images)
+            source_label_x = np.asarray(source_label_x)
+            source_label_y = np.asarray(source_label_y)
+            with open("mrk501_precut_testing.p", "wb") as path_store:
+                pickle.dump(indicies_that_work, path_store)
+                #images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+                #images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+                #images_source_az = (-1.*images_source_az + 540) % 360
+                #source_x, source_y = horizontal_to_camera(
+                #    zd=images_source_zd, az=images_source_az,
+                #    az_pointing=images_point_az, zd_pointing=images_point_zd
+                #)
+        else:
+            # It does exits
+            with open("mrk501_precut_testing.p", "rb") as path_store:
+                indicies_that_work = pickle.load(path_store)
+            total_testing = len(indicies_that_work)
+            np.random.shuffle(indicies_that_work)
+            indicies_that_work = indicies_that_work[0:int(total_testing/frac_test)]
+            max_index = np.max(indicies_that_work)
+            raw_event_nums = np.asarray(f['Event'][0:max_index+1])
+            raw_nights = np.asarray(f['Night'][0:max_index+1])
+            raw_run_ids = np.asarray(f['Run'][0:max_index+1])
+            night_images = []
+            source_label_x = []
+            source_label_y = []
+            for index in indicies_that_work:
+                night_index = index
+                night = raw_nights[index]
+                raw_run_id = raw_run_ids[night_index]
+                raw_event_num = raw_event_nums[night_index]
+                    #print(testing)
+                exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
+                #print(exact_position)
+                # now get range of nights from run_id and event_num
+                if not exact_position.empty:
+                    # got the exact event now, need the image
+                    night_images.append(f['Image'][index])
+                    source_label_x.append(exact_position['source_x_prediction'].values)
+                    source_label_y.append(exact_position['source_y_prediction'].values)
+
+            # After done with that convert to Numpy
+            night_images = np.asarray(night_images)
+            source_label_x = np.asarray(source_label_x)
+            source_label_y = np.asarray(source_label_y)
 
 
-    y = night_images
-    print(night_images.shape)
+        y = night_images
+        np.save(base_dir + "/mrk501_testing_images.npy", night_images)
+        np.save(base_dir + "/mrk501_testing_x.npy", source_label_x)
+        np.save(base_dir + "/mrk501_testing_y.npy", source_label_y)
     # Now convert to this camera's coordinates
     source_label_x += 180.975 # shifts everything to positive
     source_label_y += 185.25 # shifts everything to positive
@@ -164,8 +177,8 @@ with h5py.File(path_mc_images, 'r') as f:
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     try:
-        model_base = base_dir + "/Models/Disp/"
-        model_name = "MC_holchTest1Dense_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+        model_base = base_dir + "/Models/Disp2/"
+        model_name = "MC_holchTrueSource_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
@@ -186,51 +199,88 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     section = 0
                     section = section % times_train_in_items
                     offset = int(section * items)
-                    raw_event_nums = np.asarray(f['Event'][2*int(np.floor((gamma_anteil*number_of_testing))):2*int(np.floor((gamma_anteil*number_of_testing)))+2*int(np.floor((gamma_anteil*number_of_training)))])
-                    raw_nights = np.asarray(f['Night'][2*int(np.floor((gamma_anteil*number_of_testing))):2*int(np.floor((gamma_anteil*number_of_testing)))+2*int(np.floor((gamma_anteil*number_of_training)))])
-                    raw_run_ids = np.asarray(f['Run'][2*int(np.floor((gamma_anteil*number_of_testing))):2*int(np.floor((gamma_anteil*number_of_testing)))+2*int(np.floor((gamma_anteil*number_of_training)))])
-                    night_images = []
-                    source_label_x = []
-                    source_label_y = []
-                    indicies_that_work = []
+                    if os.path.isfile(base_dir + "/mrk501_training_images.npy"):
+                        # Just load from that
+                        image = np.load(base_dir + "/mrk501_training_images.npy")
+                        source_label_x = np.load(base_dir + "/mrk501_training_x.npy")
+                        source_label_y = np.load(base_dir + "/mrk501_training_y.npy")
+                    else:
+                        if not os.path.isfile("mrk501_precut_training.p"):
+                            raw_event_nums = np.asarray(f['Event'][2*int(np.floor((gamma_anteil*number_of_testing))):2*int(np.floor((gamma_anteil*number_of_testing)))+2*int(np.floor((gamma_anteil*number_of_training)))])
+                            raw_nights = np.asarray(f['Night'][2*int(np.floor((gamma_anteil*number_of_testing))):2*int(np.floor((gamma_anteil*number_of_testing)))+2*int(np.floor((gamma_anteil*number_of_training)))])
+                            raw_run_ids = np.asarray(f['Run'][2*int(np.floor((gamma_anteil*number_of_testing))):2*int(np.floor((gamma_anteil*number_of_testing)))+2*int(np.floor((gamma_anteil*number_of_training)))])
+                            night_images = []
+                            source_label_x = []
+                            source_label_y = []
+                            indicies_that_work = []
 
-                    for index, night in enumerate(raw_nights):
-                        night_index = index
-                        raw_run_id = raw_run_ids[night_index]
-                        raw_event_num = raw_event_nums[night_index]
+                            for index, night in enumerate(raw_nights):
+                                night_index = index
+                                raw_run_id = raw_run_ids[night_index]
+                                raw_event_num = raw_event_nums[night_index]
 
-                        #print(night)
-                        #print(raw_run_id)
-                        #print(raw_event_num)
+                                #print(night)
+                                #print(raw_run_id)
+                                #print(raw_event_num)
 
-                        #print("Now Both")
-                        #print("Night: ")
-                        #print(night)
-                        #testing = mrk501.loc[(mrk501['event_num'] == raw_event_num) & (mrk501['run_id'] == raw_run_id) & (mrk501['night'] == night)]
-                        #if not testing.empty:
-                        #    print(testing)
-                        exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
-                        #print(exact_position)
-                        # now get range of nights from run_id and event_num
-                        if not exact_position.empty:
-                            # Need this extra part so that the index in the actual Image thing is correct
-                            indicies_that_work.append(int(2*int(np.floor((gamma_anteil*number_of_testing)))+index))
-                            # got the exact event now, need the image
-                            night_images.append(f['Image'][int(2*int(np.floor((gamma_anteil*number_of_testing)))+index)])
-                            source_label_x.append(exact_position['source_x_prediction'].values)
-                            source_label_y.append(exact_position['source_y_prediction'].values)
+                                #print("Now Both")
+                                #print("Night: ")
+                                #print(night)
+                                #testing = mrk501.loc[(mrk501['event_num'] == raw_event_num) & (mrk501['run_id'] == raw_run_id) & (mrk501['night'] == night)]
+                                #if not testing.empty:
+                                #    print(testing)
+                                exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
+                                #print(exact_position)
+                                # now get range of nights from run_id and event_num
+                                if not exact_position.empty:
+                                    # Need this extra part so that the index in the actual Image thing is correct
+                                    indicies_that_work.append(int(2*int(np.floor((gamma_anteil*number_of_testing)))+index))
+                                    # got the exact event now, need the image
+                                    night_images.append(f['Image'][int(2*int(np.floor((gamma_anteil*number_of_testing)))+index)])
+                                    source_label_x.append(exact_position['source_x_prediction'].values)
+                                    source_label_y.append(exact_position['source_y_prediction'].values)
+                        else:
+                            # It does exits
+                            with open("mrk501_precut_training.p", "rb") as path_store:
+                                indicies_that_work = pickle.load(path_store)
+                            total_testing = len(indicies_that_work)
+                            np.random.shuffle(indicies_that_work)
+                            indicies_that_work = indicies_that_work[0:int(total_testing/frac_test)]
+                            max_index = np.max(indicies_that_work)
+                            raw_event_nums = np.asarray(f['Event'][0:max_index+1])
+                            raw_nights = np.asarray(f['Night'][0:max_index+1])
+                            raw_run_ids = np.asarray(f['Run'][0:max_index+1])
+                            night_images = []
+                            source_label_x = []
+                            source_label_y = []
+                            for index in indicies_that_work:
+                                night_index = index
+                                night = raw_nights[index]
+                                raw_run_id = raw_run_ids[night_index]
+                                raw_event_num = raw_event_nums[night_index]
+                                #print(testing)
+                                exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
+                                #print(exact_position)
+                                # now get range of nights from run_id and event_num
+                                if not exact_position.empty:
+                                    # got the exact event now, need the image
+                                    night_images.append(f['Image'][index])
+                                    source_label_x.append(exact_position['source_x_prediction'].values)
+                                    source_label_y.append(exact_position['source_y_prediction'].values)
 
-                    # After done with that convert to Numpy
-                    image = np.asarray(night_images)
-                    source_label_x = np.asarray(source_label_x)
-                    source_label_y = np.asarray(source_label_y)
+
+                            # After done with that convert to Numpy
+                        image = np.asarray(night_images)
+                        source_label_x = np.asarray(source_label_x)
+                        source_label_y = np.asarray(source_label_y)
+                        np.save(base_dir + "/mrk501_training_images.npy", night_images)
+                        np.save(base_dir + "/mrk501_training_x.npy", source_label_x)
+                        np.save(base_dir + "/mrk501_training_y.npy", source_label_y)
                     # Now convert to this camera's coordinates
                     source_label_x += 180.975 # shifts everything to positive
                     source_label_y += 185.25 # shifts everything to positive
                     source_label_x = source_label_x / 4.94 # Ratio between the places
                     source_label_y = source_label_y / 4.826 # Ratio between y in original and y here
-                    with open("mrk501_precut_training_small.p", "wb") as path_store:
-                        pickle.dump(indicies_that_work, path_store)
                     #image = f['Image'][offset:int(offset + items)]
                     #source_zd = f['Energy'][offset:int(offset + items)]
                     #source_az = f['Phi'][offset:int(offset + items)]

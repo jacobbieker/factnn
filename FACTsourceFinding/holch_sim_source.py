@@ -77,7 +77,7 @@ with h5py.File(path_mc_images, 'r') as f:
     print(np.max(source_x))
     print(np.min(source_y))
     print(np.max(source_y))
-    y = np.flipud(images)
+    y = np.flip(images, axis=2)
     print(images.shape)
     y_label = np.asarray([source_x, source_y]).reshape((-1, 2))
     print(y_label.shape)
@@ -144,7 +144,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                             #images_point_zd = point_zd[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
                             images_source_x = source_x[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
                             images_source_y = source_y[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
-                            x = images
+                            x = np.flip(images, axis=2)
                             x_label = np.asarray([images_source_x, images_source_y]).reshape((-1,2)) #np.asarray([images_source_x, images_source_y]).reshape((-1, 2))
                             #print(x_label.shape)
                             batch_num += 1
