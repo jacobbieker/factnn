@@ -39,19 +39,16 @@ path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/gamma/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = base_dir + "/FACTSources/Rebinned_5_MC_Precut_Images.h5"
+path_mc_diffuse_images = base_dir + "/Rebinned_5_MC_Precut_Images.h5"
 path_to_diffuse = "/run/media/jacob/WDRed8Tb1/open_crab_sample_analysis/build/gamma_precuts.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 
-diffuse_df = read_h5py(path_to_diffuse, key="events", columns=["event_num", "@source", "az_source", "zd_source", "az_tracking", "zd_tracking", "cog_x", "cog_y", "delta"])
-
+diffuse_df = read_h5py(path_to_diffuse, key="events", columns=["event_num", "@source", "source_position", "cog_x", "cog_y", "delta"])
 run_ids_long = np.array(diffuse_df['@source'].values)
 event_nums = np.array(diffuse_df['event_num'].values)
 
-source_x, source_y = horizontal_to_camera(
-    az=diffuse_df["az_source"], zd=diffuse_df["zd_source"],
-    az_pointing=diffuse_df["az_pointing"], zd_pointing=diffuse_df["zd_pointing"],
-)
+source_x = diffuse_df['source_position_1'].values
+source_y = diffuse_df['source_position_0'].values
 
 diffuse_df['true_disp'] = euclidean_distance(
     source_x, source_y,
@@ -70,10 +67,14 @@ for id in run_ids_long:
     tmp = tmp.split("/")[0]
     run_ids.append(int(tmp))
 
+diffuse_df['@source'] = run_ids
+
+print(diffuse_df)
 # Go through and get all the event_num that belong to a given run_id
 events_in_run = {}
 for index, run_id in enumerate(run_ids):
     indicies = np.where(run_ids == run_id)[0]
+    print(indicies)
     if run_id not in events_in_run.keys():
         events_in_run[run_id] = []
         for sub_index in indicies:
@@ -89,8 +90,12 @@ def getMetadata(path_folder):
     # Iterate over every file in the subdirs and check if it has the right file extension
     file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(path_folder)
                   for file in fileName if '.json' in file]
-    latest_paths = file_paths
-    print(latest_paths)
+    latest_paths = []
+    for path in file_paths:
+        if any(number in path for number in run_ids):
+            #print(path)
+            latest_paths.append(path)
+    #print(latest_paths)
     return latest_paths
 
 
@@ -112,43 +117,40 @@ def batchYielder(paths):
     # Load mapping-dict to switch from hexagonal to matrix
     id_position = pickle.load(open(path_store_mapping_dict, "rb"))
 
-    for file in paths:
-        for number in events_in_run.keys():
-            if str(number) in file:
-                mc_truth = file.split(".phs")[0] + ".ch.gz"
-                print(mc_truth)
-                try:
-                    sim_reader = ps.SimulationReader(
-                        photon_stream_path=file,
-                        mmcs_corsika_path=mc_truth
-                    )
-                    data = []
-                    event_number = 0
-                    for event in sim_reader:
-                        if event_number in events_in_run[number]:
-                            # In the event chosen from the file
-                            source_x =
-                            # Each event is the same as each line below
-                            phi = event.simulation_truth.air_shower.phi
-                            theta = event.simulation_truth.air_shower.theta
-                            energy = event.simulation_truth.air_shower.energy
-                            event_photons = event.photon_stream.list_of_lists
-                            zd_deg = event.zd
-                            az_deg = event.az
-                            input_matrix = np.zeros([75,75])
-                            chid_to_pixel = id_position[0]
-                            pixel_index_to_grid = id_position[1]
-                            for index in range(1440):
-                                for element in chid_to_pixel[index]:
-                                    coords = pixel_index_to_grid[element[0]]
-                                    input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
+    for index, file in enumerate(paths):
+        mc_truth = file.split(".phs")[0] + ".ch.gz"
+        print(mc_truth)
+       # try:
+        sim_reader = ps.SimulationReader(
+            photon_stream_path=file,
+            mmcs_corsika_path=mc_truth
+        )
+        data = []
+        event_number = 1
+        for event in sim_reader:
+            if event_number in events_in_run[int(run_ids[index])]:
+                # In the event chosen from the file
+                # Each event is the same as each line below
+                phi = diffuse_df.loc[(diffuse_df['event_num'] == event_number) & (diffuse_df['@source'] == run_ids[index])]['source_position_1'].values
+                theta = diffuse_df.loc[(diffuse_df['event_num'] == event_number) & (diffuse_df['@source'] == run_ids[index])]['source_position_0'].values
+                energy = event.simulation_truth.air_shower.energy
+                event_photons = event.photon_stream.list_of_lists
+                zd_deg = event.zd
+                az_deg = event.az
+                input_matrix = np.zeros([75,75])
+                chid_to_pixel = id_position[0]
+                pixel_index_to_grid = id_position[1]
+                for index in range(1440):
+                    for element in chid_to_pixel[index]:
+                        coords = pixel_index_to_grid[element[0]]
+                        input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
 
-                            data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, phi, theta])
-                            event_number += 1
-                        yield data
+                data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, phi, theta])
+                event_number += 1
+            yield data
 
-                except Exception as e:
-                    print(str(e))
+        #except Exception as e:
+        #    print(str(e))
 
 
 # Use the batchYielder to concatenate every batch and store it into one h5 file
@@ -181,9 +183,9 @@ with h5py.File(path_mc_diffuse_images, 'w') as hdf:
     maxshape_az_deg = (None,) + az_deg.shape[1:]
     dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
     maxshape_phi = (None,) + phi.shape[1:]
-    dset_phi = hdf.create_dataset('Phi', shape=phi.shape, maxshape=maxshape_phi, chunks=phi.shape, dtype=phi.dtype)
+    dset_phi = hdf.create_dataset('Source_X', shape=phi.shape, maxshape=maxshape_phi, chunks=phi.shape, dtype=phi.dtype)
     maxshape_theta = (None,) + theta.shape[1:]
-    dset_theta = hdf.create_dataset('Theta', shape=theta.shape, maxshape=maxshape_theta, chunks=theta.shape, dtype=theta.dtype)
+    dset_theta = hdf.create_dataset('Source_Y', shape=theta.shape, maxshape=maxshape_theta, chunks=theta.shape, dtype=theta.dtype)
 
     dset_pic[:] = pic
     dset_run[:] = energy

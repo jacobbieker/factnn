@@ -41,6 +41,11 @@ print(np.min(y))
 #plt.show()
 #plt.show()
 
+xRatio = np.abs(np.max(x) - np.min(x)) / (np.abs(75 - 0))
+yRatio = np.abs(np.max(y) - np.min(y)) / (np.abs(75 - 0))
+
+print("xRatio: " + str(xRatio))
+print("yRatio: " + str(yRatio))
 
 new_x = []
 new_y = []
@@ -109,6 +114,9 @@ m = 0
 
 steps = int(np.ceil(np.abs(square_start*2) / square_size))
 print(steps)
+
+
+
 pixel_index_to_grid = {}
 pix_index = 0
 # Generate tessellation of grid

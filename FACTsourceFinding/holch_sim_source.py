@@ -1,19 +1,20 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+import pickle
 from keras import backend as K
 import h5py
-from fact.io import read_h5py
+from fact.io import read_h5py, read_h5py_chunked
 import yaml
 import tensorflow as tf
 import os
 import keras
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D, Input
+from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
+import pandas as pd
 
 architecture = 'manjaro'
 
@@ -35,19 +36,17 @@ num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 400000*(0.6)
-number_of_testing = 800000*(0.2)
-number_validate = 800000*(0.2)
+number_of_training = 85000*(0.6)
+number_of_testing = 85000*(0.2)
+number_validate = 85000*(0.2)
 optimizers = ['same']
 epoch = 300
 
-path_mc_images = base_dir + "/Rebinned_5_MC_Energy_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Gamma_Images.h5"
+#path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
 
-test_path = "/run/media/jacob/WDRed8Tb1/dl2_theta/regressor_performance.hdf5"
-
-read_h5py(test_path, key="data")
-
-
+#mrk501 = read_h5py(path_mrk501, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
+#mc_image = read_h5py_chunked(path_mc_images, key='events', columns=['Image', 'Event', 'Night', 'Run'])
 
 def metaYielder():
     gamma_anteil = 1
@@ -58,20 +57,29 @@ def metaYielder():
 
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
-    # Get some truth data for now, just use Crab images
     images = f['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_zd = f['Energy'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    #images_source_az = f['Phi'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    #images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    #images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    images_point_az = f['Pointing_Az'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    images_point_zd = f['Pointing_Zd'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    images_source_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_az = (-1.*images_source_az + 540) % 360
-    #source_x, source_y = horizontal_to_camera(
-    #    zd=images_source_zd, az=images_source_az,
-    #    az_pointing=images_point_az, zd_pointing=images_point_zd
-    #)
+    source_x, source_y = horizontal_to_camera(
+        zd=images_source_zd, az=images_source_az,
+        az_pointing=images_point_az, zd_pointing=images_point_zd
+    )
 
-    y = images
-    y_label = images_source_zd #np.asarray([images_source_az, images_source_zd]).reshape((-1, 2))
+    # Now convert to this camera's coordinates
+    source_x += 180.975 # shifts everything to positive
+    source_y += 185.25 # shifts everything to positive
+    source_x = source_x / 4.94 # Ratio between the places
+    source_y = source_y / 4.826 # Ratio between y in original and y here
+    print(np.min(source_x))
+    print(np.max(source_x))
+    print(np.min(source_y))
+    print(np.max(source_y))
+    y = np.flipud(images)
+    print(images.shape)
+    y_label = np.asarray([source_x, source_y]).reshape((-1, 2))
     print(y_label.shape)
     print("Finished getting data")
 
@@ -99,42 +107,45 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                         items = number_of_training
                     section = 0
                     section = section % times_train_in_items
-                    offset = int(section * items)
-                    image = f['Image'][offset:int(offset + items)]
-                    source_zd = f['Energy'][offset:int(offset + items)]
-                    #source_az = f['Phi'][offset:int(offset + items)]
-                    #point_az = f['Az_deg'][offset:int(offset + items)]
-                    #point_zd = f['Zd_deg'][offset:int(offset + items)]
-                    #source_az = (-1.*source_az + 540) % 360
-                    #source_x, source_y = horizontal_to_camera(
-                    #    zd=source_zd, az=source_az,
-                    #    az_pointing=point_az, zd_pointing=point_zd
-                    #)
+                    image = np.flipud(f['Image'][0:int(np.floor((gamma_anteil*number_of_training)))])
+                    images_point_az = f['Pointing_Az'][0:int(np.floor((gamma_anteil*number_of_training)))]
+                    images_point_zd = f['Pointing_Zd'][0:int(np.floor((gamma_anteil*number_of_training)))]
+                    images_source_az = f['Az_deg'][0:int(np.floor((gamma_anteil*number_of_training)))]
+                    images_source_zd = f['Zd_deg'][0:int(np.floor((gamma_anteil*number_of_training)))]
+                    #images_source_az = (-1.*images_source_az + 540) % 360
+                    source_x, source_y = horizontal_to_camera(
+                        zd=images_source_zd, az=images_source_az,
+                        az_pointing=images_point_az, zd_pointing=images_point_zd
+                    )
+                    source_x += 180.975
+                    source_y += 185.25
+                    source_x = source_x / 4.94
+                    source_y = source_y / 4.826
                     while True:
                         batch_num = 0
 
                         rng_state = np.random.get_state()
                         np.random.shuffle(image)
                         np.random.set_state(rng_state)
-                        #np.random.shuffle(source_az)
+                        np.random.shuffle(source_y)
                         np.random.set_state(rng_state)
-                        np.random.shuffle(source_zd)
+                        np.random.shuffle(source_x)
                         #np.random.set_state(rng_state)
                         #np.random.shuffle(point_zd)
                         #np.random.set_state(rng_state)
                         #np.random.shuffle(point_az)
                         # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
-                        while (batch_size) * (batch_num + 1) < items:
+                        while (batch_size) * (batch_num + 1) < len(image):
                             # Get some truth data for now, just use Crab images
                             images = image[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
                             #images_source_zd = source_zd[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
                             #images_source_az = source_az[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
                             #images_point_az = point_az[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
                             #images_point_zd = point_zd[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
-                            #images_source_x = source_az[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
-                            images_source_y = source_zd[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
+                            images_source_x = source_x[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
+                            images_source_y = source_y[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
                             x = images
-                            x_label = images_source_y #np.asarray([images_source_x, images_source_y]).reshape((-1, 2))
+                            x_label = np.asarray([images_source_x, images_source_y]).reshape((-1,2)) #np.asarray([images_source_x, images_source_y]).reshape((-1, 2))
                             #print(x_label.shape)
                             batch_num += 1
                             yield (x, x_label)
@@ -144,46 +155,40 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model = Sequential()
 
             # Base Conv layer
-            #model.add(Conv2D(conv_neurons, kernel_size=patch_size, strides=(1, 1),
-
-            #                 activation='relu', padding=optimizer,
-            #                 input_shape=(75, 75, 1)))
-            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            #model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            #model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            #model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            #model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            #model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            #model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            #model.add(Flatten())
-            # Convert input to flattened thing
-            #model.add(Reshape((-1), input_shape=(75,75,1)))
             model.add(Conv2D(conv_neurons, kernel_size=patch_size, strides=(1, 1),
-                                             activation='linear', padding=optimizer,
-                                             input_shape=(75, 75, 1)))
+                             activation='relu', padding=optimizer,
+                             input_shape=(75, 75, 1)))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
+
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
+
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
+
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
+
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
+
             model.add(Flatten())
-            model.add(Dense(2*dense_neuron, activation='linear'))
+
+            model.add(Dense(dense_neuron, activation='linear'))
             model.add(Dropout(dropout_layer))
             model.add(Dense(dense_neuron, activation='linear'))
             model.add(Dropout(dropout_layer))
-            model.add(Dense(int(.5*dense_neuron), activation='linear'))
+            model.add(Dense(dense_neuron, activation='linear'))
             model.add(Dropout(dropout_layer))
 
             # Final Dense layer
             # 2 so have one for x and one for y
-            model.add(Dense(1, activation=None))
+            model.add(Dense(2, activation=None))
             model.compile(optimizer='adam', loss='mse', metrics=['mae'])
             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
                                 verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])

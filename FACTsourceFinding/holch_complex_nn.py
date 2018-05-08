@@ -1,11 +1,11 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+import pickle
 from keras import backend as K
 import h5py
-from fact.io import read_h5py
+from fact.io import read_h5py, read_h5py_chunked
 import yaml
 import tensorflow as tf
 import os
@@ -14,6 +14,7 @@ import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
+import pandas as pd
 
 architecture = 'manjaro'
 
@@ -35,13 +36,17 @@ num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 400000*(0.6)
-number_of_testing = 800000*(0.2)
-number_validate = 800000*(0.2)
+number_of_training = 50000*(0.6)
+number_of_testing = 50000*(0.2)
+number_validate = 50000*(0.2)
 optimizers = ['same']
 epoch = 300
 
-path_mc_images = base_dir + "/Rebinned_5_MC_Energy_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_mrk501_preprocessed_images.h5"
+path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
+
+mrk501 = read_h5py(path_mrk501, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
+#mc_image = read_h5py_chunked(path_mc_images, key='events', columns=['Image', 'Event', 'Night', 'Run'])
 
 def metaYielder():
     gamma_anteil = 1
@@ -52,20 +57,107 @@ def metaYielder():
 
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
-    # Get some truth data for now, just use Crab images
-    images = f['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_zd = f['Energy'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    #images_source_az = f['Phi'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    #images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    #images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    #images_source_az = (-1.*images_source_az + 540) % 360
-    #source_x, source_y = horizontal_to_camera(
-    #    zd=images_source_zd, az=images_source_az,
-    #    az_pointing=images_point_az, zd_pointing=images_point_zd
-    #)
+    if not os.path.isfile("mrk501_precut_testing.p"):
+        raw_event_nums = np.asarray(f['Event'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
+        raw_nights = np.asarray(f['Night'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
+        raw_run_ids = np.asarray(f['Run'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
 
-    y = images
-    y_label = images_source_zd #np.asarray([images_source_az, images_source_zd]).reshape((-1, 2))
+        #raw_df = pd.DataFrame(data=[raw_images, raw_event_nums, raw_nights, raw_run_ids])
+        #raw_df.columns = ["Image", "Event", "Night", "Run"]
+        #print(raw_df)
+
+        # Get some truth data for now, just use Mrk501 images
+        #images = mrk501['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+        #images_source_zd = mrk501['source_x_prediction'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+        #images_source_az = mrk501['source_y_prediction'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+        # now get the photon stream data
+        #event_nums = mrk501['event_num'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+        #nights = mrk501['night'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+        #run_ids = mrk501['run_id'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+
+        night_images = []
+        source_label_x = []
+        source_label_y = []
+        indicies_that_work = []
+
+        for index, night in enumerate(raw_nights):
+            night_index = index
+            raw_run_id = raw_run_ids[night_index]
+            raw_event_num = raw_event_nums[night_index]
+
+            #print(night)
+            #print(raw_run_id)
+            #print(raw_event_num)
+
+            #print("Now Both")
+            #print("Night: ")
+            #print(night)
+            testing = mrk501.loc[(mrk501['event_num'] == raw_event_num) & (mrk501['run_id'] == raw_run_id) & (mrk501['night'] == night)]
+            if not testing.empty:
+                indicies_that_work.append(index)
+                #print(testing)
+            exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
+            #print(exact_position)
+            # now get range of nights from run_id and event_num
+            if not exact_position.empty:
+                # got the exact event now, need the image
+                night_images.append(f['Image'][index])
+                source_label_x.append(exact_position['source_x_prediction'].values)
+                source_label_y.append(exact_position['source_y_prediction'].values)
+
+        # After done with that convert to Numpy
+        night_images = np.asarray(night_images)
+        source_label_x = np.asarray(source_label_x)
+        source_label_y = np.asarray(source_label_y)
+        with open("mrk501_precut_testing_small.p", "wb") as path_store:
+            pickle.dump(indicies_that_work, path_store)
+            #images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+            #images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+            #images_source_az = (-1.*images_source_az + 540) % 360
+            #source_x, source_y = horizontal_to_camera(
+            #    zd=images_source_zd, az=images_source_az,
+            #    az_pointing=images_point_az, zd_pointing=images_point_zd
+            #)
+    else:
+        # It does exits
+        with open("mrk501_precut_testing.p", "rb") as path_store:
+            indicies_that_work = pickle.load(path_store)
+        total_testing = len(indicies_that_work)
+        raw_event_nums = np.asarray(f['Event'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
+        raw_nights = np.asarray(f['Night'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
+        raw_run_ids = np.asarray(f['Run'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
+        night_images = []
+        source_label_x = []
+        source_label_y = []
+        for index in indicies_that_work:
+            night_index = index
+            night = raw_nights[index]
+            raw_run_id = raw_run_ids[night_index]
+            raw_event_num = raw_event_nums[night_index]
+                #print(testing)
+            exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
+            #print(exact_position)
+            # now get range of nights from run_id and event_num
+            if not exact_position.empty:
+                # got the exact event now, need the image
+                night_images.append(f['Image'][index])
+                source_label_x.append(exact_position['source_x_prediction'].values)
+                source_label_y.append(exact_position['source_y_prediction'].values)
+
+        # After done with that convert to Numpy
+        night_images = np.asarray(night_images)
+        source_label_x = np.asarray(source_label_x)
+        source_label_y = np.asarray(source_label_y)
+
+
+    y = night_images
+    print(night_images.shape)
+    # Now convert to this camera's coordinates
+    source_label_x += 180.975 # shifts everything to positive
+    source_label_y += 185.25 # shifts everything to positive
+    source_label_x = source_label_x / 4.94 # Ratio between the places
+    source_label_y = source_label_y / 4.826 # Ratio between y in original and y here
+    y_label = np.asarray([source_label_x, source_label_y]).reshape((-1, 2))
     print(y_label.shape)
     print("Finished getting data")
 
@@ -94,8 +186,53 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     section = 0
                     section = section % times_train_in_items
                     offset = int(section * items)
-                    image = f['Image'][offset:int(offset + items)]
-                    source_zd = f['Energy'][offset:int(offset + items)]
+                    raw_event_nums = np.asarray(f['Event'][2*int(np.floor((gamma_anteil*number_of_testing))):2*int(np.floor((gamma_anteil*number_of_testing)))+2*int(np.floor((gamma_anteil*number_of_training)))])
+                    raw_nights = np.asarray(f['Night'][2*int(np.floor((gamma_anteil*number_of_testing))):2*int(np.floor((gamma_anteil*number_of_testing)))+2*int(np.floor((gamma_anteil*number_of_training)))])
+                    raw_run_ids = np.asarray(f['Run'][2*int(np.floor((gamma_anteil*number_of_testing))):2*int(np.floor((gamma_anteil*number_of_testing)))+2*int(np.floor((gamma_anteil*number_of_training)))])
+                    night_images = []
+                    source_label_x = []
+                    source_label_y = []
+                    indicies_that_work = []
+
+                    for index, night in enumerate(raw_nights):
+                        night_index = index
+                        raw_run_id = raw_run_ids[night_index]
+                        raw_event_num = raw_event_nums[night_index]
+
+                        #print(night)
+                        #print(raw_run_id)
+                        #print(raw_event_num)
+
+                        #print("Now Both")
+                        #print("Night: ")
+                        #print(night)
+                        #testing = mrk501.loc[(mrk501['event_num'] == raw_event_num) & (mrk501['run_id'] == raw_run_id) & (mrk501['night'] == night)]
+                        #if not testing.empty:
+                        #    print(testing)
+                        exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
+                        #print(exact_position)
+                        # now get range of nights from run_id and event_num
+                        if not exact_position.empty:
+                            # Need this extra part so that the index in the actual Image thing is correct
+                            indicies_that_work.append(int(2*int(np.floor((gamma_anteil*number_of_testing)))+index))
+                            # got the exact event now, need the image
+                            night_images.append(f['Image'][int(2*int(np.floor((gamma_anteil*number_of_testing)))+index)])
+                            source_label_x.append(exact_position['source_x_prediction'].values)
+                            source_label_y.append(exact_position['source_y_prediction'].values)
+
+                    # After done with that convert to Numpy
+                    image = np.asarray(night_images)
+                    source_label_x = np.asarray(source_label_x)
+                    source_label_y = np.asarray(source_label_y)
+                    # Now convert to this camera's coordinates
+                    source_label_x += 180.975 # shifts everything to positive
+                    source_label_y += 185.25 # shifts everything to positive
+                    source_label_x = source_label_x / 4.94 # Ratio between the places
+                    source_label_y = source_label_y / 4.826 # Ratio between y in original and y here
+                    with open("mrk501_precut_training_small.p", "wb") as path_store:
+                        pickle.dump(indicies_that_work, path_store)
+                    #image = f['Image'][offset:int(offset + items)]
+                    #source_zd = f['Energy'][offset:int(offset + items)]
                     #source_az = f['Phi'][offset:int(offset + items)]
                     #point_az = f['Az_deg'][offset:int(offset + items)]
                     #point_zd = f['Zd_deg'][offset:int(offset + items)]
@@ -110,25 +247,25 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                         rng_state = np.random.get_state()
                         np.random.shuffle(image)
                         np.random.set_state(rng_state)
-                        #np.random.shuffle(source_az)
+                        np.random.shuffle(source_label_y)
                         np.random.set_state(rng_state)
-                        np.random.shuffle(source_zd)
+                        np.random.shuffle(source_label_x)
                         #np.random.set_state(rng_state)
                         #np.random.shuffle(point_zd)
                         #np.random.set_state(rng_state)
                         #np.random.shuffle(point_az)
                         # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
-                        while (batch_size) * (batch_num + 1) < items:
+                        while (batch_size) * (batch_num + 1) < len(image):
                             # Get some truth data for now, just use Crab images
                             images = image[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
                             #images_source_zd = source_zd[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
                             #images_source_az = source_az[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
                             #images_point_az = point_az[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
                             #images_point_zd = point_zd[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
-                            #images_source_x = source_az[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
-                            images_source_y = source_zd[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
+                            images_source_x = source_label_x[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
+                            images_source_y = source_label_y[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
                             x = images
-                            x_label = images_source_y #np.asarray([images_source_x, images_source_y]).reshape((-1, 2))
+                            x_label = np.asarray([images_source_x, images_source_y]).reshape((-1,2)) #np.asarray([images_source_x, images_source_y]).reshape((-1, 2))
                             #print(x_label.shape)
                             batch_num += 1
                             yield (x, x_label)
@@ -162,16 +299,16 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
             model.add(Flatten())
 
-            #model.add(Dense(dense_neuron, activation='linear'))
-            #model.add(Dropout(dropout_layer))
-            #model.add(Dense(dense_neuron, activation='linear'))
-            #model.add(Dropout(dropout_layer))
-            #model.add(Dense(dense_neuron, activation='linear'))
-            #model.add(Dropout(dropout_layer))
+            model.add(Dense(dense_neuron, activation='linear'))
+            model.add(Dropout(dropout_layer))
+            model.add(Dense(dense_neuron, activation='linear'))
+            model.add(Dropout(dropout_layer))
+            model.add(Dense(dense_neuron, activation='linear'))
+            model.add(Dropout(dropout_layer))
 
             # Final Dense layer
             # 2 so have one for x and one for y
-            model.add(Dense(1, activation=None))
+            model.add(Dense(2, activation=None))
             model.compile(optimizer='adam', loss='mse', metrics=['mae'])
             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
                                 verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])

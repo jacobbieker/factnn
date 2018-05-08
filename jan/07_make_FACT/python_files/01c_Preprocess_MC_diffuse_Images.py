@@ -94,7 +94,7 @@ def batchYielder(paths, diffuse_df):
                     run = line_data['Run']
                     event = line_data['Event']
 
-                    element = diffuse_df[(diffuse_df['run_id'] == run) & (diffuse_df['event_num'] == event)]
+                    element = diffuse_df.loc[(diffuse_df['run_id'] == run) & (diffuse_df['event_num'] == event)]
                     if element.empty and temp_phi != []:
                         event_photons = line_data['PhotonArrivals_500ps']
                         #print(element)
