@@ -19,7 +19,7 @@ import pandas as pd
 architecture = 'manjaro'
 
 if architecture == 'manjaro':
-    base_dir = '/run/media/jacob/WDRed8Tb1'
+    base_dir = '/run/media/jacob/Seagate'
     thesis_base = '/run/media/jacob/SSD/Development/thesis'
 else:
     base_dir = '/projects/sventeklab/jbieker'
@@ -36,13 +36,13 @@ num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 85000*(0.6)
-number_of_testing = 85000*(0.2)
-number_validate = 85000*(0.2)
+number_of_training = 400000*(0.6)
+number_of_testing = 400000*(0.2)
+number_validate = 400000*(0.2)
 optimizers = ['same']
 epoch = 300
 
-path_mc_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Gamma_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_Precut_fixed_Images.h5"
 #path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
 
 #mrk501 = read_h5py(path_mrk501, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
@@ -58,15 +58,11 @@ def metaYielder():
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
     images = f['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_point_az = f['Pointing_Az'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_point_zd = f['Pointing_Zd'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    source_x = f['Source_X'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    source_y = f['Source_Y'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    #images_source_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    #images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_az = (-1.*images_source_az + 540) % 360
-    source_x, source_y = horizontal_to_camera(
-        zd=images_source_zd, az=images_source_az,
-        az_pointing=images_point_az, zd_pointing=images_point_zd
-    )
 
     # Now convert to this camera's coordinates
     source_x += 180.975 # shifts everything to positive
@@ -108,15 +104,11 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     section = 0
                     section = section % times_train_in_items
                     image = np.flipud(f['Image'][0:int(np.floor((gamma_anteil*number_of_training)))])
-                    images_point_az = f['Pointing_Az'][0:int(np.floor((gamma_anteil*number_of_training)))]
-                    images_point_zd = f['Pointing_Zd'][0:int(np.floor((gamma_anteil*number_of_training)))]
-                    images_source_az = f['Az_deg'][0:int(np.floor((gamma_anteil*number_of_training)))]
-                    images_source_zd = f['Zd_deg'][0:int(np.floor((gamma_anteil*number_of_training)))]
+                    source_x = f['Source_X'][0:int(np.floor((gamma_anteil*number_of_training)))]
+                    source_y = f['Source_Y'][0:int(np.floor((gamma_anteil*number_of_training)))]
+                    #images_source_az = f['Az_deg'][0:int(np.floor((gamma_anteil*number_of_training)))]
+                    #images_source_zd = f['Zd_deg'][0:int(np.floor((gamma_anteil*number_of_training)))]
                     #images_source_az = (-1.*images_source_az + 540) % 360
-                    source_x, source_y = horizontal_to_camera(
-                        zd=images_source_zd, az=images_source_az,
-                        az_pointing=images_point_az, zd_pointing=images_point_zd
-                    )
                     source_x += 180.975
                     source_y += 185.25
                     source_x = source_x / 4.94

@@ -44,10 +44,10 @@ epoch = 300
 frac_test = 1
 frac_train = 1
 
-path_mc_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_mrk501_preprocessed_images.h5"
-path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
+path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_crab_preprocessed_images.h5"
+path_crab = "/run/media/jacob/SSD/open_crab_sample_analysis/build/crab_precuts.hdf5"
 
-mrk501 = read_h5py(path_mrk501, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
+crab = read_h5py(path_crab, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
 #mc_image = read_h5py_chunked(path_mc_images, key='events', columns=['Image', 'Event', 'Night', 'Run'])
 
 def metaYielder():
@@ -59,13 +59,13 @@ def metaYielder():
 
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
-    if os.path.isfile(base_dir + "/mrk501_testing_images.npy"):
+    if os.path.isfile(base_dir + "/crab_testing_images.npy"):
         # Just load from that
-        image = np.load(base_dir + "/mrk501_testing_images.npy")
-        source_label_x = np.load(base_dir + "/mrk501_testing_x.npy")
-        source_label_y = np.load(base_dir + "/mrk501_testing_y.npy")
+        image = np.load(base_dir + "/crab_testing_images.npy")
+        source_label_x = np.load(base_dir + "/crab_testing_x.npy")
+        source_label_y = np.load(base_dir + "/crab_testing_y.npy")
     else:
-        if not os.path.isfile("mrk501_precut_testing.p"):
+        if not os.path.isfile("crab_precut_testing.p"):
             raw_event_nums = np.asarray(f['Event'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
             raw_nights = np.asarray(f['Night'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
             raw_run_ids = np.asarray(f['Run'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
@@ -75,13 +75,13 @@ with h5py.File(path_mc_images, 'r') as f:
             #print(raw_df)
 
             # Get some truth data for now, just use Mrk501 images
-            #images = mrk501['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-            #images_source_zd = mrk501['source_x_prediction'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-            #images_source_az = mrk501['source_y_prediction'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+            #images = crab['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+            #images_source_zd = crab['source_x_prediction'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+            #images_source_az = crab['source_y_prediction'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
             # now get the photon stream data
-            #event_nums = mrk501['event_num'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-            #nights = mrk501['night'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-            #run_ids = mrk501['run_id'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+            #event_nums = crab['event_num'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+            #nights = crab['night'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+            #run_ids = crab['run_id'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
 
             night_images = []
             source_label_x = []
@@ -100,11 +100,11 @@ with h5py.File(path_mc_images, 'r') as f:
                 #print("Now Both")
                 #print("Night: ")
                 #print(night)
-                testing = mrk501.loc[(mrk501['event_num'] == raw_event_num) & (mrk501['run_id'] == raw_run_id) & (mrk501['night'] == night)]
+                testing = crab.loc[(crab['event_num'] == raw_event_num) & (crab['run_id'] == raw_run_id) & (crab['night'] == night)]
                 if not testing.empty:
                     indicies_that_work.append(index)
                     #print(testing)
-                exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
+                exact_position = crab.loc[(crab['night'] == night) & (crab['run_id'] == raw_run_id) & (crab['event_num'] == raw_event_num)]
                 #print(exact_position)
                 # now get range of nights from run_id and event_num
                 if not exact_position.empty:
@@ -117,7 +117,7 @@ with h5py.File(path_mc_images, 'r') as f:
             night_images = np.asarray(night_images)
             source_label_x = np.asarray(source_label_x)
             source_label_y = np.asarray(source_label_y)
-            with open("mrk501_precut_testing.p", "wb") as path_store:
+            with open("crab_precut_testing.p", "wb") as path_store:
                 pickle.dump(indicies_that_work, path_store)
                 #images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
                 #images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
@@ -128,7 +128,7 @@ with h5py.File(path_mc_images, 'r') as f:
                 #)
         else:
             # It does exits
-            with open("mrk501_precut_testing.p", "rb") as path_store:
+            with open("crab_precut_testing.p", "rb") as path_store:
                 indicies_that_work = pickle.load(path_store)
             total_testing = len(indicies_that_work)
             np.random.shuffle(indicies_that_work)
@@ -145,8 +145,8 @@ with h5py.File(path_mc_images, 'r') as f:
                 night = raw_nights[index]
                 raw_run_id = raw_run_ids[night_index]
                 raw_event_num = raw_event_nums[night_index]
-                    #print(testing)
-                exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
+                #print(testing)
+                exact_position = crab.loc[(crab['night'] == night) & (crab['run_id'] == raw_run_id) & (crab['event_num'] == raw_event_num)]
                 #print(exact_position)
                 # now get range of nights from run_id and event_num
                 if not exact_position.empty:
@@ -162,9 +162,9 @@ with h5py.File(path_mc_images, 'r') as f:
 
 
         y = night_images
-        np.save(base_dir + "/mrk501_testing_images.npy", night_images)
-        np.save(base_dir + "/mrk501_testing_x.npy", source_label_x)
-        np.save(base_dir + "/mrk501_testing_y.npy", source_label_y)
+        np.save(base_dir + "/crab_testing_images.npy", night_images)
+        np.save(base_dir + "/crab_testing_x.npy", source_label_x)
+        np.save(base_dir + "/crab_testing_y.npy", source_label_y)
     # Now convert to this camera's coordinates
     source_label_x += 180.975 # shifts everything to positive
     source_label_y += 185.25 # shifts everything to positive
@@ -200,13 +200,13 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     section = 0
                     section = section % times_train_in_items
                     offset = int(section * items)
-                    if os.path.isfile(base_dir + "/mrk501_training_images.npy"):
+                    if os.path.isfile(base_dir + "/crab_training_images.npy"):
                         # Just load from that
-                        image = np.load(base_dir + "/mrk501_training_images.npy")
-                        source_label_x = np.load(base_dir + "/mrk501_training_x.npy")
-                        source_label_y = np.load(base_dir + "/mrk501_training_y.npy")
+                        image = np.load(base_dir + "/crab_training_images.npy")
+                        source_label_x = np.load(base_dir + "/crab_training_x.npy")
+                        source_label_y = np.load(base_dir + "/crab_training_y.npy")
                     else:
-                        if not os.path.isfile("mrk501_precut_training.p"):
+                        if not os.path.isfile("crab_precut_training.p"):
                             raw_event_nums = np.asarray(f['Event'][2*int(np.floor((gamma_anteil*number_of_testing))):2*int(np.floor((gamma_anteil*number_of_testing)))+2*int(np.floor((gamma_anteil*number_of_training)))])
                             raw_nights = np.asarray(f['Night'][2*int(np.floor((gamma_anteil*number_of_testing))):2*int(np.floor((gamma_anteil*number_of_testing)))+2*int(np.floor((gamma_anteil*number_of_training)))])
                             raw_run_ids = np.asarray(f['Run'][2*int(np.floor((gamma_anteil*number_of_testing))):2*int(np.floor((gamma_anteil*number_of_testing)))+2*int(np.floor((gamma_anteil*number_of_training)))])
@@ -227,10 +227,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                                 #print("Now Both")
                                 #print("Night: ")
                                 #print(night)
-                                #testing = mrk501.loc[(mrk501['event_num'] == raw_event_num) & (mrk501['run_id'] == raw_run_id) & (mrk501['night'] == night)]
+                                #testing = crab.loc[(crab['event_num'] == raw_event_num) & (crab['run_id'] == raw_run_id) & (crab['night'] == night)]
                                 #if not testing.empty:
                                 #    print(testing)
-                                exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
+                                exact_position = crab.loc[(crab['night'] == night) & (crab['run_id'] == raw_run_id) & (crab['event_num'] == raw_event_num)]
                                 #print(exact_position)
                                 # now get range of nights from run_id and event_num
                                 if not exact_position.empty:
@@ -240,9 +240,11 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                                     night_images.append(f['Image'][int(2*int(np.floor((gamma_anteil*number_of_testing)))+index)])
                                     source_label_x.append(exact_position['source_x_prediction'].values)
                                     source_label_y.append(exact_position['source_y_prediction'].values)
+                            with open("crab_precut_training.p", "wb") as path_store:
+                                pickle.dump(indicies_that_work, path_store)
                         else:
                             # It does exits
-                            with open("mrk501_precut_training.p", "rb") as path_store:
+                            with open("crab_precut_training.p", "rb") as path_store:
                                 indicies_that_work = pickle.load(path_store)
                             total_testing = len(indicies_that_work)
                             np.random.shuffle(indicies_that_work)
@@ -260,7 +262,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                                 raw_run_id = raw_run_ids[night_index]
                                 raw_event_num = raw_event_nums[night_index]
                                 #print(testing)
-                                exact_position = mrk501.loc[(mrk501['night'] == night) & (mrk501['run_id'] == raw_run_id) & (mrk501['event_num'] == raw_event_num)]
+                                exact_position = crab.loc[(crab['night'] == night) & (crab['run_id'] == raw_run_id) & (crab['event_num'] == raw_event_num)]
                                 #print(exact_position)
                                 # now get range of nights from run_id and event_num
                                 if not exact_position.empty:
@@ -274,9 +276,9 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                         image = np.asarray(night_images)
                         source_label_x = np.asarray(source_label_x)
                         source_label_y = np.asarray(source_label_y)
-                        np.save(base_dir + "/mrk501_training_images.npy", night_images)
-                        np.save(base_dir + "/mrk501_training_x.npy", source_label_x)
-                        np.save(base_dir + "/mrk501_training_y.npy", source_label_y)
+                        np.save(base_dir + "/crab_training_images.npy", night_images)
+                        np.save(base_dir + "/crab_training_x.npy", source_label_x)
+                        np.save(base_dir + "/crab_training_y.npy", source_label_y)
                     # Now convert to this camera's coordinates
                     source_label_x += 180.975 # shifts everything to positive
                     source_label_y += 185.25 # shifts everything to positive

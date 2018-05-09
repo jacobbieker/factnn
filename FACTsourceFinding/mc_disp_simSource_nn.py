@@ -18,7 +18,7 @@ from fact.coordinates.utils import horizontal_to_camera
 architecture = 'manjaro'
 
 if architecture == 'manjaro':
-    base_dir = '/run/media/jacob/WDRed8Tb1'
+    base_dir = '/run/media/jacob/WDRed8Tb2'
     thesis_base = '/run/media/jacob/SSD/Development/thesis'
 else:
     base_dir = '/projects/sventeklab/jbieker'
@@ -41,7 +41,7 @@ number_validate = 85000*(0.2)
 optimizer = 'adam'
 epoch = 300
 
-path_mc_images = base_dir + "/FACTSources/Rebinned_5_MC_Gamma_Images.h5"
+path_mc_images = base_dir + "file:///run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_Precut_fixed_Images.h5"
 
 def metaYielder():
     gamma_anteil = 1
