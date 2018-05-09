@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from keras import backend as K
 import h5py
@@ -18,7 +18,7 @@ from fact.coordinates.utils import horizontal_to_camera
 architecture = 'manjaro'
 
 if architecture == 'manjaro':
-    base_dir = '/run/media/jacob/WDRed8Tb2'
+    base_dir = '/run/media/jacob/WDRed8Tb1'
     thesis_base = '/run/media/jacob/SSD/Development/thesis'
 else:
     base_dir = '/projects/sventeklab/jbieker'
@@ -35,13 +35,13 @@ num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 85000*(0.6)
-number_of_testing = 85000*(0.2)
-number_validate = 85000*(0.2)
+number_of_training = 100*(0.6)
+number_of_testing = 100*(0.2)
+number_validate = 100*(0.2)
 optimizer = 'adam'
-epoch = 300
+epoch = 900
 
-path_mc_images = base_dir + "file:///run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_Precut_fixed_Images.h5"
+path_mc_images = base_dir + "/Rebinned_5_MC_Phi_Images.h5"
 
 def metaYielder():
     gamma_anteil = 1
@@ -54,8 +54,8 @@ with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
     # Get some truth data for now, just use Crab images
     images = f['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_point_az = f['Pointing_Az'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_point_zd = f['Pointing_Zd'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    images_point_az = f['Phi'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    images_point_zd = f['Theta'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     images_source_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_az = (-1.*images_source_az + 540) % 360
@@ -63,7 +63,10 @@ with h5py.File(path_mc_images, 'r') as f:
         zd=images_source_zd, az=images_source_az,
         az_pointing=images_point_az, zd_pointing=images_point_zd
     )
-
+    source_x += 180.975
+    source_y += 185.25
+    source_x = source_x / 4.94
+    source_y = source_y / 4.826
     y = images
     print(images.shape)
     y_label = np.asarray([source_x, source_y]).reshape((-1, 2))
@@ -79,10 +82,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
-            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.1, patience=25, min_lr=0.001)
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.1, patience=80, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{loss:.3f}_" + model_name + ".h5", monitor='loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
-            early_stop = keras.callbacks.EarlyStopping(monitor='loss', min_delta=0, patience=30, verbose=0, mode='auto')
+            early_stop = keras.callbacks.EarlyStopping(monitor='loss', min_delta=0, patience=100, verbose=0, mode='auto')
 
             def batchYielder():
                 gamma_anteil, gamma_count = metaYielder()
@@ -94,8 +97,8 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     if items > number_of_training:
                         items = number_of_training
                     image = f['Image'][0:int(np.floor((gamma_anteil*number_of_training)))]
-                    images_point_az = f['Pointing_Az'][0:int(np.floor((gamma_anteil*number_of_training)))]
-                    images_point_zd = f['Pointing_Zd'][0:int(np.floor((gamma_anteil*number_of_training)))]
+                    images_point_az = f['Phi'][0:int(np.floor((gamma_anteil*number_of_training)))]
+                    images_point_zd = f['Theta'][0:int(np.floor((gamma_anteil*number_of_training)))]
                     images_source_az = f['Az_deg'][0:int(np.floor((gamma_anteil*number_of_training)))]
                     images_source_zd = f['Zd_deg'][0:int(np.floor((gamma_anteil*number_of_training)))]
                     #images_source_az = (-1.*images_source_az + 540) % 360
@@ -103,6 +106,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                         zd=images_source_zd, az=images_source_az,
                         az_pointing=images_point_az, zd_pointing=images_point_zd
                     )
+                    source_x += 180.975
+                    source_y += 185.25
+                    source_x = source_x / 4.94
+                    source_y = source_y / 4.826
                     section = 0
                     while True:
                         batch_num = 0
@@ -162,6 +169,8 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # 2 so have one for x and one for y
             model.add(Dense(2, activation='relu'))
             model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
+            print(model.summary())
+
             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
                                 verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 
@@ -177,9 +186,9 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
 for i in range(num_runs):
     dropout_layer = 0.0 #np.round(np.random.uniform(0.0, 1.0, size=1), 2)
-    batch_size = np.random.randint(batch_sizes[0], batch_sizes[1])
-    num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
-    num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
+    batch_size = 20#np.random.randint(batch_sizes[0], batch_sizes[1])
+    num_conv = 1#np.random.randint(num_conv_layers[0], num_conv_layers[1])
+    num_dense = 1#np.random.randint(num_dense_layers[0], num_dense_layers[1])
     patch_size = patch_sizes[np.random.randint(0, 3)]
     num_pooling_layer = np.random.randint(num_pooling_layers[0], num_pooling_layers[1])
     dense_neuron = np.random.randint(num_dense_neuron[0], num_dense_neuron[1])

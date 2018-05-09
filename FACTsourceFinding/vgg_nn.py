@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -36,9 +36,9 @@ num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 800000*(0.6)
-number_of_testing = 400000*(0.2)
-number_validate = 400000*(0.2)
+number_of_training = 100*(0.6)
+number_of_testing = 100*(0.2)
+number_validate = 100*(0.2)
 optimizers = ['same']
 epoch = 500
 
@@ -86,7 +86,7 @@ with h5py.File(path_mc_images, 'r') as f:
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     try:
         model_base = base_dir + "/Models/Disp/"
-        model_name = "MC_holchTest1Dense_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+        model_name = "MC_vgg_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
@@ -152,24 +152,42 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model = Sequential()
 
             # Base Conv layer
-            model.add(Conv2D(conv_neurons, kernel_size=patch_size, strides=(1, 1),
+            model.add(Conv2D(64, kernel_size=(3, 3),
                              activation='relu', padding=optimizer,
                              input_shape=(75, 75, 1)))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-            for i in range(num_conv):
-                model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-                model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-                model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
+            model.add(Conv2D(64, (3, 3), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding=optimizer))
 
+            model.add(Conv2D(128, (3, 3), activation='relu', padding=optimizer))
+            model.add(Conv2D(128, (3, 3), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding=optimizer))
+
+            model.add(Conv2D(256, (3, 3), activation='relu', padding=optimizer))
+            model.add(Conv2D(256, (3, 3), activation='relu', padding=optimizer))
+            model.add(Conv2D(256, (3, 3), activation='relu', padding=optimizer))
+            model.add(Conv2D(256, (3, 3), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding=optimizer))
+
+            model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+            model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+            model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+            model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding=optimizer))
+
+            model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+            model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+            model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+            model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+            model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding=optimizer))
+
+            # Now classification part
             model.add(Flatten())
-
-            for i in range(num_dense):
-                model.add(Dense(dense_neuron, activation='linear'))
-                model.add(Dropout(dropout_layer))
+            model.add(Dense(4096, activation='relu'))
+            model.add(Dense(4096, activation='relu'))
 
 
-            # Final Dense layer
+
+        # Final Dense layer
             # 2 so have one for x and one for y
             model.add(Dense(2, activation='linear'))
             model.compile(optimizer='adam', loss='mse', metrics=['mae'])
@@ -188,7 +206,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
 for i in range(num_runs):
     dropout_layer = np.round(np.random.uniform(0.0, 1.0), 2)
-    batch_size = 100#np.random.randint(batch_sizes[0], batch_sizes[1])
+    batch_size = 20#np.random.randint(batch_sizes[0], batch_sizes[1])
     num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
     num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
     patch_size = patch_sizes[np.random.randint(0, 3)]

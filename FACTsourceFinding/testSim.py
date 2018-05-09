@@ -10,5 +10,8 @@ sim_reader = ps.SimulationReader(
 
 
 for event in sim_reader:
+    print(event)
+    print(event.simulation_truth.run)
+    print(event.simulation_truth.event)
     print(event.photon_stream)
     print(event.simulation_truth)
