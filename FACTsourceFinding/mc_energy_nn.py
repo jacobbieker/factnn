@@ -3,8 +3,8 @@
 
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from keras import backend as K
 import h5py
@@ -15,7 +15,7 @@ import os
 import keras
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
+from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D, GlobalAveragePooling2D, GlobalMaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
 
 architecture = 'manjaro'
@@ -38,11 +38,11 @@ num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
 num_pooling_layers = [1, 2]
 num_runs = 500
-number_of_training = 100000*(0.6)
-number_of_testing = 100000*(0.2)
-number_validate = 100000*(0.2)
+number_of_training = 100*(0.6)
+number_of_testing = 100*(0.2)
+number_validate = 100*(0.2)
 optimizer = 'adam'
-epoch = 100
+epoch = 900
 
 path_mc_images = base_dir + "/Rebinned_5_MC_Energy_Images.h5"
 
@@ -59,7 +59,7 @@ with h5py.File(path_mc_images, 'r') as f:
     images = f['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     images_energy = f['Energy'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     y = images
-    y_label = np.asarray(images_energy).reshape(-1, 1)
+    y_label = images_energy
     print(y_label.shape)
     print("Finished getting data")
 
@@ -72,10 +72,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
-            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=15, min_lr=0.001)
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=75, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_loss:.3f}_" + model_name + ".h5", monitor='val_loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
-            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=20, verbose=0, mode='auto')
+            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=100, verbose=0, mode='auto')
 
             def batchYielder():
                 gamma_anteil, gamma_count = metaYielder()
@@ -103,11 +103,11 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                             images = image[batch_num*batch_size:(batch_num+1)*batch_size]
                             images_energy = image_energy[batch_num*batch_size:(batch_num+1)*batch_size]
                             rng_state = np.random.get_state()
-                            np.random.shuffle(images)
-                            np.random.set_state(rng_state)
-                            np.random.shuffle(images_energy)
+                            #np.random.shuffle(images)
+                            #np.random.set_state(rng_state)
+                            #np.random.shuffle(images_energy)
                             x = images
-                            x_label = np.asarray(images_energy).reshape((-1, 1))
+                            x_label = images_energy
                             #print(x_label)
                             batch_num += 1
                             yield (x, x_label)
@@ -128,17 +128,21 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
                 model.add(Dropout(dropout_layer))
 
-            model.add(Flatten())
+            model.add(GlobalAveragePooling2D())
+
+            #model.add(Flatten())
 
             # Now do the dense layers
-            for i in range(num_dense):
-                model.add(Dense(dense_neuron, activation='relu'))
-                model.add(Dropout(dropout_layer))
+            #for i in range(num_dense):
+            #    model.add(Dense(dense_neuron, activation='relu'))
+            #    model.add(Dropout(dropout_layer))
 
             # Final Dense layer
             # 2 so have one for x and one for y
-            model.add(Dense(1, activation='relu'))
-            model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
+            model.add(Dense(1, activation='linear'))
+            model.compile(optimizer=optimizer, loss='mae', metrics=['mse'])
+            print(model.summary())
+
             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
                                 verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 
@@ -154,7 +158,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
 for i in range(num_runs):
     dropout_layer = 0.0 #np.round(np.random.uniform(0.0, 1.0, size=1), 2)
-    batch_size = np.random.randint(batch_sizes[0], batch_sizes[1])
+    batch_size = 50#np.random.randint(batch_sizes[0], batch_sizes[1])
     num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
     num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
     patch_size = patch_sizes[np.random.randint(0, 3)]

@@ -35,12 +35,12 @@ else:
     thesis_base = base_dir + '/thesis'
 
 path_raw_mc_proton_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/proton/"
-path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/gamma/"
+path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/proton/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Diffuse_CORSIKATracking_Images.h5"
-path_to_diffuse = "/run/media/jacob/WDRed8Tb1/open_crab_sample_analysis/dl2/gamma_diffuse.hdf5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_CORSIKATracking_Images.h5"
+path_to_diffuse = "/run/media/jacob/WDRed8Tb1/open_crab_sample_analysis/dl2/proton.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 
 diffuse_df = read_h5py(path_to_diffuse, key="events", columns=["event_num", "@source", "source_position",
@@ -58,7 +58,7 @@ source_y = diffuse_df['source_position_0'].values
 
 run_ids = []
 for id in run_ids_long:
-    tmp = id.split("/")[12]
+    tmp = id.split("_12/")[1]
     #print(tmp)
     tmp = tmp.split("/")[0]
     run_ids.append(int(tmp))
@@ -88,17 +88,18 @@ def getMetadata(path_folder):
     '''
     run_ids = []
     for id in run_ids_long:
-        tmp = id.split("/")[12]
-        tmp = tmp.split("/")[0]
-        run_ids.append(tmp)
+        if "uwe" in id or "yoda" in id:
+            tmp = id.split("_12/")[1]
+            tmp = tmp.split("/")[0]
+            run_ids.append(tmp)
     # Iterate over every file in the subdirs and check if it has the right file extension
     file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(path_folder)
                   for file in fileName if '.json' in file]
     latest_paths = []
     for path in file_paths:
         if any(number in path for number in run_ids):
-                #print(path)
-                latest_paths.append(path)
+            #print(path)
+            latest_paths.append(path)
     #print(latest_paths)
     return latest_paths
 
@@ -136,7 +137,6 @@ def batchYielder(paths):
                     # In the event chosen from the file
                     # Each event is the same as each line below
                     source_pos_x = df_event['source_position_1'].values
-                    print(source_pos_x.shape)
                     source_pos_y = df_event['source_position_0'].values
                     energy = event.simulation_truth.air_shower.energy
                     event_photons = event.photon_stream.list_of_lists
@@ -185,24 +185,23 @@ gen = batchYielder(path_mc_gammas)
 batch = next(gen)
 pic, energy, zd_deg, az_deg, phi, theta, act_phi, act_theta = batchFormatter(batch)
 row_count = az_deg.shape[0]
-print(row_count)
 
 with h5py.File(path_mc_diffuse_images, 'w') as hdf:
     maxshape_pic = (None,) + pic.shape[1:]
     dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
-    maxshape_run = (None,) + row_count
+    maxshape_run = (None,) + energy.shape[1:]
     dset_run = hdf.create_dataset('Energy', shape=energy.shape, maxshape=maxshape_run, chunks=energy.shape, dtype=energy.dtype)
-    maxshape_event = (None,) + row_count
+    maxshape_event = (None,) + zd_deg.shape[1:]
     dset_zd_deg = hdf.create_dataset('Zd_deg', shape=zd_deg.shape, maxshape=maxshape_event, chunks=zd_deg.shape, dtype=zd_deg.dtype)
-    maxshape_az_deg = (None,) + row_count
+    maxshape_az_deg = (None,) + az_deg.shape[1:]
     dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
-    maxshape_phi = (None,) + row_count
+    maxshape_phi = (None,) + phi.shape[1:]
     dset_phi = hdf.create_dataset('Source_X', shape=phi.shape, maxshape=maxshape_phi, chunks=phi.shape, dtype=phi.dtype)
-    maxshape_theta = (None,) + row_count
+    maxshape_theta = (None,) + theta.shape[1:]
     dset_theta = hdf.create_dataset('Source_Y', shape=theta.shape, maxshape=maxshape_theta, chunks=theta.shape, dtype=theta.dtype)
-    maxshape_phia = (None,) + row_count
+    maxshape_phia = (None,) + act_phi.shape[1:]
     dset_phia = hdf.create_dataset('Phi', shape=act_phi.shape, maxshape=maxshape_phia, chunks=act_phi.shape, dtype=act_phi.dtype)
-    maxshape_thetaa = (None,) + row_count
+    maxshape_thetaa = (None,) + act_theta.shape[1:]
     dset_thetaa = hdf.create_dataset('Theta', shape=act_theta.shape, maxshape=maxshape_thetaa, chunks=act_theta.shape, dtype=act_theta.dtype)
 
     dset_pic[:] = pic

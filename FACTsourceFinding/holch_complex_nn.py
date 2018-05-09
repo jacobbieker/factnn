@@ -62,8 +62,11 @@ with h5py.File(path_mc_images, 'r') as f:
     if os.path.isfile(base_dir + "/mrk501_testing_images.npy"):
         # Just load from that
         image = np.load(base_dir + "/mrk501_testing_images.npy")
+        y = image[0:int(0.2*len(image))]
         source_label_x = np.load(base_dir + "/mrk501_testing_x.npy")
+        source_label_x = source_label_x[0:int(0.2*len(image))]
         source_label_y = np.load(base_dir + "/mrk501_testing_y.npy")
+        source_label_y = source_label_y[0:int(0.2*len(image))]
     else:
         if not os.path.isfile("mrk501_precut_testing.p"):
             raw_event_nums = np.asarray(f['Event'][0:2*int(np.floor((gamma_anteil*number_of_testing)))])
@@ -174,7 +177,6 @@ with h5py.File(path_mc_images, 'r') as f:
     print(y_label.shape)
     print("Finished getting data")
 
-exit(1)
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     try:
@@ -200,11 +202,17 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     section = 0
                     section = section % times_train_in_items
                     offset = int(section * items)
-                    if os.path.isfile(base_dir + "/mrk501_training_images.npy"):
+                    if os.path.isfile(base_dir + "/mrk501_testing_images.npy"):
                         # Just load from that
-                        image = np.load(base_dir + "/mrk501_training_images.npy")
-                        source_label_x = np.load(base_dir + "/mrk501_training_x.npy")
-                        source_label_y = np.load(base_dir + "/mrk501_training_y.npy")
+                        #image = np.load(base_dir + "/mrk501_training_images.npy")
+                        #source_label_x = np.load(base_dir + "/mrk501_training_x.npy")
+                        #source_label_y = np.load(base_dir + "/mrk501_training_y.npy")
+                        image = np.load(base_dir + "/mrk501_testing_images.npy")
+                        image = image[int(0.2*len(image)):]
+                        source_label_x = np.load(base_dir + "/mrk501_testing_x.npy")
+                        source_label_x = source_label_x[int(0.2*len(image)):]
+                        source_label_y = np.load(base_dir + "/mrk501_testing_y.npy")
+                        source_label_y = source_label_y[int(0.2*len(image)):]
                     else:
                         if not os.path.isfile("mrk501_precut_training.p"):
                             raw_event_nums = np.asarray(f['Event'][2*int(np.floor((gamma_anteil*number_of_testing))):2*int(np.floor((gamma_anteil*number_of_testing)))+2*int(np.floor((gamma_anteil*number_of_training)))])
@@ -271,7 +279,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
 
                             # After done with that convert to Numpy
-                        image = np.asarray(night_images)
+                            image = np.asarray(night_images)
                         source_label_x = np.asarray(source_label_x)
                         source_label_y = np.asarray(source_label_y)
                         np.save(base_dir + "/mrk501_training_images.npy", night_images)
@@ -331,36 +339,22 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                              input_shape=(75, 75, 1)))
             model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
             model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
+            for i in range(num_conv):
+                model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+                model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+                model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
 
             model.add(Flatten())
 
-            model.add(Dense(dense_neuron, activation='linear'))
-            model.add(Dropout(dropout_layer))
-            model.add(Dense(dense_neuron, activation='linear'))
-            model.add(Dropout(dropout_layer))
-            model.add(Dense(dense_neuron, activation='linear'))
-            model.add(Dropout(dropout_layer))
+            for i in range(num_dense):
+                model.add(Dense(dense_neuron, activation='linear'))
+                model.add(Dropout(dropout_layer))
+
 
             # Final Dense layer
             # 2 so have one for x and one for y
-            model.add(Dense(2, activation=None))
-            model.compile(optimizer='adam', loss='mse', metrics=['mae'])
+            model.add(Dense(2, activation='linear'))
+            model.compile(optimizer='adam', loss='mae', metrics=['mse'])
             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
                                 verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 

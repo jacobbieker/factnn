@@ -16,7 +16,7 @@ from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, B
 
 architecture = 'manjaro'
 
-if architecture == 'manjar':
+if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
     thesis_base = '/run/media/jacob/SSD/Development/thesis'
 else:
@@ -25,14 +25,14 @@ else:
 
 # Hyperparameters
 
-number_of_training = 100000 * (0.6)
-number_of_testing = 100000 * (0.2)
-number_validate = 100000 * (0.2)
+number_of_training = 100 * (0.6)
+number_of_testing = 100* (0.2)
+number_validate = 100 * (0.2)
 num_labels = 2
 
 # Total fraction to use per epoch of training data, need inverse
 frac_per_epoch = 1
-num_epochs = 100*frac_per_epoch
+num_epochs = 600*frac_per_epoch
 
 path_mc_images = base_dir + "/Rebinned_5_MC_Phi_Images.h5"
 
@@ -80,7 +80,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                      "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
-            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.1, patience=15, min_lr=0.001)
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.1, patience=90, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_acc:.3f}_" + model_name + ".h5",
                                                                monitor='val_acc',
                                                                verbose=0,
@@ -88,7 +88,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                                                                save_weights_only=False,
                                                                mode='auto', period=1)
             early_stop = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0,
-                                                       patience=20 * frac_per_epoch,
+                                                       patience=100 * frac_per_epoch,
                                                        verbose=0, mode='auto')
 
             def batchYielder():
@@ -158,6 +158,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model.add(Dense(num_labels, activation='softmax'))
             model.compile(optimizer='adam', loss='categorical_crossentropy',
                           metrics=['acc'])
+            print(model.summary())
             # Makes it only use
             model.fit_generator(generator=batchYielder(), steps_per_epoch=int(
                 np.floor(((number_of_training / (frac_per_epoch * batch_size)))))
@@ -184,65 +185,13 @@ num_dense_neuron = [27,256]
 num_pooling_layers = [1, 2]
 num_runs = 500
 
-if architecture == "intel":
-    for i in range(num_runs):
-        # On Talapas so can use the 4 gpus
-        with tf.device('/gpu:0'):
-            # One copy
-            dropout_layer = 0.0 #np.random.uniform(0.0, 1.0, size=1)
-            batch_size = np.random.randint(batch_sizes[0], batch_sizes[1])
-            num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
-            num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
-            patch_size = patch_sizes[0]
-            num_pooling_layer = np.random.randint(num_pooling_layers[0], num_pooling_layers[1])
-            dense_neuron = np.random.randint(num_dense_neuron[0], num_dense_neuron[1])
-            conv_neurons = np.random.randint(num_conv_neurons[0], num_conv_neurons[1])
-            create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch)
-
-        with tf.device('/gpu:1'):
-            # Two copy
-            dropout_layer = np.random.uniform(0.0, 1.0, size=1)
-            batch_size = np.random.randint(batch_sizes[0], batch_sizes[1])
-            num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
-            num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
-            patch_size = patch_sizes[1]
-            num_pooling_layer = np.random.randint(num_pooling_layers[0], num_pooling_layers[1])
-            dense_neuron = np.random.randint(num_dense_neuron[0], num_dense_neuron[1])
-            conv_neurons = np.random.randint(num_conv_neurons[0], num_conv_neurons[1])
-            create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch)
-
-        with tf.device('/gpu:2'):
-            # Three Array
-            dropout_layer = np.random.uniform(0.0, 1.0, size=1)
-            batch_size = np.random.randint(batch_sizes[0], batch_sizes[1])
-            num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
-            num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
-            patch_size = patch_sizes[2]
-            num_pooling_layer = np.random.randint(num_pooling_layers[0], num_pooling_layers[1])
-            dense_neuron = np.random.randint(num_dense_neuron[0], num_dense_neuron[1])
-            conv_neurons = np.random.randint(num_conv_neurons[0], num_conv_neurons[1])
-            create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch)
-
-        with tf.device('/gpu:3'):
-            # Four Array
-            dropout_layer = np.random.uniform(0.0, 1.0, size=1)
-            batch_size = np.random.randint(batch_sizes[0], batch_sizes[1])
-            num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
-            num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
-            patch_size = patch_sizes[3]
-            num_pooling_layer = np.random.randint(num_pooling_layers[0], num_pooling_layers[1])
-            dense_neuron = np.random.randint(num_dense_neuron[0], num_dense_neuron[1])
-            conv_neurons = np.random.randint(num_conv_neurons[0], num_conv_neurons[1])
-            create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch)
-
-else:
-    for i in range(num_runs):
-        dropout_layer = 0.0 #np.round(np.random.uniform(0.0, 1.0, size=1), 2)
-        batch_size = np.random.randint(batch_sizes[0], batch_sizes[1])
-        num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
-        num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
-        patch_size = patch_sizes[np.random.randint(0, 2)]
-        num_pooling_layer = np.random.randint(num_pooling_layers[0], num_pooling_layers[1])
-        dense_neuron = np.random.randint(num_dense_neuron[0], num_dense_neuron[1])
-        conv_neurons = np.random.randint(num_conv_neurons[0], num_conv_neurons[1])
-        create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch)
+for i in range(num_runs):
+    dropout_layer = 0.0 #np.round(np.random.uniform(0.0, 1.0, size=1), 2)
+    batch_size = 20#np.random.randint(batch_sizes[0], batch_sizes[1])
+    num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
+    num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
+    patch_size = patch_sizes[np.random.randint(0, 2)]
+    num_pooling_layer = np.random.randint(num_pooling_layers[0], num_pooling_layers[1])
+    dense_neuron = np.random.randint(num_dense_neuron[0], num_dense_neuron[1])
+    conv_neurons = np.random.randint(num_conv_neurons[0], num_conv_neurons[1])
+    create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch)
