@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from keras import backend as K
 import h5py
@@ -35,13 +35,13 @@ num_conv_neurons = [8,256]
 num_dense_neuron = [8,512]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 829000*(0.6)
-number_of_testing = 829000*(0.2)
-number_validate = 829000*(0.2)
+number_of_training = 82900*(0.6)
+number_of_testing = 829*(0.2)
+number_validate = 829*(0.2)
 optimizer = 'adam'
 epoch = 300
 
-path_mc_images = base_dir + "/Rebinned_5_MC_Energy_Images.h5"
+path_mc_images = base_dir + "/Rebinned_5_MC_Proton_BothTracking_Images.h5"
 
 def metaYielder():
     gamma_anteil = 1
@@ -54,14 +54,14 @@ with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
     # Get some truth data for now, just use Crab images
     images = f['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_zd = f['Theta'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_az = f['Phi'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-   # images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-   # images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-   # source_x, source_y = horizontal_to_camera(
-   #     zd=images_source_zd, az=images_source_az,
-   #     az_pointing=images_point_az, zd_pointing=images_point_zd
-   # )
+    images_source_zd = f['Source_Zd'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    images_source_az = f['Source_Az'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    # images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    # images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    # source_x, source_y = horizontal_to_camera(
+    #     zd=images_source_zd, az=images_source_az,
+    #     az_pointing=images_point_az, zd_pointing=images_point_zd
+    # )
 
     y = images
     y_label = np.column_stack((images_source_zd, images_source_az))
@@ -97,8 +97,8 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     section = 0
                     offset = int(section * items)
                     image = f['Image'][offset:int(offset + items)]
-                    source_zd = f['Theta'][offset:int(offset + items)]
-                    source_az = f['Phi'][offset:int(offset + items)]
+                    source_zd = f['Source_Zd'][offset:int(offset + items)]
+                    source_az = f['Source_Az'][offset:int(offset + items)]
                     while True:
                         batch_num = 0
                         section = section % times_train_in_items
