@@ -53,9 +53,9 @@ num_conv_neurons = [8,256]
 num_dense_neuron = [8,512]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 829*(0.6)
-number_of_testing = 829*(0.2)
-number_validate = 829*(0.2)
+number_of_training = 10000*(0.6)
+number_of_testing = 10000*(0.2)
+number_validate = 10000*(0.2)
 optimizer = 'adam'
 epoch = 300
 
@@ -81,6 +81,7 @@ with h5py.File(path_mc_images, 'r') as f:
    #     az_pointing=images_point_az, zd_pointing=images_point_zd
    # )
     images_source_az = np.deg2rad(images_source_az)
+    images_source_zd = np.deg2rad(images_source_zd)
     y = images
     y_label = np.column_stack((images_source_zd, images_source_az))
     print(images_source_zd[0])
@@ -118,6 +119,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     source_zd = f['Theta'][offset:int(offset + items)]
                     source_az = f['Phi'][offset:int(offset + items)]
                     source_az = np.deg2rad(source_az)
+                    source_zd = np.deg2rad(source_zd)
                     while True:
                         batch_num = 0
                         section = section % times_train_in_items

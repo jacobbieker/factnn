@@ -100,7 +100,7 @@ def batchYielder(paths):
                 # Each event is the same as each line below
                 source_pos_x = df_event['source_position_1'].values[0]
                 source_pos_y = df_event['source_position_0'].values[0]
-                energy = df_event['unix_time_utc_0'].values[0] + 1e-6*df_event['unix_time_utc_1']
+                energy = df_event['unix_time_utc_0'].values[0] + 1e-6*df_event['unix_time_utc_1'].values[0]
                 event_photons = event.photon_stream.list_of_lists
                 zd_deg = event.zd
                 az_deg = event.az
@@ -118,6 +118,7 @@ def batchYielder(paths):
 
                 data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x, source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1])
         #exit(1)
+        print(data)
         yield data
 
 
