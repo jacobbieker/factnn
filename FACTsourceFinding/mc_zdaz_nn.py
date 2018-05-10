@@ -28,7 +28,7 @@ def atan2(x, y, epsilon=1.0e-12):
 
 # y in radians and second column is az, first is zd, adds the errors together, seems to work?
 def rmse_360_2(y_true, y_pred):
-    az_error = K.mean(K.abs(atan2(K.sin(y_true[:,1] - y_pred[:,1]), K.cos(y_true[:,1] - y_pred[:,1]))))
+    az_error = tf.reduce_mean(K.abs(tf.atan2(K.sin(y_true[:,1] - y_pred[:,1]), K.cos(y_true[:,1] - y_pred[:,1]))))
     zd_error = K.mean(K.square(y_pred[:,0] - y_true[:,0]), axis=-1)
     return az_error + zd_error
 
