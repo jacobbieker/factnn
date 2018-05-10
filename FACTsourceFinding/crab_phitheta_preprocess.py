@@ -28,7 +28,7 @@ path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/obs/Crab/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_Images.h5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_1_Images.h5"
 path_to_diffuse = "/run/media/jacob/WDRed8Tb1/dl2_theta/crab_precuts.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 path_store_runlist = "Crab1314_std_analysis.p"
@@ -91,39 +91,34 @@ def batchYielder(paths):
 
     for index, file in enumerate(paths):
         print(file)
-        try:
+        sim_reader = ps.EventListReader(file)
+        data = []
+        for event in sim_reader:
+            df_event = diffuse_df.loc[(diffuse_df['event_num'] == event.observation_info.event) & (diffuse_df['night'] == event.observation_info.night) & (diffuse_df['run_id'] == event.observation_info.run)]
+            if not df_event.empty:
+                # In the event chosen from the file
+                # Each event is the same as each line below
+                source_pos_x = df_event['source_position_1'].values[0]
+                source_pos_y = df_event['source_position_0'].values[0]
+                energy = df_event['unix_time_utc_0'].values[0] + 1e-6*df_event['unix_time_utc_1']
+                event_photons = event.photon_stream.list_of_lists
+                zd_deg = event.zd
+                az_deg = event.az
+                sky_source_az = df_event['az_source_calc'].values[0]
+                sky_source_zd = df_event['zd_source_calc'].values[0]
+                zd_deg1 = df_event['az_tracking'].values[0]
+                az_deg1 = df_event['zd_tracking'].values[0]
+                input_matrix = np.zeros([75,75])
+                chid_to_pixel = id_position[0]
+                pixel_index_to_grid = id_position[1]
+                for index in range(1440):
+                    for element in chid_to_pixel[index]:
+                        coords = pixel_index_to_grid[element[0]]
+                        input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
 
-            sim_reader = ps.EventListReader(file)
-            data = []
-            for event in sim_reader:
-                df_event = diffuse_df.loc[(diffuse_df['event'] == event.observation_info.event) & (diffuse_df['night'] == event.observation_info.night) & (diffuse_df['run_id'] == event.observation_info.run)]
-                if not df_event.empty:
-                    # In the event chosen from the file
-                    # Each event is the same as each line below
-                    source_pos_x = df_event['source_position_1'].values[0]
-                    source_pos_y = df_event['source_position_0'].values[0]
-                    energy = df_event['unix_time_utc'].values[0]
-                    event_photons = event.photon_stream.list_of_lists
-                    zd_deg = event.zd
-                    az_deg = event.az
-                    sky_source_az = df_event['az_source_calc'].values[0]
-                    sky_source_zd = df_event['zd_source_calc'].values[0]
-                    zd_deg1 = df_event['az_tracking'].values[0]
-                    az_deg1 = df_event['zd_tracking'].values[0]
-                    input_matrix = np.zeros([75,75])
-                    chid_to_pixel = id_position[0]
-                    pixel_index_to_grid = id_position[1]
-                    for index in range(1440):
-                        for element in chid_to_pixel[index]:
-                            coords = pixel_index_to_grid[element[0]]
-                            input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
-
-                    data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x, source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1])
-            #exit(1)
-            yield data
-
-        except Exception as e:
-            print(str(e))
+                data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x, source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1])
+        #exit(1)
+        yield data
 
 
 # Use the batchYielder to concatenate every batch and store it into one h5 file

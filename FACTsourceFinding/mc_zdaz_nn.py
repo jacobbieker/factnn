@@ -54,13 +54,13 @@ num_conv_neurons = [8,256]
 num_dense_neuron = [8,512]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 829000*(0.6)
-number_of_testing = 829000*(0.2)
-number_validate = 829000*(0.2)
+number_of_training = 531000*(0.6)
+number_of_testing = 531000*(0.2)
+number_validate = 531000*(0.2)
 optimizer = 'adam'
 epoch = 300
 
-path_mc_images = base_dir + "/Rebinned_5_MC_Proton_BothTracking_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 
 def metaYielder():
     gamma_anteil = 1
@@ -75,7 +75,7 @@ with h5py.File(path_mc_images, 'r') as f:
     images = f['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     images_source_zd = f['Source_Zd'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     images_source_az = f['Source_Az'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_az = (images_source_az + 360) % 360 # Converts to making it positive, then mod by 360 to stay within 0-360
+    #images_source_az = (images_source_az + 360) % 360 # Converts to making it positive, then mod by 360 to stay within 0-360
     # now convert to radians
     images_source_az = np.deg2rad(images_source_az)
     images_source_zd = np.deg2rad(images_source_zd)
@@ -86,7 +86,7 @@ with h5py.File(path_mc_images, 'r') as f:
     #     az_pointing=images_point_az, zd_pointing=images_point_zd
     # )
 
-    y = np.rot90(images, 1, axes=(1,2))
+    y = images
     y_label = np.column_stack((images_source_zd, images_source_az))
     print(y_label[:,1][2])
     print(y_label[:,0][2])
@@ -123,10 +123,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     section = 0
                     offset = int(section * items)
                     image = f['Image'][offset:int(offset + items)]
-                    image = np.rot90(image, 1, axes=(1,2))
+                    image = image
                     source_zd = f['Source_Zd'][offset:int(offset + items)]
                     source_az = f['Source_Az'][offset:int(offset + items)]
-                    source_az = (source_az + 360) % 360
+                    #source_az = (source_az + 360) % 360
                     source_az = np.deg2rad(source_az)
                     source_zd = np.deg2rad(source_zd)
                     while True:
