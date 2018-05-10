@@ -1,7 +1,8 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 
 from keras import backend as K
 import h5py
@@ -25,24 +26,26 @@ else:
 
 # Hyperparameters
 
-number_of_training = 100 * (0.6)
-number_of_testing = 100* (0.2)
-number_validate = 100 * (0.2)
+number_of_training = 600000 * (0.6)
+number_of_testing = 600000 * (0.2)
+number_validate = 600000 * (0.2)
 num_labels = 2
 
 # Total fraction to use per epoch of training data, need inverse
 frac_per_epoch = 1
 num_epochs = 600*frac_per_epoch
 
-path_mc_images = base_dir + "/Rebinned_5_MC_Phi_Images.h5"
-
+path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_BothSource_Images.h5"
+path_proton_images = base_dir + "/Rebinned_5_MC_Proton_BothTracking_Images.h5"
 np.random.seed(0)
 
 def metaYielder():
     with h5py.File(path_mc_images, 'r') as f:
-        gam = len(f['GammaImage'])
-        had = len(f['Image'])
-        sumEvt = gam + had
+        gam = len(f['Image'])
+        with h5py.File(path_proton_images, 'r') as f2:
+            had = len(f2['Image'])
+            sumEvt = gam + had
+            print(sumEvt)
 
     gamma_anteil = gam / sumEvt
     hadron_anteil = had / sumEvt
@@ -50,37 +53,42 @@ def metaYielder():
     gamma_count = int(round(number_of_training * gamma_anteil))
     hadron_count = int(round(number_of_training * hadron_anteil))
 
-    gamma_anteil = 0.5
-    hadron_anteil = 0.5
+    #gamma_anteil = 0.5
+    #hadron_anteil = 0.5
 
     return gamma_anteil, hadron_anteil, gamma_count, hadron_count
 
 
 with h5py.File(path_mc_images, 'r') as f:
-    gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
-    # Get some truth data for now, just use Crab images
-    images = f['GammaImage'][-int(np.floor((gamma_anteil * number_of_testing))):-1]
-    images_false = f['Image'][-int(np.floor((hadron_anteil * number_of_testing))):-1]
-    validating_dataset = np.concatenate([images, images_false], axis=0)
-    labels = np.array([True] * (len(images)) + [False] * len(images_false))
-    del images
-    del images_false
-    validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
-    y = validating_dataset
-    y_label = validation_labels
-    print("Finished getting data")
+    with h5py.File(path_proton_images, 'r') as f2:
+        gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
+        # Get some truth data for now, just use Crab images
+        images = f['Image'][-int(np.floor((gamma_anteil * number_of_testing))):-1]
+        images_false = f2['Image'][-int(np.floor((hadron_anteil * number_of_testing))):-1]
+        validating_dataset = np.concatenate([images, images_false], axis=0)
+        print(validating_dataset.shape)
+        labels = np.array([True] * (len(images)) + [False] * len(images_false))
+        ind, counts = np.unique(labels, return_counts=True)
+        print(ind)
+        print(counts)
+        del images
+        del images_false
+        validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
+        y = validating_dataset
+        y_label = validation_labels
+        print("Finished getting data")
 
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch):
     try:
         model_base = base_dir + "/Models/Sep/"
-        model_name = "MC_Sep_b" + str(batch_size) + "_p_" + str(
+        model_name = "MC_SepAll_b" + str(batch_size) + "_p_" + str(
             patch_size) + "_drop_" + str(dropout_layer) + "_numDense_" + str(num_dense) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + \
                      "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
-            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.1, patience=90, min_lr=0.001)
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.1, patience=25, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_acc:.3f}_" + model_name + ".h5",
                                                                monitor='val_acc',
                                                                verbose=0,
@@ -88,47 +96,48 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                                                                save_weights_only=False,
                                                                mode='auto', period=1)
             early_stop = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0,
-                                                       patience=100 * frac_per_epoch,
+                                                       patience=30 * frac_per_epoch,
                                                        verbose=0, mode='auto')
 
             def batchYielder():
                 gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
                 with h5py.File(path_mc_images, 'r') as f:
-                    items = len(f['Image'])
-                    items = items - (hadron_anteil * number_of_testing) - (hadron_anteil  * number_validate)
-                    # Shuffle every time it starts from the beginning again
-                    #rng_state = np.random.get_state()
-                    times_train_in_items = int(np.floor(items / number_of_training))
-                    if items > (hadron_anteil * number_of_training):
-                        items = int(np.floor((hadron_anteil * number_of_training)))
-                    section = 0
-                    while True:
-                        # Get some truth data for now, just use Crab images
-                        batch_num = 0
-                        section = section % times_train_in_items
-                        offset = section * items
-                        image = f['GammaImage'][offset:int(offset + items)]
+                    with h5py.File(path_proton_images, 'r') as f2:
+                        items = len(f2['Image'])
+                        items = items - (hadron_anteil * number_of_testing) - (hadron_anteil  * number_validate)
+                        # Shuffle every time it starts from the beginning again
+                        #rng_state = np.random.get_state()
+                        times_train_in_items = int(np.floor(items / number_of_training))
+                        if items > (hadron_anteil * number_of_training):
+                            items = int(np.floor((hadron_anteil * number_of_training)))
+                        section = 0
+                        #section = section % times_train_in_items
+                        offset = 0 * items
+                        image = f['Image'][offset:int(offset + items)]
                         #np.random.set_state(rng_state)
-                        image_false = f['Image'][offset:int(offset + items)]
-                        np.random.shuffle(image)
-                        np.random.shuffle(image_false)
+                        image_false = f2['Image'][offset:int(offset + items)]
+                        while True:
+                            # Get some truth data for now, just use Crab images
+                            batch_num = 0
+                            np.random.shuffle(image)
+                            np.random.shuffle(image_false)
 
-                        # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
-                        while (hadron_anteil * batch_size) * (batch_num + 1) < items:
-                            # Now the data is shuffled each time, hopefully improvi
-                            images = image[int(np.floor((batch_num) * (batch_size * gamma_anteil))):int(
-                                np.floor((batch_num + 1) * (batch_size * gamma_anteil)))]
-                            images_false = image_false[int(np.floor(batch_num * batch_size * hadron_anteil)):int(
-                                (batch_num + 1) * batch_size * hadron_anteil)]
-                            validating_dataset = np.concatenate([images, images_false], axis=0)
-                            labels = np.array([True] * (len(images)) + [False] * len(images_false))
-                            validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
-                            x = validating_dataset
-                            x_label = validation_labels
-                            # print("Finished getting data")
-                            batch_num += 1
-                            yield (x, x_label)
-                        section += 1
+                            # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
+                            while (hadron_anteil * batch_size) * (batch_num + 1) < items:
+                                # Now the data is shuffled each time, hopefully improvi
+                                images = image[int(np.floor((batch_num) * (batch_size * gamma_anteil))):int(
+                                    np.floor((batch_num + 1) * (batch_size * gamma_anteil)))]
+                                images_false = image_false[int(np.floor(batch_num * batch_size * hadron_anteil)):int(
+                                    (batch_num + 1) * batch_size * hadron_anteil)]
+                                validating_dataset = np.concatenate([images, images_false], axis=0)
+                                labels = np.array([True] * (len(images)) + [False] * len(images_false))
+                                validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
+                                x = validating_dataset
+                                x_label = validation_labels
+                                # print("Finished getting data")
+                                batch_num += 1
+                                yield (x, x_label)
+                            section += 1
             # Make the model
             model = Sequential()
 

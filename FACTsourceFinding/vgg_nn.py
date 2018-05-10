@@ -53,9 +53,9 @@ num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 10000*(0.6)
-number_of_testing = 10000*(0.2)
-number_validate = 10000*(0.2)
+number_of_training = 531000*(0.6)
+number_of_testing = 531000*(0.2)
+number_validate = 531000*(0.2)
 optimizers = ['same']
 epoch = 500
 

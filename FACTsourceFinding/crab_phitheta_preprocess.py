@@ -118,7 +118,6 @@ def batchYielder(paths):
 
                 data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x, source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1])
         #exit(1)
-        print(data)
         yield data
 
 
