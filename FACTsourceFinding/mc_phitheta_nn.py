@@ -24,6 +24,24 @@ else:
     base_dir = '/projects/sventeklab/jbieker'
     thesis_base = base_dir + '/git-thesis/thesis'
 
+def atan2(x, y, epsilon=1.0e-12):
+    x = tf.where(tf.equal(x, 0.0), x+epsilon, x)
+    y = tf.where(tf.equal(y, 0.0), y+epsilon, y)
+    angle = tf.where(tf.greater(x,0.0), tf.atan(y/x), tf.zeros_like(x))
+    angle = tf.where(tf.logical_and(tf.less(x,0.0),  tf.greater_equal(y,0.0)), tf.atan(y/x) + np.pi, angle)
+    angle = tf.where(tf.logical_and(tf.less(x,0.0),  tf.less(y,0.0)), tf.atan(y/x) - np.pi, angle)
+    angle = tf.where(tf.logical_and(tf.equal(x,0.0), tf.greater(y,0.0)), 0.5*np.pi * tf.ones_like(x), angle)
+    angle = tf.where(tf.logical_and(tf.equal(x,0.0), tf.less(y,0.0)), -0.5*np.pi * tf.ones_like(x), angle)
+    angle = tf.where(tf.logical_and(tf.equal(x,0.0), tf.equal(y,0.0)), tf.zeros_like(x), angle)
+    return angle
+
+# y in radians and second column is az, first is zd
+def rmse_360_2(y_true, y_pred):
+    az_error = K.mean(K.abs(atan2(K.sin(y_true[:,1] - y_pred[:,1]), K.cos(y_true[:,1] - y_pred[:,1]))))
+    zd_error = K.mean(K.square(y_pred[:,0] - y_true[:,0]), axis=-1)
+    return az_error + zd_error
+
+
 # Hyperparameters
 
 batch_sizes = [16, 64, 512]
@@ -35,9 +53,9 @@ num_conv_neurons = [8,256]
 num_dense_neuron = [8,512]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 829000*(0.6)
-number_of_testing = 829000*(0.2)
-number_validate = 829000*(0.2)
+number_of_training = 829*(0.6)
+number_of_testing = 829*(0.2)
+number_validate = 829*(0.2)
 optimizer = 'adam'
 epoch = 300
 
@@ -62,7 +80,7 @@ with h5py.File(path_mc_images, 'r') as f:
    #     zd=images_source_zd, az=images_source_az,
    #     az_pointing=images_point_az, zd_pointing=images_point_zd
    # )
-
+    images_source_az = np.deg2rad(images_source_az)
     y = images
     y_label = np.column_stack((images_source_zd, images_source_az))
     print(images_source_zd[0])
@@ -75,7 +93,7 @@ with h5py.File(path_mc_images, 'r') as f:
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons):
     try:
         model_base = base_dir + "/Models/Disp/"
-        model_name = "MC_dispThetaPhiCorrected_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+        model_name = "MC_ThetaPhiCustomError_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
@@ -99,6 +117,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     image = f['Image'][offset:int(offset + items)]
                     source_zd = f['Theta'][offset:int(offset + items)]
                     source_az = f['Phi'][offset:int(offset + items)]
+                    source_az = np.deg2rad(source_az)
                     while True:
                         batch_num = 0
                         section = section % times_train_in_items
@@ -163,7 +182,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # Final Dense layer
             # 2 so have one for x and one for y
             model.add(Dense(2, activation='linear'))
-            model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
+            model.compile(optimizer=optimizer, loss=rmse_360_2, metrics=['mae', 'mse'])
             model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
                                 verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 

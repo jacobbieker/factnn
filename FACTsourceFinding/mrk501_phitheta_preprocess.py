@@ -18,7 +18,7 @@ def euclidean_distance(x1, y1, x2, y2):
 architecture = 'manjaro'
 
 if architecture == 'manjaro':
-    base_dir = '/run/media/jacob/WDRed8Tb1'
+    base_dir = '/run/media/jacob/WDRed8Tb2'
     thesis_base = '/run/media/jacob/SSD/Development/thesis'
 else:
     base_dir = '/projects/sventeklab/jbieker'
