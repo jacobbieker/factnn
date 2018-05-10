@@ -59,7 +59,7 @@ number_validate = 829*(0.2)
 optimizer = 'adam'
 epoch = 300
 
-path_mc_images = base_dir + "/Rebinned_5_MC_Energy_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 
 def metaYielder():
     gamma_anteil = 1
