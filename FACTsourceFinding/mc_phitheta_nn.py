@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from keras import backend as K
 import h5py
@@ -35,9 +35,9 @@ num_conv_neurons = [8,256]
 num_dense_neuron = [8,512]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 4000*(0.6)
-number_of_testing = 2000*(0.2)
-number_validate = 2000*(0.2)
+number_of_training = 829000*(0.6)
+number_of_testing = 829000*(0.2)
+number_validate = 829000*(0.2)
 optimizer = 'adam'
 epoch = 300
 
@@ -95,13 +95,14 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     if items > number_of_training:
                         items = number_of_training
                     section = 0
+                    offset = int(section * items)
+                    image = f['Image'][offset:int(offset + items)]
+                    source_zd = f['Theta'][offset:int(offset + items)]
+                    source_az = f['Phi'][offset:int(offset + items)]
                     while True:
                         batch_num = 0
                         section = section % times_train_in_items
-                        offset = int(section * items)
-                        image = f['Image'][offset:int(offset + items)]
-                        source_zd = f['Theta'][offset:int(offset + items)]
-                        source_az = f['Phi'][offset:int(offset + items)]
+
                         #point_az = f['Az_deg'][offset:int(offset + items)]
                         #point_zd = f['Zd_deg'][offset:int(offset + items)]
 

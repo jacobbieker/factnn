@@ -39,7 +39,7 @@ path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/gamma/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Diffuse_CORSIKATracking_Images.h5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 path_to_diffuse = "/run/media/jacob/WDRed8Tb1/open_crab_sample_analysis/dl2/gamma_diffuse.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 
@@ -135,31 +135,18 @@ def batchYielder(paths):
                 if not df_event.empty:
                     # In the event chosen from the file
                     # Each event is the same as each line below
-                    source_pos_x = df_event['source_position_1'].values
-                    print(source_pos_x.shape)
-                    source_pos_y = df_event['source_position_0'].values
+                    source_pos_x = df_event['source_position_1'].values[0]
+                    source_pos_y = df_event['source_position_0'].values[0]
                     energy = event.simulation_truth.air_shower.energy
                     event_photons = event.photon_stream.list_of_lists
                     zd_deg = event.zd
-                    print("CORSIKA ZD Track vs FACT")
-                    print(zd_deg)
-                    print(df_event['zd_tracking'])
                     az_deg = event.az
-                    print("CORSIKA Az track vs FACT")
-                    print(az_deg)
-                    print(df_event['az_tracking'])
                     act_phi = event.simulation_truth.air_shower.phi
                     act_theta = event.simulation_truth.air_shower.theta
-                    print("CORSIKA Phi vs FACT Zd")
-                    print(act_phi)
-                    print(df_event['zd_source_calc'])
-                    print("CORSIKA Theta vs FACT Az")
-                    print(act_theta)
-                    print(df_event['az_source_calc'])
-                    sky_source_az = df_event['az_source_calc'].values
-                    sky_source_zd = df_event['zd_source_calc'].values
-                    #zd_deg = df_event['az_tracking'].values
-                    #az_deg = df_event['zd_tracking'].values
+                    sky_source_az = df_event['az_source_calc'].values[0]
+                    sky_source_zd = df_event['zd_source_calc'].values[0]
+                    zd_deg1 = df_event['az_tracking'].values[0]
+                    az_deg1 = df_event['zd_tracking'].values[0]
                     input_matrix = np.zeros([75,75])
                     chid_to_pixel = id_position[0]
                     pixel_index_to_grid = id_position[1]
@@ -168,7 +155,7 @@ def batchYielder(paths):
                             coords = pixel_index_to_grid[element[0]]
                             input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
 
-                    data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x, source_pos_y, act_phi, act_theta])
+                    data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x, source_pos_y, act_phi, act_theta, sky_source_zd, sky_source_az, zd_deg1, az_deg1])
             #exit(1)
             yield data
 
@@ -179,7 +166,7 @@ def batchYielder(paths):
 # Use the batchYielder to concatenate every batch and store it into one h5 file
 # Change the datatype to np-arrays
 def batchFormatter(batch):
-    pic, run, event, zd_deg, source_position_x, source_pos_y, act_phi, act_theta = zip(*batch)
+    pic, run, event, zd_deg, source_position_x, source_pos_y, act_phi, act_theta, sky_source_zd, sky_source_az, zd_deg1, az_deg1 = zip(*batch)
     pic = reformat(np.array(pic))
     run = np.array(run)
     event = np.array(event)
@@ -188,34 +175,46 @@ def batchFormatter(batch):
     source_pos_y = np.array(source_pos_y)
     act_phi = np.array(act_phi)
     act_theta = np.array(act_theta)
-    return (pic, run, event, zd_deg, source_position_x, source_pos_y, act_phi, act_theta)
+    sky_source_zd = np.array(sky_source_zd)
+    sky_source_az = np.array(sky_source_az)
+    zd_deg1 = np.array(zd_deg1)
+    az_deg1 = np.array(az_deg1)
+    return (pic, run, event, zd_deg, source_position_x, source_pos_y, act_phi, act_theta, sky_source_zd, sky_source_az, zd_deg1, az_deg1)
 
 
 # Use the batchYielder to concatenate every batch and store it into a single h5 file
 
 gen = batchYielder(path_mc_gammas)
 batch = next(gen)
-pic, energy, zd_deg, az_deg, phi, theta, act_phi, act_theta = batchFormatter(batch)
+pic, energy, zd_deg, az_deg, phi, theta, act_phi, act_theta, zd, az, zd_deg1, az_deg1 = batchFormatter(batch)
 row_count = az_deg.shape[0]
 print(row_count)
 
 with h5py.File(path_mc_diffuse_images, 'w') as hdf:
     maxshape_pic = (None,) + pic.shape[1:]
     dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
-    maxshape_run = (None,) + energy[1:]
+    maxshape_run = (None,) + zd_deg.shape[1:]
     dset_run = hdf.create_dataset('Energy', shape=energy.shape, maxshape=maxshape_run, chunks=energy.shape, dtype=energy.dtype)
-    maxshape_event = (None,) + zd_deg[1:]
+    maxshape_event = (None,) + zd_deg.shape[1:]
     dset_zd_deg = hdf.create_dataset('Zd_deg', shape=zd_deg.shape, maxshape=maxshape_event, chunks=zd_deg.shape, dtype=zd_deg.dtype)
-    maxshape_az_deg = (None,) + energy[1:]
+    maxshape_az_deg = (None,) + zd_deg.shape[1:]
     dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
-    maxshape_phi = (None,) + energy[1:]
+    maxshape_phi = (None,) + zd_deg.shape[1:]
     dset_phi = hdf.create_dataset('Source_X', shape=phi.shape, maxshape=maxshape_phi, chunks=phi.shape, dtype=phi.dtype)
-    maxshape_theta = (None,) + energy[1:]
+    maxshape_theta = (None,) + zd_deg.shape[1:]
     dset_theta = hdf.create_dataset('Source_Y', shape=theta.shape, maxshape=maxshape_theta, chunks=theta.shape, dtype=theta.dtype)
-    maxshape_phia = (None,) + energy[1:]
+    maxshape_phia = (None,) + zd_deg.shape[1:]
     dset_phia = hdf.create_dataset('Phi', shape=act_phi.shape, maxshape=maxshape_phia, chunks=act_phi.shape, dtype=act_phi.dtype)
-    maxshape_thetaa = (None,) + energy[1:]
+    maxshape_thetaa = (None,) + zd_deg.shape[1:]
     dset_thetaa = hdf.create_dataset('Theta', shape=act_theta.shape, maxshape=maxshape_thetaa, chunks=act_theta.shape, dtype=act_theta.dtype)
+    maxshape_zd = (None,) + zd_deg.shape[1:]
+    dset_zd = hdf.create_dataset('Source_Zd', shape=zd_deg.shape, maxshape=maxshape_zd, chunks=zd.shape, dtype=zd.dtype)
+    maxshape_az = (None,) + zd_deg.shape[1:]
+    dset_az = hdf.create_dataset('Source_Az', shape=az_deg.shape, maxshape=maxshape_az, chunks=az.shape, dtype=az.dtype)
+    maxshape_event1 = (None,) + zd_deg.shape[1:]
+    dset_zd_deg1 = hdf.create_dataset('Pointing_Zd', shape=zd_deg1.shape, maxshape=maxshape_event1, chunks=zd_deg1.shape, dtype=zd_deg1.dtype)
+    maxshape_az_deg1 = (None,) + zd_deg.shape[1:]
+    dset_az_deg1 = hdf.create_dataset('Pointing_Az', shape=az_deg1.shape, maxshape=maxshape_az_deg1, chunks=az_deg1.shape, dtype=az_deg1.dtype)
 
     dset_pic[:] = pic
     dset_run[:] = energy
@@ -225,9 +224,13 @@ with h5py.File(path_mc_diffuse_images, 'w') as hdf:
     dset_theta[:] = theta
     dset_phia[:] = act_phi
     dset_thetaa[:] = act_theta
+    dset_zd[:] = zd
+    dset_az[:] = az
+    dset_zd_deg1[:] = zd_deg1
+    dset_az_deg1[:] = az_deg1
 
     for batch in gen:
-        pic, energy, zd_deg, az_deg, phi, theta, act_phi, act_theta = batchFormatter(batch)
+        pic, energy, zd_deg, az_deg, phi, theta, act_phi, act_theta, zd, az, zd_deg1, az_deg1 = batchFormatter(batch)
 
         dset_pic.resize(row_count + theta.shape[0], axis=0)
         dset_run.resize(row_count + theta.shape[0], axis=0)
@@ -237,6 +240,10 @@ with h5py.File(path_mc_diffuse_images, 'w') as hdf:
         dset_az_deg.resize(row_count + theta.shape[0], axis=0)
         dset_phia.resize(row_count + theta.shape[0], axis=0)
         dset_thetaa.resize(row_count + theta.shape[0], axis=0)
+        dset_zd.resize(row_count + theta.shape[0], axis=0)
+        dset_az.resize(row_count + theta.shape[0], axis=0)
+        dset_zd_deg1.resize(row_count + theta.shape[0], axis=0)
+        dset_az_deg1.resize(row_count + theta.shape[0], axis=0)
 
         dset_pic[row_count:] = pic
         dset_run[row_count:] = energy
@@ -246,5 +253,9 @@ with h5py.File(path_mc_diffuse_images, 'w') as hdf:
         dset_az_deg[row_count:] = az_deg
         dset_phia[row_count:] = act_phi
         dset_thetaa[row_count:] = act_theta
+        dset_zd[row_count:] = zd
+        dset_az[row_count:] = az
+        dset_zd_deg1[row_count:] = zd_deg1
+        dset_az_deg1[row_count:] = az_deg1
 
         row_count += phi.shape[0]
