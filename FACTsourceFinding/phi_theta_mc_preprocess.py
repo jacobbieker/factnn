@@ -141,9 +141,21 @@ def batchYielder(paths):
                     energy = event.simulation_truth.air_shower.energy
                     event_photons = event.photon_stream.list_of_lists
                     zd_deg = event.zd
+                    print("CORSIKA ZD Track vs FACT")
+                    print(zd_deg)
+                    print(df_event['zd_tracking'])
                     az_deg = event.az
+                    print("CORSIKA Az track vs FACT")
+                    print(az_deg)
+                    print(df_event['az_tracking'])
                     act_phi = event.simulation_truth.air_shower.phi
                     act_theta = event.simulation_truth.air_shower.theta
+                    print("CORSIKA Phi vs FACT Zd")
+                    print(act_phi)
+                    print(df_event['zd_source_calc'])
+                    print("CORSIKA Theta vs FACT Az")
+                    print(act_theta)
+                    print(df_event['az_source_calc'])
                     sky_source_az = df_event['az_source_calc'].values
                     sky_source_zd = df_event['zd_source_calc'].values
                     #zd_deg = df_event['az_tracking'].values
@@ -190,19 +202,19 @@ print(row_count)
 with h5py.File(path_mc_diffuse_images, 'w') as hdf:
     maxshape_pic = (None,) + pic.shape[1:]
     dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
-    maxshape_run = (None,) + row_count
+    maxshape_run = (None,) + energy[1:]
     dset_run = hdf.create_dataset('Energy', shape=energy.shape, maxshape=maxshape_run, chunks=energy.shape, dtype=energy.dtype)
-    maxshape_event = (None,) + row_count
+    maxshape_event = (None,) + zd_deg[1:]
     dset_zd_deg = hdf.create_dataset('Zd_deg', shape=zd_deg.shape, maxshape=maxshape_event, chunks=zd_deg.shape, dtype=zd_deg.dtype)
-    maxshape_az_deg = (None,) + row_count
+    maxshape_az_deg = (None,) + energy[1:]
     dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
-    maxshape_phi = (None,) + row_count
+    maxshape_phi = (None,) + energy[1:]
     dset_phi = hdf.create_dataset('Source_X', shape=phi.shape, maxshape=maxshape_phi, chunks=phi.shape, dtype=phi.dtype)
-    maxshape_theta = (None,) + row_count
+    maxshape_theta = (None,) + energy[1:]
     dset_theta = hdf.create_dataset('Source_Y', shape=theta.shape, maxshape=maxshape_theta, chunks=theta.shape, dtype=theta.dtype)
-    maxshape_phia = (None,) + row_count
+    maxshape_phia = (None,) + energy[1:]
     dset_phia = hdf.create_dataset('Phi', shape=act_phi.shape, maxshape=maxshape_phia, chunks=act_phi.shape, dtype=act_phi.dtype)
-    maxshape_thetaa = (None,) + row_count
+    maxshape_thetaa = (None,) + energy[1:]
     dset_thetaa = hdf.create_dataset('Theta', shape=act_theta.shape, maxshape=maxshape_thetaa, chunks=act_theta.shape, dtype=act_theta.dtype)
 
     dset_pic[:] = pic

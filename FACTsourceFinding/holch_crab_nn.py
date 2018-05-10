@@ -36,18 +36,18 @@ num_conv_neurons = [8,128]
 num_dense_neuron = [8,256]
 num_pooling_layers = [0, 2]
 num_runs = 500
-number_of_training = 300000*(0.6)
-number_of_testing = 300000*(0.2)
-number_validate = 300000*(0.2)
+number_of_training = 1000000*(0.6)
+number_of_testing = 1000000*(0.2)
+number_validate = 1000000*(0.2)
 optimizers = ['same']
 epoch = 300
 frac_test = 1
 frac_train = 1
 
-path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_crab_preprocessed_images.h5"
-path_crab = "/run/media/jacob/SSD/open_crab_sample_analysis/build/crab_precuts.hdf5"
+path_mc_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_crab_preprocessed_images.h5"
+path_crab = "/run/media/jacob/WDRed8Tb1/dl2_theta/crab_precuts.hdf5"
 
-crab = read_h5py(path_crab, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
+crab = read_h5py(path_crab, key="events", columns=["event_num", "night", "run_id", "source_position"])
 #mc_image = read_h5py_chunked(path_mc_images, key='events', columns=['Image', 'Event', 'Night', 'Run'])
 
 def metaYielder():
@@ -110,8 +110,8 @@ with h5py.File(path_mc_images, 'r') as f:
                 if not exact_position.empty:
                     # got the exact event now, need the image
                     night_images.append(f['Image'][index])
-                    source_label_x.append(exact_position['source_x_prediction'].values)
-                    source_label_y.append(exact_position['source_y_prediction'].values)
+                    source_label_x.append(exact_position['source_position_1'].values)
+                    source_label_y.append(exact_position['source_position_0'].values)
 
             # After done with that convert to Numpy
             night_images = np.asarray(night_images)
@@ -152,8 +152,8 @@ with h5py.File(path_mc_images, 'r') as f:
                 if not exact_position.empty:
                     # got the exact event now, need the image
                     night_images.append(f['Image'][index])
-                    source_label_x.append(exact_position['source_x_prediction'].values)
-                    source_label_y.append(exact_position['source_y_prediction'].values)
+                    source_label_x.append(exact_position['source_position_1'].values)
+                    source_label_y.append(exact_position['source_position_0'].values)
 
             # After done with that convert to Numpy
             night_images = np.asarray(night_images)
@@ -238,8 +238,8 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                                     indicies_that_work.append(int(2*int(np.floor((gamma_anteil*number_of_testing)))+index))
                                     # got the exact event now, need the image
                                     night_images.append(f['Image'][int(2*int(np.floor((gamma_anteil*number_of_testing)))+index)])
-                                    source_label_x.append(exact_position['source_x_prediction'].values)
-                                    source_label_y.append(exact_position['source_y_prediction'].values)
+                                    source_label_x.append(exact_position['source_position_1'].values)
+                                    source_label_y.append(exact_position['source_position_0'].values)
                             with open("crab_precut_training.p", "wb") as path_store:
                                 pickle.dump(indicies_that_work, path_store)
                         else:
@@ -268,8 +268,8 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                                 if not exact_position.empty:
                                     # got the exact event now, need the image
                                     night_images.append(f['Image'][index])
-                                    source_label_x.append(exact_position['source_x_prediction'].values)
-                                    source_label_y.append(exact_position['source_y_prediction'].values)
+                                    source_label_x.append(exact_position['source_position_1'].values)
+                                    source_label_y.append(exact_position['source_position_0'].values)
 
 
                             # After done with that convert to Numpy
