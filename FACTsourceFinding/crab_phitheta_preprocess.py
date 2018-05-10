@@ -18,13 +18,12 @@ def euclidean_distance(x1, y1, x2, y2):
 architecture = 'manjaro'
 
 if architecture == 'manjaro':
-    base_dir = '/run/media/jacob/WDRed8Tb1'
+    base_dir = '/run/media/jacob/WDRed8Tb2'
     thesis_base = '/run/media/jacob/SSD/Development/thesis'
 else:
     base_dir = '/projects/sventeklab/jbieker'
     thesis_base = base_dir + '/thesis'
 
-path_raw_mc_proton_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/proton/"
 path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/obs/Crab/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
@@ -34,28 +33,10 @@ path_to_diffuse = "/run/media/jacob/WDRed8Tb1/dl2_theta/crab_precuts.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 path_store_runlist = "Crab1314_std_analysis.p"
 
+print("Read file")
 diffuse_df = read_h5py(path_to_diffuse, key="events", columns=["event_num", "run_id", "night",
                                                                "az_source_calc", "zd_source_calc", "source_position",
                                                                "unix_time_utc", "az_tracking", "zd_tracking"])
-#diffuse_df = diffuse_df[(diffuse_df["@source"].str.contains("uwe")) | (diffuse_df['@source'].str.contains("yoda"))]
-print(diffuse_df)
-run_ids = np.array(diffuse_df['run_id'].values)
-event_nums = np.array(diffuse_df['event_num'].values)
-
-
-print(diffuse_df)
-# Go through and get all the event_num that belong to a given run_id
-events_in_run = {}
-for index, run_id in enumerate(run_ids):
-    indicies = np.where(run_ids == run_id)[0]
-    #print(indicies)
-    if indicies.size > 0:
-        if run_id not in events_in_run.keys():
-            events_in_run[run_id] = []
-            for sub_index in indicies:
-                events_in_run[run_id].append(event_nums[sub_index])
-
-print(events_in_run)
 
 
 def getMetadata(path_folder):
@@ -71,6 +52,7 @@ def getMetadata(path_folder):
             list_events.append(str(night) + "_" + str(list_paths2[index]))
 
         # Iterate over every file in the subdirs and check if it has the right file extension
+        print(path_folder)
         file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(path_folder)
                       for file in fileName if '.json' in file]
         latest_paths = []
