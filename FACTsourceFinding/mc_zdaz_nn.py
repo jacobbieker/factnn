@@ -11,9 +11,37 @@ import tensorflow as tf
 import os
 import keras
 import numpy as np
+from numpy import savetxt, loadtxt, round, zeros, sin, cos, arctan2, clip, pi, tanh, exp, arange, dot, outer, array, shape, zeros_like, reshape, mean, median, max, min
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
+
+# Returns encoded angle using specified method ("binned","scaled","cossin","gaussian")
+def encode_angle(angle, method):
+    if method == "binned": # 1-of-500 encoding
+        X = zeros(500)
+        X[int(round(250*(angle/pi + 1)))%500] = 1
+    elif method == "gaussian": # Leaky binned encoding
+        X = array([i for i in range(500)])
+        idx = 250*(angle/pi + 1)
+        X = exp(-pi*(X-idx)**2)
+    elif method == "scaled": # Scaled to [-1,1] encoding
+        X = array([angle/pi])
+    elif method == "cossin": # Oxinabox's (cos,sin) encoding
+        X = array([cos(angle),sin(angle)])
+    else:
+        pass
+    return X
+
+# Returns decoded angle using specified method
+def decode_angle(X, method):
+    if method == "binned" or method == "gaussian": # 1-of-500 or gaussian encoding
+        M = max(X)
+        for i in range(len(X)):
+            if abs(X[i]-M) < 1e-5:
+                angle = pi*i/250 - pi
+                break
+    return angle
 
 def atan2(x, y, epsilon=1.0e-12):
     x = tf.where(tf.equal(x, 0.0), x+epsilon, x)
@@ -85,6 +113,8 @@ with h5py.File(path_mc_images, 'r') as f:
     #     zd=images_source_zd, az=images_source_az,
     #     az_pointing=images_point_az, zd_pointing=images_point_zd
     # )
+    print(images_source_az[0])
+    images_source_az = encode_angle(images_source_az, "gaussian")
 
     y = images
     y_label = np.column_stack((images_source_zd, images_source_az))
