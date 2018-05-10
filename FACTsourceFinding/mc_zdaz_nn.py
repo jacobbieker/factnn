@@ -26,7 +26,7 @@ def atan2(x, y, epsilon=1.0e-12):
     angle = tf.where(tf.logical_and(tf.equal(x,0.0), tf.equal(y,0.0)), tf.zeros_like(x), angle)
     return angle
 
-# y in radians and second column is az, first is zd
+# y in radians and second column is az, first is zd, adds the errors together, seems to work?
 def rmse_360_2(y_true, y_pred):
     az_error = K.mean(K.abs(atan2(K.sin(y_true[:,1] - y_pred[:,1]), K.cos(y_true[:,1] - y_pred[:,1]))))
     zd_error = K.mean(K.square(y_pred[:,0] - y_true[:,0]), axis=-1)
