@@ -1,0 +1,11 @@
+#!/bin/bash
+#SBATCH --partition=gpu       ### queue to submit to
+#SBATCH --job-name=xy_short    ### job name
+#SBATCH --output=xy.out   ### file in which to store job stdout
+#SBATCH --error=xy.err    ### file in which to store job stderr
+#SBATCH --time=1-00:00:00                ### wall-clock time limit, in minutes
+#SBATCH --nodes=1               ### number of nodes to use
+#SBATCH --gres=gpu:1      ### number of GPUs for  each task
+#SBATCH --mem=40000
+
+python /projects/sventeklab/jbieker/git-thesis/thesis/FACTsourceFinding/mc_xy_nn.py

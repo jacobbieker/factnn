@@ -35,7 +35,7 @@ num_labels = 2
 frac_per_epoch = 1
 num_epochs = 500*frac_per_epoch
 
-path_mc_images = base_dir = "/Rebinned_5_MC_Gamma_BothSource_Images.h5"
+path_mc_images = base_dir + "/Rebinned_5_MC_Gamma_BothSource_Images.h5"
 path_proton_images = base_dir + "/Rebinned_5_MC_Proton_BothTracking_Images.h5"
 np.random.seed(0)
 
@@ -68,7 +68,12 @@ with h5py.File(path_mc_images, 'r') as f:
         validating_dataset = np.concatenate([images, images_false], axis=0)
         #print(validating_dataset.shape)
         labels = np.array([True] * (len(images)) + [False] * len(images_false))
-        ind, counts = np.unique(labels, return_counts=True)
+        rng_state = np.random.get_state()
+        np.random.shuffle(validating_dataset)
+        np.random.set_state(rng_state)
+        np.random.shuffle(labels)
+        validating_dataset = validating_dataset[0:int(0.8*len(validating_dataset))]
+        labels = labels[0:int(0.8*len(labels))]
         #print(ind)
         #print(counts)
         #rng_state = np.random.get_state()
@@ -93,15 +98,15 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                      "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
-            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.1, patience=25, min_lr=0.001)
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=2, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_acc:.3f}_" + model_name + ".h5",
-                                                               monitor='val_acc',
+                                                               monitor='val_loss',
                                                                verbose=0,
                                                                save_best_only=True,
                                                                save_weights_only=False,
                                                                mode='auto', period=1)
-            early_stop = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0,
-                                                       patience=30 * frac_per_epoch,
+            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
+                                                       patience=4 * frac_per_epoch,
                                                        verbose=0, mode='auto')
 
             def batchYielder():
@@ -164,7 +169,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                 if num_pooling_layer == 1:
                     model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
                 if dropout_layer > 0.0:
-                    model.add(Dropout(dropout_layer))
+                    model.add(Dropout(2*dropout_layer % 1))
 
             model.add(Flatten())
 
@@ -209,7 +214,7 @@ num_pooling_layers = [1, 2]
 num_runs = 500
 
 for i in range(num_runs):
-    dropout_layer = np.round(np.random.uniform(0.0, 1.0), 2)
+    dropout_layer = np.round(np.random.uniform(0.2, 1.0), 2)
     batch_size = np.random.randint(batch_sizes[0], batch_sizes[1])
     num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
     num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])

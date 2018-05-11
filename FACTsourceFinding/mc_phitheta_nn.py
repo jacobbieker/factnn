@@ -82,6 +82,15 @@ with h5py.File(path_mc_images, 'r') as f:
    # )
     images_source_az = np.deg2rad(images_source_az)
     images_source_zd = np.deg2rad(images_source_zd)
+    rng_state = np.random.get_state()
+    np.random.shuffle(images)
+    np.random.set_state(rng_state)
+    np.random.shuffle(images_source_az)
+    np.random.set_state(rng_state)
+    np.random.shuffle(images_source_zd)
+    images = images[0:int(0.8*len(images))]
+    images_source_az = images_source_az[0:int(0.8*len(images_source_az))]
+    images_source_zd = images_source_zd[0:int(0.8*len(images_source_zd))]
     y = images
     y_label = np.column_stack((images_source_zd, images_source_az))
     print(images_source_zd[0])
@@ -103,61 +112,6 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_loss:.3f}_" + model_name + ".h5", monitor='val_loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
             early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=40, verbose=0, mode='auto')
-
-            def batchYielder():
-                gamma_anteil, gamma_count = metaYielder()
-                with h5py.File(path_mc_images, 'r') as f:
-                    items = list(f.items())[1][1].shape[0]
-                    items = items - number_of_testing - number_validate
-                    times_train_in_items = int(np.floor(items / number_of_training))
-                    length_dataset = len(f['Image'])
-                    if items > number_of_training:
-                        items = number_of_training
-                    section = 0
-                    offset = int(section * items)
-                    image = f['Image'][offset:int(offset + items)]
-                    source_zd = f['Theta'][offset:int(offset + items)]
-                    source_az = f['Phi'][offset:int(offset + items)]
-                    #source_az = np.deg2rad(source_az)
-                    #source_zd = np.deg2rad(source_zd)
-                    while True:
-                        batch_num = 0
-                        section = section % times_train_in_items
-
-                        #point_az = f['Az_deg'][offset:int(offset + items)]
-                        #point_zd = f['Zd_deg'][offset:int(offset + items)]
-
-                        #source_x, source_y = horizontal_to_camera(
-                        #    zd=source_zd, az=source_az,
-                        #    az_pointing=point_az, zd_pointing=point_zd
-                        #)
-
-                        rng_state = np.random.get_state()
-                        np.random.set_state(rng_state)
-                        np.random.shuffle(image)
-                        np.random.set_state(rng_state)
-                        np.random.shuffle(source_az)
-                        np.random.set_state(rng_state)
-                        np.random.shuffle(source_zd)
-                        #np.random.shuffle(point_zd)
-                        #np.random.set_state(rng_state)
-                        #np.random.shuffle(point_az)
-                        # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
-                        while (batch_size) * (batch_num + 1) < items:
-                            # Get some truth data for now, just use Crab images
-                            images = image[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
-                            #images_source_zd = source_zd[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
-                            #images_source_az = source_az[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
-                            #images_point_az = point_az[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
-                            #images_point_zd = point_zd[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
-                            images_source_x = source_zd[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
-                            images_source_y = source_az[int(batch_num*batch_size):int((batch_num+1)*batch_size)]
-                            x = images
-                            x_label = np.column_stack((images_source_x, images_source_y))
-                            #print(x_label.shape)
-                            batch_num += 1
-                            yield (x, x_label)
-                        section += 1
 
             gamma_anteil, gamma_count = metaYielder()
             # Make the model
@@ -186,7 +140,6 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model.add(Dense(2, activation='linear'))
             model.compile(optimizer=optimizer, loss=rmse_360_2, metrics=['mae', 'mse'])
             model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
-
 
             K.clear_session()
             tf.reset_default_graph()

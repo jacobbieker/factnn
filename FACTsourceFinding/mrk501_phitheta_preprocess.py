@@ -114,7 +114,7 @@ def batchYielder(paths):
             sim_reader = ps.EventListReader(file)
             data = []
             for event in sim_reader:
-                df_event = diffuse_df.loc[(diffuse_df['event'] == event.observation_info.event) & (diffuse_df['night'] == event.observation_info.night) & (diffuse_df['run_id'] == event.observation_info.run)]
+                df_event = diffuse_df.loc[(diffuse_df['event_num'] == event.observation_info.event) & (diffuse_df['night'] == event.observation_info.night) & (diffuse_df['run_id'] == event.observation_info.run)]
                 if not df_event.empty:
                     # In the event chosen from the file
                     # Each event is the same as each line below
