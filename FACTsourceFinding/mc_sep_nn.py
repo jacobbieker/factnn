@@ -15,7 +15,7 @@ from keras.models import Sequential
 import tensorflow as tf
 from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
 
-architecture = 'manjaro'
+architecture = 'manjar'
 
 if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
@@ -33,9 +33,9 @@ num_labels = 2
 
 # Total fraction to use per epoch of training data, need inverse
 frac_per_epoch = 1
-num_epochs = 600*frac_per_epoch
+num_epochs = 500*frac_per_epoch
 
-path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_BothSource_Images.h5"
+path_mc_images = base_dir = "/Rebinned_5_MC_Gamma_BothSource_Images.h5"
 path_proton_images = base_dir + "/Rebinned_5_MC_Proton_BothTracking_Images.h5"
 np.random.seed(0)
 
@@ -63,8 +63,8 @@ with h5py.File(path_mc_images, 'r') as f:
     with h5py.File(path_proton_images, 'r') as f2:
         gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
         # Get some truth data for now, just use Crab images
-        images = f['Image'][-int(np.floor((gamma_anteil * number_of_testing))):-1]
-        images_false = f2['Image'][-int(np.floor((hadron_anteil * number_of_testing))):-1]
+        images = f['Image'][0:-1]
+        images_false = f2['Image'][0:-1]
         validating_dataset = np.concatenate([images, images_false], axis=0)
         #print(validating_dataset.shape)
         labels = np.array([True] * (len(images)) + [False] * len(images_false))
@@ -86,8 +86,8 @@ with h5py.File(path_mc_images, 'r') as f:
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch):
     try:
-        model_base = base_dir + "/Models/Sep/"
-        model_name = "MC_SepAll_b" + str(batch_size) + "_p_" + str(
+        model_base = base_dir + "/Models/FinalSep/"
+        model_name = "MC_SepNoGen_b" + str(batch_size) + "_p_" + str(
             patch_size) + "_drop_" + str(dropout_layer) + "_numDense_" + str(num_dense) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + \
                      "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons)
@@ -181,11 +181,13 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                           metrics=['acc'])
             model.summary()
             # Makes it only use
-            model.fit_generator(generator=batchYielder(), steps_per_epoch=int(
-                np.floor(((number_of_training / (frac_per_epoch * batch_size)))))
-                                , epochs=num_epochs,
-                                verbose=2, validation_data=(y, y_label),
-                                callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+            #model.fit_generator(generator=batchYielder(), steps_per_epoch=int(
+            #    np.floor(((number_of_training / (frac_per_epoch * batch_size)))))
+            #                    , epochs=num_epochs,
+            #                    verbose=2, validation_data=(y, y_label),
+            #                    callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=num_epochs, validation_split=0.5, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+
             K.clear_session()
             tf.reset_default_graph()
 

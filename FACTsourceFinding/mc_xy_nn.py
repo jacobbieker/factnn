@@ -99,39 +99,32 @@ def metaYielder():
 
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
-    # Get some truth data for now, just use Crab images
     images = f['Image'][0:-1]
-    images_source_zd = f['Source_Zd'][0:-1]
-    images_source_az = f['Source_Az'][0:-1]
-    #images_source_az = (images_source_az + 360) % 360 # Converts to making it positive, then mod by 360 to stay within 0-360
-    # now convert to radians
-    print(images_source_az[0])
-    print(images_source_zd[0])
-    images_source_az = np.deg2rad(images_source_az)
-    images_source_zd = np.deg2rad(images_source_zd)
-    # images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    # images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    # source_x, source_y = horizontal_to_camera(
-    #     zd=images_source_zd, az=images_source_az,
-    #     az_pointing=images_point_az, zd_pointing=images_point_zd
-    # )
-    print(images_source_az[0])
-    y = images
-    y_label = np.column_stack((images_source_zd, images_source_az))
-    print(y_label[:,1][2])
-    print(y_label[:,0][2])
-    print(images_source_zd[0])
-    print(images_source_az[0])
+    source_x = f['Source_X'][0:-1]
+    source_y = f['Source_Y'][0:-1]
+    #images_source_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    #images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    #images_source_az = (-1.*images_source_az + 540) % 360
+
+    # Now convert to this camera's coordinates
+    source_x += 180.975 # shifts everything to positive
+    source_y += 185.25 # shifts everything to positive
+    source_x = source_x / 4.94 # Ratio between the places
+    source_y = source_y / 4.826 # Ratio between y in original and y here
+    y = images #np.flip(images, axis=2)
+    print(images.shape)
+    print(source_x[0])
+    print(source_y[0])
+    y_label = np.column_stack((source_x, source_y))
     print(y_label[0])
     print(y_label.shape)
-    #exit(1)
     print("Finished getting data")
 
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons):
     try:
         model_base = base_dir + "/Models/FinalDisp/"
-        model_name = "MC_ZdAzNoGen_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+        model_name = "MC_XYNoGen_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
@@ -223,7 +216,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # Final Dense layer
             # 2 so have one for x and one for y
             model.add(Dense(2, activation='linear'))
-            model.compile(optimizer=optimizer, loss=rmse_360_2, metrics=['mae', 'mse'])
+            model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
             model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 
 

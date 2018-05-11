@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from keras import backend as K
 import h5py
@@ -15,7 +15,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
 
-architecture = 'manjaro'
+architecture = 'manjar'
 
 if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
@@ -59,7 +59,7 @@ number_validate = 10000*(0.2)
 optimizer = 'adam'
 epoch = 300
 
-path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_BothSource_Images.h5"
+path_mc_images = base_dir + "/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 
 def metaYielder():
     gamma_anteil = 1
@@ -71,9 +71,9 @@ def metaYielder():
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
     # Get some truth data for now, just use Crab images
-    images = f['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_zd = f['Theta'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_az = f['Phi'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+    images = f['Image'][0:-1]
+    images_source_zd = f['Theta'][0:-1]
+    images_source_az = f['Phi'][0:-1]
    # images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
    # images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
    # source_x, source_y = horizontal_to_camera(
@@ -93,8 +93,8 @@ with h5py.File(path_mc_images, 'r') as f:
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons):
     try:
-        model_base = base_dir + "/Models/Disp/"
-        model_name = "MC_ThetaPhiCustomError_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+        model_base = base_dir + "/Models/FinalDisp/"
+        model_name = "MC_ThetaPhiNoGen_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
@@ -118,8 +118,8 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                     image = f['Image'][offset:int(offset + items)]
                     source_zd = f['Theta'][offset:int(offset + items)]
                     source_az = f['Phi'][offset:int(offset + items)]
-                    source_az = np.deg2rad(source_az)
-                    source_zd = np.deg2rad(source_zd)
+                    #source_az = np.deg2rad(source_az)
+                    #source_zd = np.deg2rad(source_zd)
                     while True:
                         batch_num = 0
                         section = section % times_train_in_items
@@ -185,8 +185,8 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # 2 so have one for x and one for y
             model.add(Dense(2, activation='linear'))
             model.compile(optimizer=optimizer, loss=rmse_360_2, metrics=['mae', 'mse'])
-            model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
-                                verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+
 
             K.clear_session()
             tf.reset_default_graph()
