@@ -619,10 +619,10 @@ def calc_roc_radec(path_image, path_keras_model):
 
 import os
 
-calc_roc_sourceXY(path_mc_images, "/run/media/jacob/WDRed8Tb1/Models/Disp2/585.735_MC_holchTrueSource_b30_p_(5, 5)_drop_0.24_conv_4_pool_0_denseN_216_numDense_4_convN_13_opt_same.h5")
-calc_roc_azzd(path_diffuse_images, "/run/media/jacob/WDRed8Tb1/Models/Disp/0.036_MC_ZdAz_b54_p_(5, 5)_drop_0.571_conv_9_pool_1_denseN_349_numDense_2_convN_10_opt_adam.h5")
-calc_roc_thetaphi(path_diffuse_images, "/run/media/jacob/WDRed8Tb1/Models/Disp/0.003_MC_ThetaPhiCustomError_b46_p_(2, 2)_drop_0.956_conv_5_pool_1_denseN_372_numDense_0_convN_241_opt_adam.h5")
-calc_roc_gammaHad(path_mc_images, path_proton_images, "/run/media/jacob/WDRed8Tb1/Models/Sep/0.172_MC_SepAll_b20_p_(3, 3)_drop_0.0_numDense_2_conv_5_pool_1_denseN_112_convN_37.h5")
+#calc_roc_sourceXY(path_mc_images, "/run/media/jacob/WDRed8Tb1/Models/Disp2/585.735_MC_holchTrueSource_b30_p_(5, 5)_drop_0.24_conv_4_pool_0_denseN_216_numDense_4_convN_13_opt_same.h5")
+#calc_roc_azzd(path_diffuse_images, "/run/media/jacob/WDRed8Tb1/Models/Disp/0.036_MC_ZdAz_b54_p_(5, 5)_drop_0.571_conv_9_pool_1_denseN_349_numDense_2_convN_10_opt_adam.h5")
+#calc_roc_thetaphi(path_diffuse_images, "/run/media/jacob/WDRed8Tb1/Models/Disp/0.003_MC_ThetaPhiCustomError_b46_p_(2, 2)_drop_0.956_conv_5_pool_1_denseN_372_numDense_0_convN_241_opt_adam.h5")
+#calc_roc_gammaHad(path_mc_images, path_proton_images, "/run/media/jacob/WDRed8Tb1/Models/Sep/0.172_MC_SepAll_b20_p_(3, 3)_drop_0.0_numDense_2_conv_5_pool_1_denseN_112_convN_37.h5")
 
 sep_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(sep_models)
              for file in fileName if '.h5' in file]

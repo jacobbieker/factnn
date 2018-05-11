@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -16,7 +16,7 @@ from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, B
 from fact.coordinates.utils import horizontal_to_camera
 import pandas as pd
 
-architecture = 'manjaro'
+architecture = 'manjar'
 
 if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
@@ -59,7 +59,7 @@ number_validate = 531000*(0.2)
 optimizers = ['same']
 epoch = 500
 
-path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_BothSource_Images.h5"
+path_mc_images = base_dir + "/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 #path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
 
 #mrk501 = read_h5py(path_mrk501, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
@@ -75,13 +75,22 @@ def metaYielder():
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
     # Get some truth data for now, just use Crab images
-    images = f['Image'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_zd = f['Source_Zd'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_az = f['Source_Az'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-    images_source_az = (images_source_az + 360) % 360 # Converts to making it positive, then mod by 360 to stay within 0-360
+    images = f['Image'][0:-1]
+    images_source_zd = f['Source_Zd'][0:-1]
+    images_source_az = f['Source_Az'][0:-1]
     # now convert to radians
     images_source_az = np.deg2rad(images_source_az)
     images_source_zd = np.deg2rad(images_source_zd)
+    rng_state = np.random.get_state()
+    np.random.shuffle(images)
+    np.random.set_state(rng_state)
+    np.random.shuffle(images_source_az)
+    np.random.set_state(rng_state)
+    np.random.shuffle(images_source_zd)
+    images = images[0:int(0.8*len(images))]
+    images_source_az = images_source_az[0:int(0.8*len(images_source_az))]
+    images_source_zd = images_source_zd[0:int(0.8*len(images_source_zd))]
+    # Now remove the last 20% for testing later
     # images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     # images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     # source_x, source_y = horizontal_to_camera(
@@ -89,7 +98,7 @@ with h5py.File(path_mc_images, 'r') as f:
     #     az_pointing=images_point_az, zd_pointing=images_point_zd
     # )
 
-    y = np.rot90(images, 1, axes=(1,2))
+    y = images
     y_label = np.column_stack((images_source_zd, images_source_az))
     print(y_label[:,1][2])
     print(y_label[:,0][2])
@@ -103,8 +112,8 @@ with h5py.File(path_mc_images, 'r') as f:
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     try:
-        model_base = base_dir + "/Models/Disp/"
-        model_name = "MC_vggAzLoss_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+        model_base = base_dir + "/Models/FinalDisp/"
+        model_name = "MC_vggAzNoGen_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
@@ -206,8 +215,8 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # 2 so have one for x and one for y
             model.add(Dense(2, activation='linear'))
             model.compile(optimizer='adam', loss=rmse_360_2, metrics=['mae', 'mse'])
-            model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
-                                verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+
 
             K.clear_session()
             tf.reset_default_graph()
@@ -221,7 +230,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
 for i in range(num_runs):
     dropout_layer = np.round(np.random.uniform(0.0, 1.0), 2)
-    batch_size = 20#np.random.randint(batch_sizes[0], batch_sizes[1])
+    batch_size = np.random.randint(batch_sizes[0], batch_sizes[1])
     num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
     num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
     patch_size = patch_sizes[np.random.randint(0, 3)]

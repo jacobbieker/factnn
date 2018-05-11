@@ -18,9 +18,9 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D, GlobalAveragePooling2D, GlobalMaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
 
-architecture = 'manjaro'
+architecture = 'manjar'
 
-if architecture == 'manjar':
+if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
     thesis_base = '/run/media/jacob/SSD/Development/thesis'
 else:
@@ -58,6 +58,8 @@ with h5py.File(path_mc_images, 'r') as f:
     # Get some truth data for now, just use Crab images
     images = f['Image'][0:-1]
     images_energy = f['Energy'][0:-1]
+    images = images[0:int(0.8*len(images))]
+    images_energy = images_energy[0:int(0.8*len(images_energy))]
     y = images
     y_label = images_energy
     print(y_label.shape)
@@ -76,42 +78,6 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_loss:.3f}_" + model_name + ".h5", monitor='val_loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
             early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=40, verbose=0, mode='auto')
-
-            def batchYielder():
-                gamma_anteil, gamma_count = metaYielder()
-                with h5py.File(path_mc_images, 'r') as f:
-                    items = list(f.items())[1][1].shape[0]
-                    items = items - number_of_testing - number_validate
-                    # Number of times number of training fits within the total shape
-                    times_train_in_items = int(np.floor(items / number_of_training))
-                    if items > number_of_training:
-                        items = number_of_training
-                    section = 0
-                    while True:
-                        batch_num = 0
-                        section = section % times_train_in_items
-                        offset = int(number_of_training)
-                        image = f['Image'][offset:int(offset + number_validate)]
-                        image_energy = f['Energy'][offset:int(offset + number_validate)]
-                        rng_state = np.random.get_state()
-                        np.random.shuffle(image)
-                        np.random.set_state(rng_state)
-                        np.random.shuffle(image_energy)
-                        # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
-                        while (batch_size) * (batch_num + 1) < number_validate:
-                            # Get some truth data for now, just use Crab images
-                            images = image[batch_num*batch_size:(batch_num+1)*batch_size]
-                            images_energy = image_energy[batch_num*batch_size:(batch_num+1)*batch_size]
-                            rng_state = np.random.get_state()
-                            #np.random.shuffle(images)
-                            #np.random.set_state(rng_state)
-                            #np.random.shuffle(images_energy)
-                            x = images
-                            x_label = images_energy
-                            #print(x_label)
-                            batch_num += 1
-                            yield (x, x_label)
-                        section += 1
 
             gamma_anteil, gamma_count = metaYielder()
             # Make the model
@@ -143,7 +109,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
             print(model.summary())
 
-            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.8, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 
 
             K.clear_session()

@@ -105,6 +105,15 @@ with h5py.File(path_mc_images, 'r') as f:
     #images_source_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_az = (-1.*images_source_az + 540) % 360
+    rng_state = np.random.get_state()
+    np.random.shuffle(images)
+    np.random.set_state(rng_state)
+    np.random.shuffle(source_x)
+    np.random.set_state(rng_state)
+    np.random.shuffle(source_y)
+    images = images[0:int(0.8*len(images))]
+    source_x = source_x[0:int(0.8*len(source_x))]
+    source_y = source_y[0:int(0.8*len(source_y))]
 
     # Now convert to this camera's coordinates
     source_x += 180.975 # shifts everything to positive

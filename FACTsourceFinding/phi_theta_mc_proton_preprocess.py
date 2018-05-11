@@ -39,7 +39,7 @@ path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/proton/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_BothTracking_Images.h5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_JustImage_Images.h5"
 path_to_diffuse = "/run/media/jacob/WDRed8Tb1/open_crab_sample_analysis/dl2/proton.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 
@@ -87,18 +87,11 @@ def getMetadata(path_folder):
     Gathers the file paths of the training data
     '''
     run_ids = []
-    for id in run_ids_long:
-        if "uwe" in id or "yoda" in id:
-            tmp = id.split("_12/")[1]
-            tmp = tmp.split("/")[0]
-            run_ids.append(tmp)
     # Iterate over every file in the subdirs and check if it has the right file extension
     file_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(path_folder)
                   for file in fileName if '.json' in file]
     latest_paths = []
     for path in file_paths:
-        if any(number in path for number in run_ids):
-            #print(path)
             latest_paths.append(path)
     #print(latest_paths)
     return latest_paths
@@ -132,32 +125,30 @@ def batchYielder(paths):
             )
             data = []
             for event in sim_reader:
-                df_event = diffuse_df.loc[(np.isclose(diffuse_df['corsika_evt_header_total_energy'], event.simulation_truth.air_shower.energy)) & (diffuse_df['run_id'] == event.simulation_truth.run)]
-                if not df_event.empty:
-                    # In the event chosen from the file
-                    # Each event is the same as each line below
-                    source_pos_x = df_event['source_position_1'].values[0]
-                    source_pos_y = df_event['source_position_0'].values[0]
-                    energy = event.simulation_truth.air_shower.energy
-                    event_photons = event.photon_stream.list_of_lists
-                    zd_deg = event.zd
-                    az_deg = event.az
-                    act_phi = event.simulation_truth.air_shower.phi
-                    act_theta = event.simulation_truth.air_shower.theta
-                    sky_source_az = df_event['az_source_calc'].values[0]
-                    sky_source_zd = df_event['zd_source_calc'].values[0]
-                    zd_deg1 = df_event['az_tracking'].values[0]
-                    az_deg1 = df_event['zd_tracking'].values[0]
-                    input_matrix = np.zeros([75,75])
-                    chid_to_pixel = id_position[0]
-                    pixel_index_to_grid = id_position[1]
-                    for index in range(1440):
-                        for element in chid_to_pixel[index]:
-                            coords = pixel_index_to_grid[element[0]]
-                            input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
+                # In the event chosen from the file
+                # Each event is the same as each line below
+                source_pos_x = 0#df_event['source_position_1'].values[0]
+                source_pos_y = 0#df_event['source_position_0'].values[0]
+                energy = event.simulation_truth.air_shower.energy
+                event_photons = event.photon_stream.list_of_lists
+                zd_deg = event.zd
+                az_deg = event.az
+                act_phi = event.simulation_truth.air_shower.phi
+                act_theta = event.simulation_truth.air_shower.theta
+                sky_source_az = 0#df_event['az_source_calc'].values[0]
+                sky_source_zd = 0#df_event['zd_source_calc'].values[0]
+                zd_deg1 = 0#df_event['az_tracking'].values[0]
+                az_deg1 = 0#df_event['zd_tracking'].values[0]
+                input_matrix = np.zeros([75,75])
+                chid_to_pixel = id_position[0]
+                pixel_index_to_grid = id_position[1]
+                for index in range(1440):
+                    for element in chid_to_pixel[index]:
+                        coords = pixel_index_to_grid[element[0]]
+                        input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
 
-                    data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x, source_pos_y, act_phi, act_theta, sky_source_zd, sky_source_az, zd_deg1, az_deg1])
-            #exit(1)
+                data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x, source_pos_y, act_phi, act_theta, sky_source_zd, sky_source_az, zd_deg1, az_deg1])
+        #exit(1)
             yield data
 
         except Exception as e:
