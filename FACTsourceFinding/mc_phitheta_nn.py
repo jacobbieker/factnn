@@ -15,7 +15,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
 
-architecture = 'manjar'
+architecture = 'manjaro'
 
 if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
@@ -56,10 +56,15 @@ num_runs = 500
 number_of_training = 10000*(0.6)
 number_of_testing = 10000*(0.2)
 number_validate = 10000*(0.2)
-optimizer = 'adam'
+optimizer = keras.optimizers.SGD(lr=0.00001)
 epoch = 300
 
-path_mc_images = base_dir + "/Rebinned_5_MC_diffuse_BothSource_Images.h5"
+number_bins = 500
+num_classes = number_bins # Degrees in Zd or Theta by bins for classification
+map_deg_to_class = np.linspace(0,90, number_bins)
+
+path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_BothSource_Images.h5"
+path_mc_proton = "/run/media/jacob/SSD/Rebinned_5_MC_Proton_JustImage_Images.h5"
 
 def metaYielder():
     gamma_anteil = 1
@@ -67,50 +72,61 @@ def metaYielder():
 
     return gamma_anteil, gamma_count
 
+def find_nearest(array,value):
+    idx = (np.abs(array-value)).argmin()
+    return idx
 
 with h5py.File(path_mc_images, 'r') as f:
-    gamma_anteil, gamma_count = metaYielder()
-    # Get some truth data for now, just use Crab images
-    images = f['Image'][0:-1]
-    images_source_zd = f['Theta'][0:-1]
-    images_source_az = f['Phi'][0:-1]
-   # images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-   # images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
-   # source_x, source_y = horizontal_to_camera(
-   #     zd=images_source_zd, az=images_source_az,
-   #     az_pointing=images_point_az, zd_pointing=images_point_zd
-   # )
-    images_source_az = np.deg2rad(images_source_az)
-    images_source_zd = np.deg2rad(images_source_zd)
-    rng_state = np.random.get_state()
-    np.random.shuffle(images)
-    np.random.set_state(rng_state)
-    np.random.shuffle(images_source_az)
-    np.random.set_state(rng_state)
-    np.random.shuffle(images_source_zd)
-    images = images[0:int(0.8*len(images))]
-    images_source_az = images_source_az[0:int(0.8*len(images_source_az))]
-    images_source_zd = images_source_zd[0:int(0.8*len(images_source_zd))]
-    y = images
-    y_label = np.column_stack((images_source_zd, images_source_az))
-    print(images_source_zd[0])
-    print(images_source_az[0])
-    print(y_label[0])
-    print(y_label.shape)
-    print("Finished getting data")
+    with h5py.File(path_mc_proton, 'r') as f2:
+        gamma_anteil, gamma_count = metaYielder()
+        # Get some truth data for now, just use Crab images
+        images = f['Image'][0:-1]
+        images_source_zd = f['Theta'][0:-1]
+       # images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+       # images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
+       # source_x, source_y = horizontal_to_camera(
+       #     zd=images_source_zd, az=images_source_az,
+       #     az_pointing=images_point_az, zd_pointing=images_point_zd
+       # )
+        #images_source_az = np.deg2rad(images_source_az)
+        #images_source_zd = np.deg2rad(images_source_zd)
+        np.random.seed(0)
+        rng_state = np.random.get_state()
+        np.random.shuffle(images)
+        np.random.set_state(rng_state)
+        np.random.set_state(rng_state)
+        np.random.shuffle(images_source_zd)
+        images = images[0:int(0.8*len(images))]
+        images_source_zd = images_source_zd[0:int(0.8*len(images_source_zd))]
+        # now put into classes
+
+        class_labels = []
+        for angle in images_source_zd:
+            tmp = np.zeros((num_classes,))
+            clas = find_nearest(map_deg_to_class, angle)
+            tmp[clas] = 1
+            class_labels.append(tmp)
+        class_labels = np.asarray(class_labels)
+        #print(validating_dataset.shape)
+        y = images
+        y_label = class_labels
+        print(images_source_zd[0])
+        print(y_label[0])
+        print(y_label.shape)
+        print("Finished getting data")
 
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons):
     try:
-        model_base = base_dir + "/Models/FinalDisp/"
-        model_name = "MC_ThetaPhiNoGen_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+        model_base = base_dir + "/Models/FinalDisp/test/"
+        model_name = "MC_OnlyZdNoGen_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
-            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=30, min_lr=0.001)
+            #reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=30, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_loss:.3f}_" + model_name + ".h5", monitor='val_loss', verbose=0,
-                                                               save_best_only=True, save_weights_only=False, mode='auto', period=1)
+                                                               save_best_only=False, save_weights_only=False, mode='auto', period=1)
             early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=40, verbose=0, mode='auto')
 
             gamma_anteil, gamma_count = metaYielder()
@@ -137,9 +153,9 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
             # Final Dense layer
             # 2 so have one for x and one for y
-            model.add(Dense(2, activation='linear'))
-            model.compile(optimizer=optimizer, loss=rmse_360_2, metrics=['mae', 'mse'])
-            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+            model.add(Dense(num_classes, activation='softmax'))
+            model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['acc'])
+            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, model_checkpoint])
 
             K.clear_session()
             tf.reset_default_graph()

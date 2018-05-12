@@ -119,6 +119,8 @@ number_validate = 529000*(0.2)
 optimizers = ['same']
 epoch = 500
 
+num_classes = 75*75 # Number of pixels in image, since now its a classification project
+
 path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 #path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
 
@@ -152,6 +154,20 @@ with h5py.File(path_mc_images, 'r') as f:
     images = images[0:int(0.1*len(images))]
     source_x = source_x[0:int(0.1*len(source_x))]
     source_y = source_y[0:int(0.1*len(source_y))]
+    print(np.max(source_x))
+    print(np.max(source_y))
+    print(np.min(source_x))
+    print(np.min(source_y))
+    # Now convert to this camera's coordinates
+    source_x += 180.975 # shifts everything to origin is center
+    source_y += 185.25 # shifts everything to origin is center
+    source_x = source_x / 4.94 # Ratio between the places
+    source_y = source_y / 4.826 # Ratio between y in original and y here
+    print(np.max(source_x))
+    print(np.max(source_y))
+    print(np.min(source_x))
+    print(np.min(source_y))
+
 
     #Normalize each image
     transformed_images = []
@@ -163,17 +179,23 @@ with h5py.File(path_mc_images, 'r') as f:
         #print(np.max(image_one))
     images = np.asarray(transformed_images)
     print(images.shape)
-    # Now convert to this camera's coordinates
-    source_x += 180.975/2 # shifts everything to origin is center
-    source_y += 185.25/2 # shifts everything to origin is center
-    source_x = source_x / 4.94 # Ratio between the places
-    source_y = source_y / 4.826 # Ratio between y in original and y here
+
+    # Now need to convert into labels from x,y
+    label_grid = []
+    for index, x_cor in enumerate(source_x):
+        test = np.zeros((75,75))
+        test[int(x_cor)][int(source_y[index])] = 1
+        test = test.reshape(-1,)
+        label_grid.append(test)
+        print(test.shape)
+
+
     y = images #np.flip(images, axis=2)
     print(images.shape)
     print(source_x[0])
     print(source_y[0])
-    y_label = np.column_stack((source_x, source_y))
-    print(y_label[0])
+    y_label = np.asarray(label_grid)#np.column_stack((source_x, source_y))
+    print(y_label.shape)
     print(np.min(y_label))
     print(np.max(y_label))
     print(y_label.shape)
@@ -183,7 +205,7 @@ with h5py.File(path_mc_images, 'r') as f:
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     try:
         model_base = base_dir + "/Models/FinalSourceXY/test/test/"
-        model_name = "MC_holchSsourceXYFinalTrainZeroedOne_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+        model_name = "MC_holchClassification_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
@@ -200,27 +222,25 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model.add(Conv2D(32, kernel_size=patch_size, strides=(1, 1),
                              activation='relu', padding=optimizer,
                              input_shape=(75, 75, 1)))
-            model.add(Conv2D(8, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+            model.add(Conv2D(64, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
             model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
             for i in range(num_conv):
-                model.add(Conv2D(16, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-                model.add(Conv2D(16, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+                model.add(Conv2D(64, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
+                model.add(Conv2D(64, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
                 model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
 
             model.add(Flatten())
 
             for i in range(num_dense):
-                model.add(Dense(512, activation='linear'))
+                model.add(Dense(2048, activation='relu'))
                 model.add(Dropout(dropout_layer))
 
 
             # Final Dense layer
             # 2 so have one for x and one for y
-            model.add(Dense(2, activation='linear'))
+            model.add(Dense(num_classes, activation='softmax'))
             sgd = keras.optimizers.Adadelta()
-            model.compile(optimizer=sgd, loss=euc_dist_keras, metrics=['mae', 'mse'])
-            #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
-            #                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+            model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
             model.fit(x=y, y=y_label, batch_size=batch_size, epochs=1, validation_split=0.2, callbacks=[early_stop, csv_logger, model_checkpoint])
 
             predictions = model.predict(y, batch_size=64)

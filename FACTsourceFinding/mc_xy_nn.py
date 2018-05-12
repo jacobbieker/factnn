@@ -62,7 +62,7 @@ def rmse_360_2(y_true, y_pred):
 
 
 
-architecture = 'manjar'
+architecture = 'manjaro'
 
 if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
@@ -88,6 +88,8 @@ number_validate = 150000*(0.2)
 optimizer = 'adam'
 epoch = 300
 
+num_spots_per_axis = 200
+
 path_mc_images = base_dir + "/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 
 def metaYielder():
@@ -96,6 +98,9 @@ def metaYielder():
 
     return gamma_anteil, gamma_count
 
+def find_nearest(array,value):
+    idx = (np.abs(array-value)).argmin()
+    return idx
 
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
@@ -105,35 +110,71 @@ with h5py.File(path_mc_images, 'r') as f:
     #images_source_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_az = (-1.*images_source_az + 540) % 360
+    np.random.seed(0)
     rng_state = np.random.get_state()
     np.random.shuffle(images)
     np.random.set_state(rng_state)
     np.random.shuffle(source_x)
     np.random.set_state(rng_state)
     np.random.shuffle(source_y)
-    images = images[0:int(0.8*len(images))]
-    source_x = source_x[0:int(0.8*len(source_x))]
-    source_y = source_y[0:int(0.8*len(source_y))]
+    images = images[0:int(0.5*len(images))]
+    source_x = source_x[0:int(0.5*len(source_x))]
+    source_y = source_y[0:int(0.5*len(source_y))]
+
+    #Normalize each image
+    transformed_images = []
+    for image_one in images:
+        #print(image_one.shape)
+        image_one = image_one/np.sum(image_one)
+        #print(np.sum(image_one))
+        transformed_images.append(image_one)
+        #print(np.max(image_one))
+    images = np.asarray(transformed_images)
 
     # Now convert to this camera's coordinates
-    source_x += 180.975 # shifts everything to positive
-    source_y += 185.25 # shifts everything to positive
-    source_x = source_x / 4.94 # Ratio between the places
-    source_y = source_y / 4.826 # Ratio between y in original and y here
+    #source_x += 180.975 # shifts everything to positive
+    #source_y += 185.25 # shifts everything to positive
+    #source_x = source_x / 4.94 # Ratio between the places
+    #source_y = source_y / 4.826 # Ratio between y in original and y here
+
+    # Convert to classes 600 for x, 600 for y, so maps back bigger
+    number_of_bins = 600
+    map_point_to_class = np.linspace(-300,300, number_of_bins)
+    print(map_point_to_class.shape)
+
+    class_labelsx = []
+    class_labelsy = []
+    for x1 in source_x:
+            tmpx = np.zeros((number_of_bins,))
+            clasx = find_nearest(map_point_to_class, x1)
+            tmpx[clasx] = 1
+            class_labelsx.append(tmpx)
+    for y1 in source_y:
+        tmpy = np.zeros((number_of_bins,))
+        clasy = find_nearest(map_point_to_class, y1)
+        tmpy[clasy] = 1
+        class_labelsy.append(tmpy)
+
+    class_labelsx = np.asarray(class_labelsx)
+    class_labelsy = np.asarray(class_labelsy)
+
+
     y = images #np.flip(images, axis=2)
     print(images.shape)
     print(source_x[0])
     print(source_y[0])
-    y_label = np.column_stack((source_x, source_y))
-    print(y_label[0])
-    print(y_label.shape)
+    print(source_x.shape)
+    print(class_labelsx.shape)
+    #y_label = np.column_stack((class_labelsx, class_labelsy))
+    #print(y_label[0])
+    #print(y_label.shape)
     print("Finished getting data")
 
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons):
     try:
         model_base = base_dir + "/Models/FinalDisp/"
-        model_name = "MC_XYNoGen_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+        model_name = "MC_XYNoGenClassifier_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
@@ -202,31 +243,32 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
             gamma_anteil, gamma_count = metaYielder()
             # Make the model
-            model = Sequential()
-
+            #model = Sequential()
+            main_input = keras.layers.Input(shape=(75,75,1))
             # Base Conv layer
-            model.add(Conv2D(conv_neurons, kernel_size=patch_size, strides=(1, 1),
-                             activation='relu', padding='same',
-                             input_shape=(75, 75, 1)))
+            x = Conv2D(conv_neurons, kernel_size=patch_size, strides=(1, 1),
+                             activation='relu', padding='same')(main_input)
 
             for i in range(num_conv):
-                model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same'))
+                x = Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same')(x)
                 if num_pooling_layer == 1:
-                    model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-                model.add(Dropout(dropout_layer))
+                    x = MaxPooling2D(pool_size=(2, 2), padding='same')(x)
+                x = Dropout(dropout_layer)(x)
 
-            model.add(Flatten())
+            x = Flatten()(x)
 
             # Now do the dense layers
             for i in range(num_dense):
-                model.add(Dense(dense_neuron, activation='relu'))
-                model.add(Dropout(dropout_layer))
+                x = Dense(4096, activation='relu')(x)
+                x = Dropout(dropout_layer)(x)
 
             # Final Dense layer
             # 2 so have one for x and one for y
-            model.add(Dense(2, activation='linear'))
-            model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
-            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+            x_output = Dense(600, activation='softmax')(x)
+            y_output = Dense(600, activation='softmax')(x)
+            model = keras.Model(inputs=main_input, outputs=[x_output,y_output])
+            model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['acc'])
+            model.fit(x=y, y=[class_labelsx, class_labelsy], batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 
 
             K.clear_session()

@@ -14,7 +14,7 @@ path_crab_images = "/run/media/jbieker/WDRed8Tb1/Cube_crab1314_preprocessed_imag
 
 # Format dataset to fit into tensorflow
 def reformat(dataset):
-    return dataset.reshape((-1, 40, 56, 40)).astype(np.float32)
+    return dataset.reshape((-1, 75, 75, 40)).astype(np.float32)
 
 
 def batchYielder():
