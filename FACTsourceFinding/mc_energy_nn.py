@@ -3,8 +3,8 @@
 
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from keras import backend as K
 import h5py
@@ -18,7 +18,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Conv1D, ELU, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D, GlobalAveragePooling2D, GlobalMaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
 import pickle
-architecture = 'manjar'
+architecture = 'manjaro'
 
 if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
@@ -44,9 +44,65 @@ number_validate = int(497000*(0.2))
 optimizer = 'adam'
 epoch = 900
 
+import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 
-path_mc_images = base_dir + "/Rebinned_5_MC_Gamma_BothSource_Images.h5"
-path_mc_proton = base_dir + "/Rebinned_5_MC_Proton_BothTracking_Images.h5"
+path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_Gamma_BothSource_Images.h5"
+path_mc_proton = "/run/media/jacob/SSD/Rebinned_5_MC_Proton_BothTracking_Images.h5"
+
+def plot_regressor_confusion(performace_df, label, log_xy=True, log_z=True, ax=None):
+
+    ax = ax or plt.gca()
+
+    #label = performace_df.label.copy()
+    len(performace_df)
+    len(performace_df[~np.isnan(performace_df)])
+    prediction = performace_df[~np.isnan(performace_df)]
+
+
+
+    if log_xy is True:
+        label = np.log10(label)
+        prediction = np.log10(prediction)
+
+    min_label = np.min(label)
+    min_pred = np.min(prediction)
+    max_pred = np.max(prediction)
+    max_label = np.max(label)
+
+    if min_label < min_pred:
+        min_ax = min_label
+    else:
+        min_ax = min_pred
+
+    if max_label > max_pred:
+        max_ax = max_label
+    else:
+        max_ax = max_pred
+
+    limits = [
+        min_label,
+        max_label
+    ]
+
+    counts, x_edges, y_edges, img = ax.hist2d(
+        label,
+        prediction,
+        bins=[100, 100],
+        range=[limits, limits],
+        norm=LogNorm() if log_z is True else None,
+    )
+    ax.set_aspect(1)
+    ax.figure.colorbar(img, ax=ax)
+
+    if log_xy is True:
+        ax.set_xlabel(r'$\log_{10}(E_{\mathrm{MC}} \,\, / \,\, \mathrm{GeV})$')
+        ax.set_ylabel(r'$\log_{10}(E_{\mathrm{Est}} \,\, / \,\, \mathrm{GeV})$')
+    else:
+        ax.set_xlabel(r'$E_{\mathrm{MC}} \,\, / \,\, \mathrm{GeV}$')
+        ax.set_ylabel(r'$E_{\mathrm{Est}} \,\, / \,\, \mathrm{GeV}$')
+
+    return ax
 
 
 
@@ -61,31 +117,49 @@ with h5py.File(path_mc_images, 'r') as f:
     with h5py.File(path_mc_proton, 'r') as f2:
         gamma_anteil, gamma_count = metaYielder()
         # Get some truth data for now, just use Crab images
-        images = f['Image'][0:-1]
-        images_energy = f['Energy'][0:-1]
-        images2 = f2['Image'][0:-1]
-        images_energy2 = f2['Energy'][0:-1]
-        images = images[0:int(0.5*len(images))]
-        images_energy = images_energy[0:int(0.5*len(images_energy))]
-        images2 = images2[0:int(0.5*len(images2))]
-        images_energy2 = images_energy2[0:int(0.5*len(images_energy2))]
-        validating_dataset = np.concatenate([images, images2], axis=0)
-        #print(validating_dataset.shape)
-        labels = np.concatenate([images_energy, images_energy2], axis=0)
+        images_full = f['Image'][0:-1]
+        images_energy_full = f['Energy'][0:-1]
+        #images2 = f2['Image'][0:-1]
+        #images_energy2 = f2['Energy'][0:-1]
         np.random.seed(0)
         rng_state = np.random.get_state()
-        np.random.shuffle(validating_dataset)
+        np.random.shuffle(images_full)
         np.random.set_state(rng_state)
-        np.random.shuffle(labels)
+        np.random.shuffle(images_energy_full)
+        images = images_full[0:int(0.4*len(images_full))]
+        images_energy = images_energy_full[0:int(0.4*len(images_energy_full))]
+        #images2 = images2[0:int(0.5*len(images2))]
+        #images_energy2 = images_energy2[0:int(0.5*len(images_energy2))]
+        validating_dataset =images # np.concatenate([images, images2], axis=0)
+        #print(validating_dataset.shape)
+        labels = images_energy # np.concatenate([images_energy, images_energy2], axis=0)
         y = validating_dataset
         y_label = labels
         print(y_label.shape)
         print("Finished getting data")
+        from keras.models import load_model
+        model = load_model("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/2357529.406_MC_energyNoGenDriver_b18_p_(5, 5)_drop_0.08_conv_5_pool_1_denseN_152_numDense_2_convN_55_opt_adam.h5")
+        images = images_full
+        images_energy = images_energy_full
+        predictions = model.predict(x=images, batch_size=64)
+        predictions = predictions.reshape(-1,)
+        fig1 = plt.figure()
+        ax = fig1.add_subplot(1, 1, 1)
+        ax.set_title(' Reconstructed vs. True Energy (log color scale)')
+        plot_regressor_confusion(predictions, images_energy, ax=ax)
+        fig1.show()
+
+        # Plot confusion
+        fig2 = plt.figure()
+        ax = fig2.add_subplot(1, 1, 1)
+        ax.set_title('Reconstructed vs. True Energy (linear color scale)')
+        plot_regressor_confusion(predictions, images_energy, log_z=False, ax=ax)
+        fig2.show()
 
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons):
     try:
-        model_base = base_dir + "/Models/RealFinalEnergy/"
+        model_base = "" #base_dir + "/Models/RealFinalEnergy/"
         model_name = "MC_energyNoGenDriver_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
@@ -118,11 +192,28 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # Block - output
             model.add(Dense(1, name='output'))
             model.summary()
-            adam = keras.optimizers.adam(lr=0.001)
+            adam = keras.optimizers.adam(lr=0.0001)
             model.compile(optimizer=adam, loss='mse', metrics=['mae'])
 
-            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.1, verbose=2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 
+
+            images = images_full[int(0.4*len(images_full)):-1]
+            images_energy = images_energy_full[int(0.4*len(images_energy_full)):-1]
+            predictions = model.predict(x=images, batch_size=batch_size)
+            predictions = predictions.reshape(-1,)
+            fig1 = plt.figure()
+            ax = fig1.add_subplot(1, 1, 1)
+            ax.set_title(' Reconstructed vs. True Energy (log color scale)')
+            plot_regressor_confusion(predictions, images_energy, ax=ax)
+            fig1.show()
+
+            # Plot confusion
+            fig2 = plt.figure()
+            ax = fig2.add_subplot(1, 1, 1)
+            ax.set_title('Reconstructed vs. True Energy (linear color scale)')
+            plot_regressor_confusion(predictions, images_energy, log_z=False, ax=ax)
+            fig2.show()
             K.clear_session()
             tf.reset_default_graph()
 

@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import pickle
 from keras import backend as K
@@ -490,35 +490,44 @@ def calc_roc_thetaphi(path_image, path_keras_model):
         with h5py.File(path_proton_images, 'r') as f2:
             # Get some truth data for now, just use Crab images
             images = f['Image'][0:-1]
-            images2 = f2['Image'][0:-1]
+            #images2 = f2['Image'][0:2000]
             images_source_zd = f['Theta'][0:-1]
-            images_source_az = f2['Theta'][0:-1]
-            images_source_az = np.deg2rad(images_source_az)
-            images_source_zd = np.deg2rad(images_source_zd)
+            #images_source_az = f2['Theta'][0:2000]
+            #images_source_az = np.deg2rad(images_source_az)
+            #images_source_zd = np.deg2rad(images_source_zd)
             # stream the data in to predict on it, safe region for all is the last 40%, except for the latest sep models
             np.random.seed(0)
             rng_state = np.random.get_state()
             np.random.shuffle(images)
             np.random.set_state(rng_state)
-            np.random.shuffle(images2)
+            #np.random.shuffle(images2)
             np.random.set_state(rng_state)
-            np.random.shuffle(images_source_az)
+            #np.random.shuffle(images_source_az)
             np.random.set_state(rng_state)
             np.random.shuffle(images_source_zd)
             images = images[0:int(0.2*len(images))]
-            images2 = images2[0:int(0.*len(images2))]
-            images_source_az = images_source_az[0:int(0.01*len(images_source_az))]
-            images_source_zd = images_source_zd[0:int(0.01*len(images_source_zd))]
-            validating_dataset = np.concatenate([images, images2], axis=0)
+            #images2 = images2[0:int(0.02*len(images2))]
+            #images_source_az = images_source_az[0:int(0.02*len(images_source_az))]
+            images_source_zd = images_source_zd[0:int(0.2*len(images_source_zd))]
+            validating_dataset = images # np.concatenate([images, images2], axis=0)
             #print(validating_dataset.shape)
-            labels = np.concatenate([images_source_zd, images_source_az], axis=0)
+            labels = images_source_zd #np.concatenate([images_source_zd, images_source_az], axis=0)
             y = validating_dataset
             print(labels.shape)
+
+            transformed_images = []
+            for image_one in validating_dataset:
+                #print(image_one.shape)
+                image_one = image_one/np.sum(image_one)
+                #print(np.sum(image_one))
+                transformed_images.append(image_one)
+                #print(np.max(image_one))
+            validating_dataset = np.asarray(transformed_images)
 
             predictions = model.predict(validating_dataset, batch_size=64)
             print(predictions.shape)
             predictions = predictions.reshape(-1,)
-            predictions = np.deg2rad(predictions)
+            #predictions = np.deg2rad(predictions)
     # Now make the confusion matrix
 
     #Loss Score so can tell which one it is
@@ -685,9 +694,9 @@ def calc_roc_radec(path_image, path_keras_model):
 
 import os
 
-calc_roc_energy(path_mc_images, "/run/media/jacob/WDRed8Tb1/Models/FinalEnergy/5210276.532_MC_energyNoGenDriver_b32_p_(2, 2)_drop_0.16_conv_4_pool_1_denseN_96_numDense_2_convN_17_opt_adam.h5")
-exit(1)
-#calc_roc_thetaphi(path_mc_images, "/run/media/jacob/WDRed8Tb1/Models/FinalDisp/0.022_MC_OnlyThetaNoGen_b28_p_(3, 3)_drop_0.264_conv_8_pool_1_denseN_507_numDense_2_convN_60_opt_adam.h5")
+#calc_roc_energy(path_mc_images, "/run/media/jacob/WDRed8Tb1/Models/FinalEnergy/5210276.532_MC_energyNoGenDriver_b32_p_(2, 2)_drop_0.16_conv_4_pool_1_denseN_96_numDense_2_convN_17_opt_adam.h5")
+#exit(1)
+#calc_roc_thetaphi(path_mc_images, "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/0.000_MC_OnlyZdNoGenDriver_b36_p_(3, 3)_drop_0.944_conv_4_pool_1_denseN_169_numDense_3_convN_196_opt_%3Ckeras.optimizers.SGD object at 0x7f6319821668%3E.h5")
 #calc_roc_thetaphi(path_diffuse_images, "/run/media/jacob/WDRed8Tb1/Models/FinalDisp/0.022_MC_OnlyThetaNoGen_b28_p_(3, 3)_drop_0.264_conv_8_pool_1_denseN_507_numDense_2_convN_60_opt_adam.h5")
 #calc_roc_thetaphi(path_proton_images, "/run/media/jacob/WDRed8Tb1/Models/FinalDisp/0.022_MC_OnlyThetaNoGen_b28_p_(3, 3)_drop_0.264_conv_8_pool_1_denseN_507_numDense_2_convN_60_opt_adam.h5")
 
@@ -705,11 +714,15 @@ energy_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os
 source_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(xy_models)
              for file in fileName if '.h5' in file]
 
-disp_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(disp_models)
+disp_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/test/")
                 for file in fileName if '.h5' in file]
 
 
-
+#for path in disp_paths:
+#    try:
+#        calc_roc_thetaphi(path_mc_images, path)
+#    except:
+#        pass
 #for path in source_paths:
 #    print(path)
 #    try:
@@ -717,13 +730,22 @@ disp_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.w
 #    except:
 #        pass
 #
+#exit(1)
+
+if os.path.isfile(sep_pickle):
+    with open(sep_pickle, "rb") as f:
+        tmp = pickle.load(f)
+        best_auc_sep = tmp[0]
+        print(best_auc_sep)
+        best_auc_sep_auc = tmp[0]
 for path in sep_paths:
     print(path)
-    try:
-        calc_roc_gammaHad(path_mc_images, path_proton_images, path)
-    except Exception as e:
-        print(e)
-        pass
+    if path not in best_auc_sep:
+        try:
+            calc_roc_gammaHad(path_mc_images, path_proton_images, path)
+        except Exception as e:
+            print(e)
+            pass
 
 #
 #
