@@ -18,7 +18,7 @@ import pandas as pd
 
 architecture = 'manjaro'
 
-if architecture == 'manjar':
+if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
     thesis_base = '/run/media/jacob/SSD/Development/thesis'
 else:
@@ -42,8 +42,8 @@ number_validate = 120000*(0.2)
 optimizers = ['same']
 epoch = 500
 
-path_mc_images = base_dir = "/Rebinned_5_MC_Gamma_BothSource_Images.h5"
-path_proton_images = base_dir + "/Rebinned_5_MC_Proton_BothTracking_Images.h5"
+path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_Gamma_BothSource_Images.h5"
+path_proton_images = "/run/media/jacob/SSD/Rebinned_5_MC_Proton_JustImage_Images.h5"
 np.random.seed(0)
 
 def metaYielder():
@@ -70,17 +70,19 @@ with h5py.File(path_mc_images, 'r') as f:
     with h5py.File(path_proton_images, 'r') as f2:
         gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
         # Get some truth data for now, just use Crab images
-        images = f['Image'][0:-1]
+        items = len(f2["Image"])
+        images = f['Image'][0:items]
         images_false = f2['Image'][0:-1]
         validating_dataset = np.concatenate([images, images_false], axis=0)
         #print(validating_dataset.shape)
         labels = np.array([True] * (len(images)) + [False] * len(images_false))
+        np.random.seed(0)
         rng_state = np.random.get_state()
         np.random.shuffle(validating_dataset)
         np.random.set_state(rng_state)
         np.random.shuffle(labels)
-        validating_dataset = validating_dataset[0:int(0.8*len(validating_dataset))]
-        labels = labels[0:int(0.8*len(labels))]
+        validating_dataset = validating_dataset[0:int(0.5*len(validating_dataset))]
+        labels = labels[0:int(0.5*len(labels))]
         #print(ind)
         #print(counts)
         #rng_state = np.random.get_state()
@@ -104,10 +106,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
-            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.01, patience=70, min_lr=0.001)
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_acc', factor=0.01, patience=3, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_acc:.3f}_" + model_name + ".h5", monitor='val_acc', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
-            early_stop = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=80, verbose=0, mode='auto')
+            early_stop = keras.callbacks.EarlyStopping(monitor='val_acc', min_delta=0, patience=5, verbose=0, mode='auto')
 
             # Make the model
             model = Sequential()
@@ -152,7 +154,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # 2 so have one for x and one for y
             model.add(Dense(2, activation='softmax'))
             model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['acc'])
-            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.8, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 
 
             K.clear_session()

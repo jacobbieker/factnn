@@ -49,12 +49,12 @@ path_mc_images = base_dir + "/Rebinned_5_MC_Gamma_BothSource_Images.h5"
 path_proton_images = base_dir + "/Rebinned_5_MC_Proton_BothTracking_Images.h5"
 
 disp_models = "/run/media/jacob/WDRed8Tb1/Models/Disp/"
-energy_models = "/run/media/jacob/WDRed8Tb1/Models/Energy/"
-sep_models = "/run/media/jacob/WDRed8Tb1/Models/Sep/"
+energy_models = base_dir + "/Models/RealFinalEnergy/"
+sep_models = base_dir + "/Models/Sep/"
 
 phiTheta_pickle = "phiTheta_auc.p"
 sourceXY_pickle = "sourceXY_auc.p"
-sep_pickle = "sep.p"
+sep_pickle = "sep_all.p"
 azzd_pickle = "azzd.p"
 energy_pickle = "energy_pickle"
 
@@ -178,7 +178,10 @@ energy_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os
                 for file in fileName if '.h5' in file]
 
 for path in sep_paths:
-    calc_roc_gammaHad(path_mc_images, path_proton_images, path)
+    try:
+        calc_roc_gammaHad(path_mc_images, path_proton_images, path)
+    except:
+        pass
 
 for path in energy_paths:
     calc_roc_energy(path_mc_images, path)

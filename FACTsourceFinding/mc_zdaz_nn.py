@@ -85,7 +85,7 @@ num_runs = 500
 number_of_training = 150000*(0.6)
 number_of_testing = 150000*(0.2)
 number_validate = 150000*(0.2)
-optimizer = 'adam'
+optimizer = keras.optimizers.Adam
 epoch = 300
 
 path_mc_images = base_dir + "/Rebinned_5_MC_diffuse_BothSource_Images.h5"
@@ -96,6 +96,9 @@ def metaYielder():
 
     return gamma_anteil, gamma_count
 
+def find_nearest(array,value):
+    idx = (np.abs(array-value)).argmin()
+    return idx
 
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
@@ -109,21 +112,52 @@ with h5py.File(path_mc_images, 'r') as f:
     print(images_source_zd[0])
     images_source_az = np.deg2rad(images_source_az)
     images_source_zd = np.deg2rad(images_source_zd)
+    np.random.seed(0)
     rng_state = np.random.get_state()
     np.random.shuffle(images)
     np.random.set_state(rng_state)
     np.random.shuffle(images_source_az)
     np.random.set_state(rng_state)
     np.random.shuffle(images_source_zd)
-    images = images[0:int(0.8*len(images))]
-    images_source_az = images_source_az[0:int(0.8*len(images_source_az))]
-    images_source_zd = images_source_zd[0:int(0.8*len(images_source_zd))]
+    images = images[0:int(0.5*len(images))]
+    images_source_az = images_source_az[0:int(0.5*len(images_source_az))]
+    images_source_zd = images_source_zd[0:int(0.5*len(images_source_zd))]
     # images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     # images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     # source_x, source_y = horizontal_to_camera(
     #     zd=images_source_zd, az=images_source_az,
     #     az_pointing=images_point_az, zd_pointing=images_point_zd
     # )
+    transformed_images = []
+    for image_one in images:
+        #print(image_one.shape)
+        image_one = image_one/np.sum(image_one)
+        #print(np.sum(image_one))
+        transformed_images.append(image_one)
+        #print(np.max(image_one))
+    images = np.asarray(transformed_images)
+
+    number_of_bins_az = 1440
+    number_of_bins_zd = 500
+    map_point_to_class = np.linspace(0,2*np.pi, number_of_bins_az)
+    print(map_point_to_class.shape)
+
+    class_labelsx = []
+    class_labelsy = []
+    for x1 in images_source_az:
+        tmpx = np.zeros((number_of_bins,))
+        clasx = find_nearest(map_point_to_class, x1)
+        tmpx[clasx] = 1
+        class_labelsx.append(tmpx)
+    for y1 in source_y:
+        tmpy = np.zeros((number_of_bins,))
+        clasy = find_nearest(map_point_to_class, y1)
+        tmpy[clasy] = 1
+        class_labelsy.append(tmpy)
+
+    class_labelsx = np.asarray(class_labelsx)
+    class_labelsy = np.asarray(class_labelsy)
+
     print(images_source_az[0])
     y = images
     y_label = np.column_stack((images_source_zd, images_source_az))

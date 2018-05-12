@@ -15,9 +15,9 @@ import os
 import keras
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D, GlobalAveragePooling2D, GlobalMaxPooling2D
+from keras.layers import Dense, Dropout, Activation, Conv1D, ELU, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D, GlobalAveragePooling2D, GlobalMaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
-
+import pickle
 architecture = 'manjar'
 
 if architecture == 'manjaro':
@@ -44,7 +44,11 @@ number_validate = int(497000*(0.2))
 optimizer = 'adam'
 epoch = 900
 
+
 path_mc_images = base_dir + "/Rebinned_5_MC_Gamma_BothSource_Images.h5"
+path_mc_proton = base_dir + "/Rebinned_5_MC_Proton_BothTracking_Images.h5"
+
+
 
 def metaYielder():
     gamma_anteil = 1
@@ -54,22 +58,35 @@ def metaYielder():
 
 
 with h5py.File(path_mc_images, 'r') as f:
-    gamma_anteil, gamma_count = metaYielder()
-    # Get some truth data for now, just use Crab images
-    images = f['Image'][0:-1]
-    images_energy = f['Energy'][0:-1]
-    images = images[0:int(0.8*len(images))]
-    images_energy = images_energy[0:int(0.8*len(images_energy))]
-    y = images
-    y_label = images_energy
-    print(y_label.shape)
-    print("Finished getting data")
+    with h5py.File(path_mc_proton, 'r') as f2:
+        gamma_anteil, gamma_count = metaYielder()
+        # Get some truth data for now, just use Crab images
+        images = f['Image'][0:-1]
+        images_energy = f['Energy'][0:-1]
+        images2 = f2['Image'][0:-1]
+        images_energy2 = f2['Energy'][0:-1]
+        images = images[0:int(0.5*len(images))]
+        images_energy = images_energy[0:int(0.5*len(images_energy))]
+        images2 = images2[0:int(0.5*len(images2))]
+        images_energy2 = images_energy2[0:int(0.5*len(images_energy2))]
+        validating_dataset = np.concatenate([images, images2], axis=0)
+        #print(validating_dataset.shape)
+        labels = np.concatenate([images_energy, images_energy2], axis=0)
+        np.random.seed(0)
+        rng_state = np.random.get_state()
+        np.random.shuffle(validating_dataset)
+        np.random.set_state(rng_state)
+        np.random.shuffle(labels)
+        y = validating_dataset
+        y_label = labels
+        print(y_label.shape)
+        print("Finished getting data")
 
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons):
     try:
-        model_base = base_dir + "/Models/FinalEnergy/"
-        model_name = "MC_energyNoGen_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+        model_base = base_dir + "/Models/RealFinalEnergy/"
+        model_name = "MC_energyNoGenDriver_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
@@ -82,35 +99,29 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             gamma_anteil, gamma_count = metaYielder()
             # Make the model
             model = Sequential()
-
-            # Base Conv layer
-            model.add(Conv2D(conv_neurons, kernel_size=patch_size, strides=(1, 1),
-                             activation='relu', padding='same',
-                             input_shape=(75, 75, 1)))
-
-            for i in range(num_conv):
-                model.add(Conv2D(conv_neurons, patch_size, strides=(1, 1), activation='relu', padding='same'))
-                if num_pooling_layer == 1:
-                    model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-                model.add(Dropout(dropout_layer))
-
-            #model.add(GlobalAveragePooling2D())
-
+            # Preprocess incoming data, centered around zero with small standard deviation
+            #model.add(Lambda(lambda x: (x / 127.5) - 1.0, input_shape=(75, 75, 1)))
+            # Block - conv
+            model.add(Conv2D(conv_neurons, 8, 8, border_mode='same', subsample=[4,4], activation='elu', name='Conv1', input_shape=(75,75,1)))
+            # Block - conv
+            model.add(Conv2D(2*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv2'))
+            # Block - conv
+            model.add(Conv2D(4*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv3'))
+            # Block - flatten
             model.add(Flatten())
-
-            # Now do the dense layers
-            for i in range(num_dense):
-                model.add(Dense(dense_neuron, activation='relu'))
-                model.add(Dropout(dropout_layer))
-
-            # Final Dense layer
-            # 2 so have one for x and one for y
-            model.add(Dense(1, activation='linear'))
-            model.compile(optimizer=optimizer, loss='mse', metrics=['mae'])
-            print(model.summary())
+            model.add(Dropout(dropout_layer))
+            model.add(ELU())
+            # Block - fully connected
+            model.add(Dense(dense_neuron, activation='elu', name='FC1'))
+            model.add(Dropout(0.5))
+            model.add(ELU())
+            # Block - output
+            model.add(Dense(1, name='output'))
+            model.summary()
+            adam = keras.optimizers.adam(lr=0.001)
+            model.compile(optimizer=adam, loss='mse', metrics=['mae'])
 
             model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
-
 
             K.clear_session()
             tf.reset_default_graph()

@@ -28,8 +28,13 @@ def rmse_360_2(y_true, y_pred):
     zd_error = K.mean(K.square(y_pred[:,0] - y_true[:,0]), axis=-1)
     return az_error + zd_error
 
+def euc_dist_keras(y_true, y_pred):
+    return K.sqrt(K.sum(K.square(y_true - y_pred), axis=-1, keepdims=True))
+# Hyperparameters
+
 import keras.losses
 keras.losses.rmse_360_2 = rmse_360_2
+keras.losses.euc_dist_keras = euc_dist_keras
 
 # load
 
@@ -44,19 +49,21 @@ else:
 
 
 #All files for calculating ROC and AUC on, for phi and theta for simulated, Az, Zd for all, Energy for simulated, Ra, Dec for observation
-path_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_BothSource_Images.h5"
-path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_BothSource_Images.h5"
-path_proton_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_BothTracking_Images.h5"
-path_crab_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_BothSource_Images.h5"
+path_diffuse_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_BothSource_Images.h5"
+path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_Gamma_BothSource_Images.h5"
+path_proton_images = "/run/media/jacob/SSD/Rebinned_5_MC_Proton_BothTracking_Images.h5"
+path_crab_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 path_mrk501_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_mrk501_preprocessed_images.h5"
+path_crab_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_1_Images.h5"
 
-disp_models = "/run/media/jacob/WDRed8Tb1/Models/Disp/"
+disp_models = "/run/media/jacob/WDRed8Tb1/Models/FinalDisp/"
 energy_models = "/run/media/jacob/WDRed8Tb1/Models/Energy/"
-sep_models = "/run/media/jacob/WDRed8Tb1/Models/Sep/"
+sep_models = "/run/media/jacob/WDRed8Tb2/Sep/"
+xy_models = "/run/media/jacob/WDRed8Tb1/Models/FinalSourceXY/"
 
 phiTheta_pickle = "phiTheta_auc.p"
 sourceXY_pickle = "sourceXY_auc.p"
-sep_pickle = "sep.p"
+sep_pickle = "sep_talapas.p"
 azzd_pickle = "azzd.p"
 energy_pickle = "energy_pickle"
 
@@ -79,7 +86,7 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
     #label = performace_df.label.copy()
     prediction = performace_df.copy()
 
-    if log_xy is True:
+    if log_xy is False:
         label = np.log10(label)
         prediction = np.log10(prediction)
 
@@ -102,6 +109,9 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
         min_ax,
         max_ax
     ]
+    print(limits)
+    print("Max, min Label")
+    print([min_label, max_label])
 
     counts, x_edges, y_edges, img = ax.hist2d(
         label,
@@ -237,16 +247,16 @@ def plot_phiTheta_confusion(performace_df, label, log_xy=False, log_z=True, ax=N
     print(label)
 
     if log_xy is True:
-        label = label[:,0]
-        prediction = prediction[:,0]
+        label = label
+        prediction = prediction
     else:
-        label = label[:,1]
-        prediction = prediction[:,1]
+        label = label
+        prediction = prediction
 
-    min_label = np.floor(np.min(label))
-    min_pred = np.floor(np.min(prediction))
-    max_pred = np.ceil(np.max(prediction))
-    max_label = np.ceil(np.max(label))
+    min_label = np.min(label)
+    min_pred = np.min(prediction)
+    max_pred = np.max(prediction)
+    max_label = np.max(label)
 
     if min_label < min_pred:
         min_ax = min_label
@@ -350,6 +360,15 @@ def plot_sourceXY_confusion(performace_df, label, log_xy=False, log_z=True, ax=N
 
     return ax
 
+from sklearn import svm, datasets
+from sklearn.metrics import roc_curve, auc
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import label_binarize
+from sklearn.multiclass import OneVsRestClassifier
+from scipy import interp
+from itertools import cycle
+
+
 def calc_roc_gammaHad(path_image, proton_image, path_keras_model):
     '''
     Returns ROC for gamma/hadron separation, also builds migration matrix for it and the plots of confidence
@@ -365,23 +384,24 @@ def calc_roc_gammaHad(path_image, proton_image, path_keras_model):
             # stream the data in to predict on it, safe region for all is the last 40%, except for the latest sep models
             items = len(f['Image'])
             items_proton = len(f2['Image'])
-            test_images = f['Image'][-int(items*.4):-1]
-            test_images_false = f2['Image'][-int(items*.4):-1]
+            test_images = f['Image'][int(items*.8):-1]
+            test_images_false = f2['Image'][-int(items*.8):-1]
             # Since the mc AzZd ones are in radians, need these to be to, could convert back if need be later
             validating_dataset = np.concatenate([test_images, test_images_false], axis=0)
             labels = np.array([True] * (len(test_images)) + [False] * len(test_images_false))
             validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
             print(labels.shape)
 
-            predictions = model.predict(validating_dataset, batch_size=64)
+            predictions = model.predict_proba(validating_dataset, batch_size=64)
             print(predictions.shape)
 
             # get ROC and AUC score
-            print(roc_auc_score(validation_labels, predictions))
             best_auc_sep.append(path_keras_model)
             best_auc_sep.append(roc_auc_score(validation_labels, predictions))
+            print(roc_auc_score(validation_labels, predictions))
             with open(sep_pickle, "wb") as f:
                 pickle.dump([best_auc_sep, best_auc_sep_auc], f)
+
 
     # TODO Change this to work with my simulated ones, this uses both hadron and gamma truths
     '''
@@ -423,9 +443,9 @@ def calc_roc_azzd(path_image, path_keras_model):
     with h5py.File(path_image, 'r') as f:
         # stream the data in to predict on it, safe region for all is the last 40%, except for the latest sep models
         items = len(f['Image'])
-        test_images = f['Image'][-int(items*.4):-1]
-        labels_az = f['Source_Zd'][-int(items*.4):-1]
-        labels_zd = f['Source_Az'][-int(items*.4):-1]
+        test_images = f['Image'][0:int(items*.2):]
+        labels_az = f['Source_Zd'][0:int(items*.2):]
+        labels_zd = f['Source_Az'][0:int(items*.2):]
         # Since the mc AzZd ones are in radians, need these to be to, could convert back if need be later
         labels_az = np.deg2rad(labels_az)
         labels_zd = np.deg2rad(labels_zd)
@@ -467,20 +487,38 @@ def calc_roc_thetaphi(path_image, path_keras_model):
     model = load_model(path_keras_model)
 
     with h5py.File(path_image, 'r') as f:
-        # stream the data in to predict on it, safe region for all is the last 40%, except for the latest sep models
-        items = len(f['Image'])
-        test_images = f['Image'][-int(items*.4):-1]
-        labels_az = f['Phi'][-int(items*.4):-1]
-        labels_zd = f['Theta'][-int(items*.4):-1]
-        # Since the mc AzZd ones are in radians, need these to be to, could convert back if need be later
-        labels_az = np.deg2rad(labels_az)
-        labels_zd = np.deg2rad(labels_zd)
-        labels = np.column_stack((labels_zd, labels_az))
-        print(labels.shape)
+        with h5py.File(path_proton_images, 'r') as f2:
+            # Get some truth data for now, just use Crab images
+            images = f['Image'][0:-1]
+            images2 = f2['Image'][0:-1]
+            images_source_zd = f['Theta'][0:-1]
+            images_source_az = f2['Theta'][0:-1]
+            images_source_az = np.deg2rad(images_source_az)
+            images_source_zd = np.deg2rad(images_source_zd)
+            # stream the data in to predict on it, safe region for all is the last 40%, except for the latest sep models
+            np.random.seed(0)
+            rng_state = np.random.get_state()
+            np.random.shuffle(images)
+            np.random.set_state(rng_state)
+            np.random.shuffle(images2)
+            np.random.set_state(rng_state)
+            np.random.shuffle(images_source_az)
+            np.random.set_state(rng_state)
+            np.random.shuffle(images_source_zd)
+            images = images[0:int(0.2*len(images))]
+            images2 = images2[0:int(0.*len(images2))]
+            images_source_az = images_source_az[0:int(0.01*len(images_source_az))]
+            images_source_zd = images_source_zd[0:int(0.01*len(images_source_zd))]
+            validating_dataset = np.concatenate([images, images2], axis=0)
+            #print(validating_dataset.shape)
+            labels = np.concatenate([images_source_zd, images_source_az], axis=0)
+            y = validating_dataset
+            print(labels.shape)
 
-        predictions = model.predict(test_images, batch_size=64)
-        print(predictions.shape)
-        predictions = predictions
+            predictions = model.predict(validating_dataset, batch_size=64)
+            print(predictions.shape)
+            predictions = predictions.reshape(-1,)
+            predictions = np.deg2rad(predictions)
     # Now make the confusion matrix
 
     #Loss Score so can tell which one it is
@@ -515,36 +553,64 @@ def calc_roc_sourceXY(path_image, path_keras_model):
     with h5py.File(path_image, 'r') as f:
         # stream the data in to predict on it, safe region for all is the last 40%, except for the latest sep models
         items = len(f['Image'])
-        test_images = f['Image'][-int(items*.4):-1]
-        source_x = f['Source_X'][-int(items*.4):-1]
-        source_y = f['Source_Y'][-int(items*.4):-1]
-        source_x += 180.975 # shifts everything to positive
-        source_y += 185.25 # shifts everything to positive
+        images = f['Image'][0:-1]
+        source_x = f['Source_X'][0:-1]
+        source_y = f['Source_Y'][0:-1]
+        np.random.seed(0)
+        rng_state = np.random.get_state()
+        np.random.shuffle(images)
+        np.random.set_state(rng_state)
+        np.random.shuffle(source_x)
+        np.random.set_state(rng_state)
+        np.random.shuffle(source_y)
+        images = images[0:int(0.2*len(images))]
+        source_x = source_x[0:int(0.2*len(source_x))]
+        source_y = source_y[0:int(0.2*len(source_y))]
+
+        source_x += 180.975/2 # shifts everything to positive
+        source_y += 185.25/2 # shifts everything to positive
         source_x = source_x / 4.94 # Ratio between the places
         source_y = source_y / 4.826 # Ratio between y in original and y here
         # Since the mc AzZd ones are in radians, need these to be to, could convert back if need be later
         labels = np.column_stack((source_x, source_y))
         print(labels.shape)
-        predictions = model.predict(test_images, batch_size=64)
+        predictions = model.predict(images, batch_size=64)
         print(predictions.shape)
         predictions = predictions
+        predictions[:,0] += 180.975/2 # shifts everything to positive
+        predictions[:,1] += 185.25/2 # shifts everything to positive
+        predictions[:,0] = predictions[:,0] / 4.94 # Ratio between the places
+        predictions[:,1] = predictions[:,1] / 4.826 # Ratio between y in original and y here
     # Now make the confusion matrix
 
     #Loss Score so can tell which one it is
     filename = path_keras_model.split("/")[-1]
     filename = filename.split("_")[0]
+
     fig1 = plt.figure()
     ax = fig1.add_subplot(1, 1, 1)
     ax.set_title(filename + ' Reconstructed vs. True X')
+    plot_sourceX_Y_confusion(predictions[:,0], labels[:,0], ax=ax)
+    fig1.show()
+
+
+    fig1 = plt.figure()
+    ax = fig1.add_subplot(1, 1, 1)
+    ax.set_title(filename + ' Reconstructed X vs. Rec Y')
     plot_sourceX_Y_confusion(predictions[:,0], predictions[:,1], ax=ax)
     fig1.show()
 
-    # Plot confusion
-    fig2 = plt.figure()
-    ax = fig2.add_subplot(1, 1, 1)
-    ax.set_title(filename + 'Reconstructed vs. True Y')
-    plot_sourceXY_confusion(labels[:,0], labels[:,0], log_xy=True, ax=ax)
-    fig2.show()
+    fig1 = plt.figure()
+    ax = fig1.add_subplot(1, 1, 1)
+    ax.set_title(filename + ' True X vs. True Y')
+    plot_sourceX_Y_confusion(labels[:,0], labels[:,1], ax=ax)
+    fig1.show()
+
+    fig1 = plt.figure()
+    ax = fig1.add_subplot(1, 1, 1)
+    ax.set_title(filename + ' Reconstructed vs. True Y')
+    plot_sourceX_Y_confusion(predictions[:,1], labels[:,1], log_xy=True, ax=ax)
+    fig1.show()
 
     error = predictions - labels
     best_xy.append(path_keras_model)
@@ -619,22 +685,66 @@ def calc_roc_radec(path_image, path_keras_model):
 
 import os
 
-#calc_roc_sourceXY(path_mc_images, "/run/media/jacob/WDRed8Tb1/Models/Disp2/585.735_MC_holchTrueSource_b30_p_(5, 5)_drop_0.24_conv_4_pool_0_denseN_216_numDense_4_convN_13_opt_same.h5")
+calc_roc_energy(path_mc_images, "/run/media/jacob/WDRed8Tb1/Models/FinalEnergy/5210276.532_MC_energyNoGenDriver_b32_p_(2, 2)_drop_0.16_conv_4_pool_1_denseN_96_numDense_2_convN_17_opt_adam.h5")
+exit(1)
+#calc_roc_thetaphi(path_mc_images, "/run/media/jacob/WDRed8Tb1/Models/FinalDisp/0.022_MC_OnlyThetaNoGen_b28_p_(3, 3)_drop_0.264_conv_8_pool_1_denseN_507_numDense_2_convN_60_opt_adam.h5")
+#calc_roc_thetaphi(path_diffuse_images, "/run/media/jacob/WDRed8Tb1/Models/FinalDisp/0.022_MC_OnlyThetaNoGen_b28_p_(3, 3)_drop_0.264_conv_8_pool_1_denseN_507_numDense_2_convN_60_opt_adam.h5")
+#calc_roc_thetaphi(path_proton_images, "/run/media/jacob/WDRed8Tb1/Models/FinalDisp/0.022_MC_OnlyThetaNoGen_b28_p_(3, 3)_drop_0.264_conv_8_pool_1_denseN_507_numDense_2_convN_60_opt_adam.h5")
+
+
+#calc_roc_sourceXY(path_mc_images, "/run/media/jacob/WDRed8Tb1/Models/FinalSourceXY/test/test/25.999_MC_holchSsourceXYFinalTrainZeroedOne_b28_p_(3, 3)_drop_0.26_conv_5_pool_1_denseN_251_numDense_2_convN_60_opt_same.h5")
 #calc_roc_azzd(path_diffuse_images, "/run/media/jacob/WDRed8Tb1/Models/Disp/0.036_MC_ZdAz_b54_p_(5, 5)_drop_0.571_conv_9_pool_1_denseN_349_numDense_2_convN_10_opt_adam.h5")
 #calc_roc_thetaphi(path_diffuse_images, "/run/media/jacob/WDRed8Tb1/Models/Disp/0.003_MC_ThetaPhiCustomError_b46_p_(2, 2)_drop_0.956_conv_5_pool_1_denseN_372_numDense_0_convN_241_opt_adam.h5")
 #calc_roc_gammaHad(path_mc_images, path_proton_images, "/run/media/jacob/WDRed8Tb1/Models/Sep/0.172_MC_SepAll_b20_p_(3, 3)_drop_0.0_numDense_2_conv_5_pool_1_denseN_112_convN_37.h5")
-
 sep_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(sep_models)
              for file in fileName if '.h5' in file]
 
 energy_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(energy_models)
               for file in fileName if '.h5' in file]
 
-source_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(disp_models)
+source_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(xy_models)
              for file in fileName if '.h5' in file]
 
+disp_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(disp_models)
+                for file in fileName if '.h5' in file]
+
+
+
+#for path in source_paths:
+#    print(path)
+#    try:
+#        calc_roc_sourceXY(path_mc_images, path)
+#    except:
+#        pass
+#
 for path in sep_paths:
-    calc_roc_gammaHad(path_mc_images, path_proton_images, path)
+    print(path)
+    try:
+        calc_roc_gammaHad(path_mc_images, path_proton_images, path)
+    except Exception as e:
+        print(e)
+        pass
+
+#
+#
+
+#calc_roc_sourceXY(path_crab_images, "/run/media/jacob/WDRed8Tb1/Models/FinalSourceXY/test/test/156.727_MC_holchSsourceXYFinal_b18_p_(2, 2)_drop_0.63_conv_2_pool_0_denseN_169_numDense_0_convN_22_opt_same.h5")
+
+
+
+for path in disp_paths:
+    print(path)
+    try:
+        calc_roc_thetaphi(path_mc_images, path)
+    except Exception as e:
+        print(e)
+        pass
 
 for path in energy_paths:
-    calc_roc_energy(path_mc_images, path)
+    print(path)
+    try:
+        calc_roc_energy(path_mc_images, path)
+    except Exception as e:
+        print(e)
+        pass
+

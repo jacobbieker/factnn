@@ -81,15 +81,16 @@ with h5py.File(path_mc_images, 'r') as f:
     # now convert to radians
     images_source_az = np.deg2rad(images_source_az)
     images_source_zd = np.deg2rad(images_source_zd)
+    np.random.seed(0)
     rng_state = np.random.get_state()
     np.random.shuffle(images)
     np.random.set_state(rng_state)
     np.random.shuffle(images_source_az)
     np.random.set_state(rng_state)
     np.random.shuffle(images_source_zd)
-    images = images[0:int(0.8*len(images))]
-    images_source_az = images_source_az[0:int(0.8*len(images_source_az))]
-    images_source_zd = images_source_zd[0:int(0.8*len(images_source_zd))]
+    images = images[0:int(0.5*len(images))]
+    images_source_az = images_source_az[0:int(0.5*len(images_source_az))]
+    images_source_zd = images_source_zd[0:int(0.5*len(images_source_zd))]
     # Now remove the last 20% for testing later
     # images_point_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     # images_point_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]

@@ -15,7 +15,7 @@ from keras.models import Sequential
 import tensorflow as tf
 from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
 
-architecture = 'manjar'
+architecture = 'manjaro'
 
 if architecture == 'manjaro':
     base_dir = '/run/media/jacob/WDRed8Tb1'
@@ -33,10 +33,10 @@ num_labels = 2
 
 # Total fraction to use per epoch of training data, need inverse
 frac_per_epoch = 1
-num_epochs = 500*frac_per_epoch
+num_epochs = 1000*frac_per_epoch
 
-path_mc_images = base_dir + "/Rebinned_5_MC_Gamma_BothSource_Images.h5"
-path_proton_images = base_dir + "/Rebinned_5_MC_Proton_BothTracking_Images.h5"
+path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_Gamma_BothSource_Images.h5"
+path_proton_images = "/run/media/jacob/SSD/Rebinned_5_MC_Proton_BothTracking_Images.h5"
 np.random.seed(0)
 
 def metaYielder():
@@ -63,11 +63,13 @@ with h5py.File(path_mc_images, 'r') as f:
     with h5py.File(path_proton_images, 'r') as f2:
         gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
         # Get some truth data for now, just use Crab images
-        images = f['Image'][0:-1]
-        images_false = f2['Image'][0:-1]
+        items = len(f2["Image"])
+        images = f['Image'][0:100000]
+        images_false = f2['Image'][0:100000]
         validating_dataset = np.concatenate([images, images_false], axis=0)
         #print(validating_dataset.shape)
         labels = np.array([True] * (len(images)) + [False] * len(images_false))
+        np.random.seed(0)
         rng_state = np.random.get_state()
         np.random.shuffle(validating_dataset)
         np.random.set_state(rng_state)
@@ -91,22 +93,22 @@ with h5py.File(path_mc_images, 'r') as f:
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch):
     try:
-        model_base = base_dir + "/Models/FinalSep/"
-        model_name = "MC_SepNoGen_b" + str(batch_size) + "_p_" + str(
+        model_base = base_dir + "/Models/RealFinalSep/"
+        model_name = "MC_SepNoGenSmallLoss_b" + str(batch_size) + "_p_" + str(
             patch_size) + "_drop_" + str(dropout_layer) + "_numDense_" + str(num_dense) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + \
                      "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
-            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=2, min_lr=0.001)
-            model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_acc:.3f}_" + model_name + ".h5",
+            reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=90, min_lr=0.001)
+            model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{val_loss:.3f}_" + model_name + ".h5",
                                                                monitor='val_loss',
                                                                verbose=0,
                                                                save_best_only=True,
                                                                save_weights_only=False,
                                                                mode='auto', period=1)
             early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
-                                                       patience=4 * frac_per_epoch,
+                                                       patience=100 * frac_per_epoch,
                                                        verbose=0, mode='auto')
 
             def batchYielder():
@@ -168,8 +170,6 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                 #model.add(BatchNormalization())
                 if num_pooling_layer == 1:
                     model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-                if dropout_layer > 0.0:
-                    model.add(Dropout(2*dropout_layer % 1))
 
             model.add(Flatten())
 
@@ -191,7 +191,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             #                    , epochs=num_epochs,
             #                    verbose=2, validation_data=(y, y_label),
             #                    callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
-            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=num_epochs, validation_split=0.5, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=num_epochs, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 
             K.clear_session()
             tf.reset_default_graph()
@@ -206,8 +206,8 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 batch_sizes = [64,256]
 patch_sizes = [(3, 3), (5, 5), (4, 4)]
 dropout_layers = [0.0, 1.0]
-num_conv_layers = [3, 6]
-num_dense_layers = [3, 6]
+num_conv_layers = [2, 6]
+num_dense_layers = [2, 6]
 num_conv_neurons = [27,128]
 num_dense_neuron = [27,256]
 num_pooling_layers = [1, 2]
