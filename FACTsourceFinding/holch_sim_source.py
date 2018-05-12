@@ -12,7 +12,7 @@ import os
 import keras
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
+from keras.layers import Dense, Dropout, Activation, Conv1D, ELU, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
 import pandas as pd
 
@@ -149,9 +149,9 @@ with h5py.File(path_mc_images, 'r') as f:
     np.random.shuffle(source_x)
     np.random.set_state(rng_state)
     np.random.shuffle(source_y)
-    images = images[0:int(0.1*len(images))]
-    source_x = source_x[0:int(0.1*len(source_x))]
-    source_y = source_y[0:int(0.1*len(source_y))]
+    images = images[0:1000]#int(0.01*len(images))]
+    source_x = source_x[0:1000]#int(0.01*len(source_x))]
+    source_y = source_y[0:1000]#int(0.01*len(source_y))]
 
     #Normalize each image
     transformed_images = []
@@ -164,15 +164,12 @@ with h5py.File(path_mc_images, 'r') as f:
     images = np.asarray(transformed_images)
     print(images.shape)
     # Now convert to this camera's coordinates
-    source_x += 180.975/2 # shifts everything to origin is center
-    source_y += 185.25/2 # shifts everything to origin is center
-    source_x = source_x / 4.94 # Ratio between the places
-    source_y = source_y / 4.826 # Ratio between y in original and y here
     y = images #np.flip(images, axis=2)
     print(images.shape)
     print(source_x[0])
-    print(source_y[0])
-    y_label = np.column_stack((source_x, source_y))
+    #print(source_y[0])
+    y_label = source_y# np.column_stack((source_x, source_y))
+    x_label = source_x
     print(y_label[0])
     print(np.min(y_label))
     print(np.max(y_label))
@@ -182,7 +179,7 @@ with h5py.File(path_mc_images, 'r') as f:
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     try:
-        model_base = base_dir + "/Models/FinalSourceXY/test/test/"
+        model_base = "" #base_dir + "/Models/FinalSourceXY/test/test/"
         model_name = "MC_holchSsourceXYFinalTrainZeroedOne_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
@@ -194,8 +191,36 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=80, verbose=0, mode='auto')
 
             # Make the model
-            model = Sequential()
+            inp = keras.models.Input((75,75,1))
+            # Block - conv
+            x = Conv2D(conv_neurons, 8, 8, border_mode='same', subsample=[4,4], activation='elu', name='Conv1')(inp)
+            # Block - conv
+            x = Conv2D(2*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv2')(x)
+            # Block - conv
+            x = Conv2D(4*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv3')(x)
+            x = MaxPooling2D(padding='same')(x)
+            x = Dropout(dropout_layer)(x)
+            # Block - conv
+            x = Conv2D(2*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv5')(x)
+            # Block - conv
+            x = Conv2D(4*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv6')(x)
+            # Block - flatten
+            x = Flatten()(x)
+            x = Dropout(dropout_layer)(x)
+            x = ELU()(x)
+            # Block - fully connected
+            x = Dense(dense_neuron, activation='elu', name='FC1')(x)
+            x = Dropout(0.5)(x)
+            x = ELU()(x)
 
+            x_out = Dense(1, name="x_out")(x)
+            y_out = Dense(1, name="y_out")(x)
+
+            model = keras.models.Model(inp, [x_out, y_out])
+            # Block - output
+            model.summary()
+
+            '''
             # Base Conv layer
             model.add(Conv2D(32, kernel_size=patch_size, strides=(1, 1),
                              activation='relu', padding=optimizer,
@@ -217,18 +242,19 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # Final Dense layer
             # 2 so have one for x and one for y
             model.add(Dense(2, activation='linear'))
-            sgd = keras.optimizers.Adadelta()
-            model.compile(optimizer=sgd, loss=euc_dist_keras, metrics=['mae', 'mse'])
+            '''
+            adam = keras.optimizers.adam(lr=0.0001)
+            model.compile(optimizer=adam, loss='mse', metrics=['mae'])
             #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
             #                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
-            model.fit(x=y, y=y_label, batch_size=batch_size, epochs=1, validation_split=0.2, callbacks=[early_stop, csv_logger, model_checkpoint])
+            model.fit(x=y, y=[x_label, y_label], batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, csv_logger, model_checkpoint])
 
             predictions = model.predict(y, batch_size=64)
 
             #predictions = model.predict(images, batch_size=64)
             print(predictions.shape)
             print(predictions)
-            predictions = predictions
+            predictions = predictions.reshape(-1,)
             #predictions[:,0] += 180.975/2 # shifts everything to positive
             #predictions[:,1] += 185.25/2 # shifts everything to positive
             #predictions[:,0] = predictions[:,0] / 4.94 # Ratio between the places
@@ -240,26 +266,26 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
             ax.set_title(' Reconstructed vs. True X')
-            plot_sourceX_Y_confusion(predictions[:,0], y_label[:,0], ax=ax)
+            plot_sourceX_Y_confusion(predictions[1], y_label[1], ax=ax)
             fig1.show()
 
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
             ax.set_title(' Reconstructed X vs. Rec Y')
-            plot_sourceX_Y_confusion(predictions[:,0], predictions[:,1], ax=ax)
+            plot_sourceX_Y_confusion(predictions[0], predictions[1], ax=ax)
             fig1.show()
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
             ax.set_title(' True X vs. True Y')
-            plot_sourceX_Y_confusion(y_label[:,0], y_label[:,1], ax=ax)
+            plot_sourceX_Y_confusion(y_label[0], y_label[0], ax=ax)
             fig1.show()
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
             ax.set_title(' Reconstructed vs. True Y')
-            plot_sourceX_Y_confusion(predictions[:,1], y_label[:,1], log_xy=True, ax=ax)
+            plot_sourceX_Y_confusion(predictions[1], y_label[0], log_xy=True, ax=ax)
             fig1.show()
 
             K.clear_session()
