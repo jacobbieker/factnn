@@ -157,11 +157,11 @@ with h5py.File(path_mc_images, 'r') as f:
     transformed_images = []
     for image_one in images:
         #print(image_one.shape)
-        image_one = image_one/np.sum(image_one)
+        #image_one = image_one/np.sum(image_one)
         #print(np.sum(image_one))
-        transformed_images.append(image_one)
+        transformed_images.append(np.rot90(image_one)) # Try rotation to see if helps
         #print(np.max(image_one))
-    images = np.asarray(transformed_images)
+    images_test_y = np.asarray(transformed_images)
     print(images.shape)
     # Now convert to this camera's coordinates
     y = images #np.flip(images, axis=2)
@@ -192,6 +192,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
             # Make the model
             inp = keras.models.Input((75,75,1))
+            inp2 = keras.models.Input((75,75,1))
             # Block - conv
             x = Conv2D(conv_neurons, 8, 8, border_mode='same', subsample=[4,4], activation='elu', name='Conv1')(inp)
             # Block - conv

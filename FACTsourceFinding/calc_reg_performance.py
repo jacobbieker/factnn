@@ -50,7 +50,7 @@ path_proton_images = base_dir + "/Rebinned_5_MC_Proton_BothTracking_Images.h5"
 
 disp_models = "/run/media/jacob/WDRed8Tb1/Models/Disp/"
 energy_models = base_dir + "/Models/RealFinalEnergy/"
-sep_models = base_dir + "/Models/Sep/"
+sep_models = base_dir + "/Models/FinalSep/"
 
 phiTheta_pickle = "phiTheta_auc.p"
 sourceXY_pickle = "sourceXY_auc.p"

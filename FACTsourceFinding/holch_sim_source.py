@@ -50,6 +50,7 @@ def euc_dist_keras(y_true, y_pred):
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+
 def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=None):
 
     ax = ax or plt.gca()
@@ -149,33 +150,42 @@ with h5py.File(path_mc_images, 'r') as f:
     np.random.shuffle(source_x)
     np.random.set_state(rng_state)
     np.random.shuffle(source_y)
-    images_test = images[int(0.8*len(images)):]#int(0.01*len(images))]
-    source_x_test = source_x[int(0.8*len(source_x)):]#int(0.01*len(source_x))]
-    source_y_test = source_y[int(0.8*len(source_y)):]#int(0.01*len(source_y))]
-    images = images[0:int(0.8*len(images))]#int(0.01*len(images))]
-    source_x = source_x[0:int(0.8*len(source_x))]#int(0.01*len(source_x))]
-    source_y = source_y[0:int(0.8*len(source_y))]#int(0.01*len(source_y))]
-    #Normalize each image
+    transformed_images = []
+    #print(np.max(image_one))
+    y_train_images = images #np.asarray(transformed_images)
+    images_test = images[-int(0.9*len(images)):]#int(0.01*len(images))]
+    source_x_test = source_x[-int(0.9*len(source_x)):]#int(0.01*len(source_x))]
+    source_y_test = source_y[-int(0.9*len(source_y)):]#int(0.01*len(source_y))]
+    images = images[0:int(0.9*len(images))]#int(0.01*len(images))]
+    source_x = source_x[0:int(0.9*len(source_x))]#int(0.01*len(source_x))]
+    source_y = source_y[0:int(0.9*len(source_y))]#int(0.01*len(source_y))]
+
+    '''#Normalize each image
+    for image_one in images_test:
+        #print(image_one.shape)
+        image_one = image_one/np.sum(image_one)
+        #print(np.sum(image_one))
+        #transformed_images.append(np.rot90(image_one)) # Try rotation to see if helps
+        transformed_images.append(image_one)
+    images_test = np.asarray(transformed_images)
     transformed_images = []
     for image_one in images:
         #print(image_one.shape)
-        #image_one = image_one/np.sum(image_one)
+        image_one = image_one/np.sum(image_one)
         #print(np.sum(image_one))
-        transformed_images.append(np.rot90(image_one)) # Try rotation to see if helps
+        #transformed_images.append(np.rot90(image_one)) # Try rotation to see if helps
+        transformed_images.append(image_one)
         #print(np.max(image_one))
-    y_train_images = np.asarray(transformed_images)
-    transformed_images = []
-    for image_one in images_test:
-        #print(image_one.shape)
-        #image_one = image_one/np.sum(image_one)
-        #print(np.sum(image_one))
-        transformed_images.append(np.rot90(image_one)) # Try rotation to see if helps
-        #print(np.max(image_one))
-    images_test_y = np.asarray(transformed_images)
+    images = np.asarray(transformed_images)
+    '''
+    images_test_y = images_test
+    #transformed_images = []
     print(images.shape)
     # Now convert to this camera's coordinates
     y = images#[1000:-1]#np.rot90(images, axis=2)
-    y_train = y_train_images
+    y_train = images
+    title = "AllSame"
+    desc = "AllSame"
     print(images.shape)
     print(source_x[0])
     #print(source_y[0])
@@ -198,17 +208,15 @@ with h5py.File(path_mc_images, 'r') as f:
 
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
-    try:
-        model_base = "" #base_dir + "/Models/FinalSourceXY/test/test/"
-        model_name = "MC_CombinedAll_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
-                     + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
-                     str(conv_neurons) + "_opt_" + str(optimizer)
+    #try:
+        model_base = ""# base_dir +"/" # + "/Models/FinalSourceXY/test/test/"
+        model_name = "MC_CombinedAllSame"
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
             #reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.01, patience=70, min_lr=0.001)
-            model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{loss:.3f}X_" + model_name + ".h5", monitor='loss', verbose=0,
+            model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "X_" + desc + model_name + ".h5", monitor='val_loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
-            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=15, verbose=0, mode='auto')
+            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=8, verbose=0, mode='auto')
 
             # Make the model
             inp = keras.models.Input((75,75,1))
@@ -269,7 +277,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             #                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
             K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=8, inter_op_parallelism_threads=8)))
             model.fit(x=y, y=x_label, batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, model_checkpoint, csv_logger])
-
+            #exit()
             predictions_x = model.predict(y, batch_size=64)
             predictions_x = predictions_x.reshape(-1,)
             test_pred_x = model.predict(images_test, batch_size=64)
@@ -277,7 +285,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             K.clear_session()
             tf.reset_default_graph()
 
-            model_checkpointy = keras.callbacks.ModelCheckpoint(model_base + "{loss:.3f}Y_" + model_name + ".h5", monitor='loss', verbose=0,
+            model_checkpointy = keras.callbacks.ModelCheckpoint(model_base + "Y_" + desc + model_name + ".h5", monitor='val_loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
 
 
@@ -404,14 +412,14 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' Reconstructed Train X vs. True X')
+            ax.set_title(title + ' Reconstructed Train X vs. True X')
             plot_sourceX_Y_confusion(predictions_x, x_label, ax=ax)
             fig1.show()
 
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' Reconstructed Train X vs. Rec Train Y')
+            ax.set_title(title + ' Reconstructed Train X vs. Rec Train Y')
             plot_sourceX_Y_confusion(predictions_x, predictions_y, ax=ax)
             fig1.show()
 
@@ -423,43 +431,43 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' Reconstructed Train Y vs. True Y')
+            ax.set_title(title + ' Reconstructed Train Y vs. True Y')
             plot_sourceX_Y_confusion(predictions_y, y_label, log_xy=True, ax=ax)
             fig1.show()
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' Reconstructed Test X vs. True X (Act)')
+            ax.set_title(title + ' Reconstructed Test X vs. True X (Act)')
             plot_sourceX_Y_confusion(test_pred_x, source_x_test, ax=ax)
             fig1.show()
 
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' Reconstructed Test X vs. Rec Train Y')
+            ax.set_title(title + ' Reconstructed Test X vs. Rec Train Y')
             plot_sourceX_Y_confusion(test_pred_x, test_pred_y, ax=ax)
             fig1.show()
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' True Test X vs. True Test Y')
+            ax.set_title(title + ' True Test X vs. True Test Y')
             plot_sourceX_Y_confusion(source_x_test, source_y_test, ax=ax)
             fig1.show()
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' Reconstructed Test Y vs. True Y')
+            ax.set_title(title + ' Reconstructed Test Y vs. True Y')
             plot_sourceX_Y_confusion(test_pred_y, source_y_test, log_xy=True, ax=ax)
             fig1.show()
             exit(1)
             K.clear_session()
             tf.reset_default_graph()
 
-    except Exception as e:
-        print(e)
-        K.clear_session()
-        tf.reset_default_graph()
-        pass
+    #except Exception as e:
+    #    print(e)
+    #    K.clear_session()
+    #    tf.reset_default_graph()
+    #    pass
 
 
 for i in range(num_runs):

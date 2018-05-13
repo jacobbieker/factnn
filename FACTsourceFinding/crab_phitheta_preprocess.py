@@ -28,7 +28,7 @@ path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/obs/Crab/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_3_Images.h5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_2_Images.h5"
 path_to_diffuse = "/run/media/jacob/WDRed8Tb1/dl2_theta/crab_precuts.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 path_store_runlist = "Crab1314_std_analysis.p"
@@ -101,7 +101,7 @@ def batchYielder(paths):
                     # Each event is the same as each line below
                     source_pos_x = df_event['source_position_1'].values[0]
                     source_pos_y = df_event['source_position_0'].values[0]
-                    energy = df_event['unix_time_utc_0'].values[0] + 1e-6*df_event['unix_time_utc_1'].values[0]
+                    energy = df_event['unix_time_utc_0'].values[0] * 1e-6 + df_event['unix_time_utc_1'].values[0]
                     event_photons = event.photon_stream.list_of_lists
                     zd_deg = event.zd
                     az_deg = event.az
