@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -149,58 +149,38 @@ with h5py.File(path_mc_images, 'r') as f:
     np.random.shuffle(source_x)
     np.random.set_state(rng_state)
     np.random.shuffle(source_y)
-    images_test = images[int(0.5*len(images)):]#int(0.01*len(images))]
-    source_x_test = source_x[int(0.5*len(source_x)):]#int(0.01*len(source_x))]
-    source_y_test = source_y[int(0.5*len(source_y)):]#int(0.01*len(source_y))]
-    images = images[0:int(0.5*len(images))]#int(0.01*len(images))]
-    source_x = source_x[0:int(0.5*len(source_x))]#int(0.01*len(source_x))]
-    source_y = source_y[0:int(0.5*len(source_y))]#int(0.01*len(source_y))]
+    images = images[0:1000]#int(0.01*len(images))]
+    source_x = source_x[0:1000]#int(0.01*len(source_x))]
+    source_y = source_y[0:1000]#int(0.01*len(source_y))]
+
     #Normalize each image
     transformed_images = []
     for image_one in images:
         #print(image_one.shape)
-        #image_one = image_one/np.sum(image_one)
+        image_one = image_one/np.sum(image_one)
         #print(np.sum(image_one))
-        transformed_images.append(np.rot90(image_one)) # Try rotation to see if helps
+        transformed_images.append(image_one)
         #print(np.max(image_one))
-    y_train_images = np.asarray(transformed_images)
-    transformed_images = []
-    for image_one in images_test:
-        #print(image_one.shape)
-        #image_one = image_one/np.sum(image_one)
-        #print(np.sum(image_one))
-        transformed_images.append(np.rot90(image_one)) # Try rotation to see if helps
-        #print(np.max(image_one))
-    images_test_y = np.asarray(transformed_images)
+    images = np.asarray(transformed_images)
     print(images.shape)
     # Now convert to this camera's coordinates
-    y = images#[1000:-1]#np.rot90(images, axis=2)
-    y_train = y_train_images
+    y = images #np.flip(images, axis=2)
     print(images.shape)
     print(source_x[0])
     #print(source_y[0])
-    y_label = source_y#[1000:-1]
-    x_label = source_x#[1000:-1]
+    y_label = source_y# np.column_stack((source_x, source_y))
+    x_label = source_x
     print(y_label[0])
-    print("Y values: ")
     print(np.min(y_label))
     print(np.max(y_label))
-    print(np.mean(y_label))
-    print(np.median(y_label))
-    print("X Values:")
-    print(np.min(x_label))
-    print(np.max(x_label))
-    print(np.mean(x_label))
-    print(np.median(x_label))
     print(y_label.shape)
-    y_label = y_label
     print("Finished getting data")
 
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     try:
         model_base = "" #base_dir + "/Models/FinalSourceXY/test/test/"
-        model_name = "MC_CombinedAll_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
+        model_name = "MC_Split_b" + str(batch_size) +"_p_" + str(patch_size) + "_drop_" + str(dropout_layer) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + "_denseN_" + str(dense_neuron) + "_numDense_" + str(num_dense) + "_convN_" + \
                      str(conv_neurons) + "_opt_" + str(optimizer)
         if not os.path.isfile(model_base + model_name + ".csv"):
@@ -208,22 +188,22 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             #reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.01, patience=70, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{loss:.3f}_" + model_name + ".h5", monitor='loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
-            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=15, verbose=0, mode='auto')
+            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=80, verbose=0, mode='auto')
 
             # Make the model
             inp = keras.models.Input((75,75,1))
             # Block - conv
-            x = Conv2D(32, 8, 8, border_mode='same', subsample=[4,4], activation='elu', name='Conv1')(inp)
+            x = Conv2D(conv_neurons, 8, 8, border_mode='same', subsample=[4,4], activation='elu', name='Conv1')(inp)
             # Block - conv
-            x = Conv2D(64, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv2')(x)
+            x = Conv2D(2*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv2')(x)
             # Block - conv
-            x = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv3')(x)
+            x = Conv2D(4*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv3')(x)
             x = MaxPooling2D(padding='same')(x)
             x = Dropout(dropout_layer)(x)
             # Block - conv
-            x = Conv2D(64, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv5')(x)
+            x = Conv2D(2*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv5')(x)
             # Block - conv
-            x = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv6')(x)
+            x = Conv2D(4*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv6')(x)
             # Block - flatten
             x = Flatten()(x)
             x = Dropout(dropout_layer)(x)
@@ -236,9 +216,9 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             x_out = Dense(1, name="x_out")(x)
             y_out = Dense(1, name="y_out")(x)
 
-            model = keras.models.Model(inp, y_out)
+            model_x = keras.models.Model(inp, x_out)
             # Block - output
-            model.summary()
+            model_x.summary()
 
             '''
             # Base Conv layer
@@ -264,132 +244,24 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model.add(Dense(2, activation='linear'))
             '''
             adam = keras.optimizers.adam(lr=0.0001)
-            model.compile(optimizer=adam, loss='mse', metrics=['mae'])
+            model_x.compile(optimizer=adam, loss='mse', metrics=['mae'])
             #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
             #                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
-            K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=8, inter_op_parallelism_threads=8)))
-            model.fit(x=y, y=x_label, batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, model_checkpoint, csv_logger])
-
-            predictions_x = model.predict(y, batch_size=64)
-            predictions_x = predictions_x.reshape(-1,)
-            test_pred_x = model.predict(images_test, batch_size=64)
-            test_pred_x = test_pred_x.reshape(-1,)
+            model_x.fit(x=y, y=x_label, batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, csv_logger, model_checkpoint])
             K.clear_session()
             tf.reset_default_graph()
+            model_y = keras.models.Model(inp, y_out)
+            model_y.compile(optimizer=adam, loss='mse', metrics=['mae'])
+            model_x.fit(x=y, y=y_label, batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, csv_logger, model_checkpoint])
+            predictions_x = model_x.predict(y, batch_size=64)
+            predictions_y = model_y.predict(y, batch_size=64)
 
-            # Make the model
-            inp = keras.models.Input((75,75,1))
-            # Block - conv
-            x = Conv2D(32, 8, 8, border_mode='same', subsample=[4,4], activation='elu', name='Conv1')(inp)
-            # Block - conv
-            x = Conv2D(64, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv2')(x)
-            # Block - conv
-            x = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv3')(x)
-            x = MaxPooling2D(padding='same')(x)
-            x = Dropout(dropout_layer)(x)
-            # Block - conv
-            x = Conv2D(64, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv5')(x)
-            # Block - conv
-            x = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv6')(x)
-            # Block - flatten
-            x = Flatten()(x)
-            x = Dropout(dropout_layer)(x)
-            x = ELU()(x)
-            # Block - fully connected
-            x = Dense(dense_neuron, activation='elu', name='FC1')(x)
-            x = Dropout(0.5)(x)
-            x = ELU()(x)
-
-            x_out = Dense(1, name="x_out")(x)
-            y_out = Dense(1, name="y_out")(x)
-
-            model = keras.models.Model(inp, y_out)
-            # Block - output
-            model.summary()
-
-            '''
-            # Base Conv layer
-            model.add(Conv2D(32, kernel_size=patch_size, strides=(1, 1),
-                             activation='relu', padding=optimizer,
-                             input_shape=(75, 75, 1)))
-            model.add(Conv2D(8, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-            for i in range(num_conv):
-                model.add(Conv2D(16, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-                model.add(Conv2D(16, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-                model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            model.add(Flatten())
-
-            for i in range(num_dense):
-                model.add(Dense(512, activation='linear'))
-                model.add(Dropout(dropout_layer))
-
-
-            # Final Dense layer
-            # 2 so have one for x and one for y
-            model.add(Dense(2, activation='linear'))
-            '''
-            adam = keras.optimizers.adam(lr=0.0001)
-            model.compile(optimizer=adam, loss='mse', metrics=['mae'])
-            #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
-            #                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
-            K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=8, inter_op_parallelism_threads=8)))
-            model.fit(x=y_train, y=y_label, batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, csv_logger])
-
-            predictions_y = model.predict(y_train, batch_size=64)
-            test_pred_y = model.predict(images_test_y, batch_size=64)
-            test_pred_y = test_pred_y.reshape(-1,)
-            #print(predictions.shape)
-            #print(predictions)
-            #predictions_x = predictions[0]
-            #predictions_y = predictions
-            #predictions_x = predictions_x.reshape(-1,)
-            predictions_y = predictions_y.reshape(-1,)
-
-            #predictions[:,0] += 180.975/2 # shifts everything to positive
-            #predictions[:,1] += 185.25/2 # shifts everything to positive
-            #predictions[:,0] = predictions[:,0] / 4.94 # Ratio between the places
-            #predictions[:,1] = predictions[:,1] / 4.826 # Ratio between y in original and y here
-            # Now make the confusion matrix
-
-            #Loss Score so can tell which one it is
-
-            #fig1 = plt.figure()
-            #ax = fig1.add_subplot(1, 1, 1)
-            #ax.set_title(' Reconstructed vs. True X')
-            #plot_sourceX_Y_confusion(predictions_x, x_label, ax=ax)
-            #fig1.show()
-
-
-            #fig1 = plt.figure()
-            #ax = fig1.add_subplot(1, 1, 1)
-            #ax.set_title(' Reconstructed X vs. Rec Y')
-            #plot_sourceX_Y_confusion(predictions_x, predictions_y, ax=ax)
-            #fig1.show()
-
-            #fig1 = plt.figure()
-            #ax = fig1.add_subplot(1, 1, 1)
-            #ax.set_title(' True X vs. True Y')
-            #plot_sourceX_Y_confusion(x_label, y_label, ax=ax)
-            #fig1.show()
-
-            #fig1 = plt.figure()
-            #ax = fig1.add_subplot(1, 1, 1)
-            #ax.set_title(' Reconstructed vs. True Y (10000 Act No Norm and Rotated)')
-            #plot_sourceX_Y_confusion(predictions_y, y_label, log_xy=True, ax=ax)
-            #fig1.show()
-
-            #predictions = model.predict(images[0:1000], batch_size=64)
 
             #predictions = model.predict(images, batch_size=64)
-            #print(predictions.shape)
-            #print(predictions)
-            #predictions_x = predictions[0]
-            #predictions_y = predictions
-            #predictions_x = predictions_x.reshape(-1,)
-            #predictions_y = predictions_y.reshape(-1,)
-
+            print(predictions_x.shape)
+            print(predictions_x)
+            predictions_x = predictions_x.reshape(-1,)
+            predictions_y = predictions_y.reshape(-1,)
             #predictions[:,0] += 180.975/2 # shifts everything to positive
             #predictions[:,1] += 185.25/2 # shifts everything to positive
             #predictions[:,0] = predictions[:,0] / 4.94 # Ratio between the places
@@ -400,54 +272,29 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' Reconstructed Train X vs. True X')
+            ax.set_title(' Reconstructed vs. True X')
             plot_sourceX_Y_confusion(predictions_x, x_label, ax=ax)
             fig1.show()
 
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' Reconstructed Train X vs. Rec Train Y')
+            ax.set_title(' Reconstructed X vs. Rec Y')
             plot_sourceX_Y_confusion(predictions_x, predictions_y, ax=ax)
             fig1.show()
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' True Train X vs. True Train Y')
+            ax.set_title(' True X vs. True Y')
             plot_sourceX_Y_confusion(x_label, y_label, ax=ax)
             fig1.show()
 
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' Reconstructed Train Y vs. True Y')
+            ax.set_title(' Reconstructed vs. True Y')
             plot_sourceX_Y_confusion(predictions_y, y_label, log_xy=True, ax=ax)
             fig1.show()
 
-            fig1 = plt.figure()
-            ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' Reconstructed Test X vs. True X (Act)')
-            plot_sourceX_Y_confusion(test_pred_x, source_x_test, ax=ax)
-            fig1.show()
-
-
-            fig1 = plt.figure()
-            ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' Reconstructed Test X vs. Rec Train Y')
-            plot_sourceX_Y_confusion(test_pred_x, test_pred_y, ax=ax)
-            fig1.show()
-
-            fig1 = plt.figure()
-            ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' True Test X vs. True Test Y')
-            plot_sourceX_Y_confusion(source_x_test, source_y_test, ax=ax)
-            fig1.show()
-
-            fig1 = plt.figure()
-            ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title(' Reconstructed Test Y vs. True Y')
-            plot_sourceX_Y_confusion(test_pred_y, source_y_test, log_xy=True, ax=ax)
-            fig1.show()
-            exit(1)
             K.clear_session()
             tf.reset_default_graph()
 
