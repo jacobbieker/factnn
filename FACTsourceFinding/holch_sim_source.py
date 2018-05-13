@@ -149,12 +149,12 @@ with h5py.File(path_mc_images, 'r') as f:
     np.random.shuffle(source_x)
     np.random.set_state(rng_state)
     np.random.shuffle(source_y)
-    images_test = images[int(0.5*len(images)):]#int(0.01*len(images))]
-    source_x_test = source_x[int(0.5*len(source_x)):]#int(0.01*len(source_x))]
-    source_y_test = source_y[int(0.5*len(source_y)):]#int(0.01*len(source_y))]
-    images = images[0:int(0.5*len(images))]#int(0.01*len(images))]
-    source_x = source_x[0:int(0.5*len(source_x))]#int(0.01*len(source_x))]
-    source_y = source_y[0:int(0.5*len(source_y))]#int(0.01*len(source_y))]
+    images_test = images[int(0.8*len(images)):]#int(0.01*len(images))]
+    source_x_test = source_x[int(0.8*len(source_x)):]#int(0.01*len(source_x))]
+    source_y_test = source_y[int(0.8*len(source_y)):]#int(0.01*len(source_y))]
+    images = images[0:int(0.8*len(images))]#int(0.01*len(images))]
+    source_x = source_x[0:int(0.8*len(source_x))]#int(0.01*len(source_x))]
+    source_y = source_y[0:int(0.8*len(source_y))]#int(0.01*len(source_y))]
     #Normalize each image
     transformed_images = []
     for image_one in images:
@@ -206,7 +206,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
             #reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.01, patience=70, min_lr=0.001)
-            model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{loss:.3f}_" + model_name + ".h5", monitor='loss', verbose=0,
+            model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "{loss:.3f}X_" + model_name + ".h5", monitor='loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
             early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=15, verbose=0, mode='auto')
 
@@ -277,6 +277,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             K.clear_session()
             tf.reset_default_graph()
 
+            model_checkpointy = keras.callbacks.ModelCheckpoint(model_base + "{loss:.3f}Y_" + model_name + ".h5", monitor='loss', verbose=0,
+                                                               save_best_only=True, save_weights_only=False, mode='auto', period=1)
+
+
             # Make the model
             inp = keras.models.Input((75,75,1))
             # Block - conv
@@ -335,7 +339,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
             #                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
             K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=8, inter_op_parallelism_threads=8)))
-            model.fit(x=y_train, y=y_label, batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, csv_logger])
+            model.fit(x=y_train, y=y_label, batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, model_checkpointy, csv_logger])
 
             predictions_y = model.predict(y_train, batch_size=64)
             test_pred_y = model.predict(images_test_y, batch_size=64)
