@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 
-with open("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/test/sep_all.p", "rb") as talapas:
+with open("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/test/sep_talapas.p", "rb") as talapas:
     talapas_aucs = pickle.load(talapas)
 
 with open("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/sep_talapas.p", "rb") as f:
@@ -22,4 +22,7 @@ print(dort2)
 print(np.max(tal2))
 #print(np.max(dort1))
 print(np.max(dort2))
+
+ind = talapas_aucs[0].index(np.max(tal2))
+print(talapas_aucs[0][ind-1])
 

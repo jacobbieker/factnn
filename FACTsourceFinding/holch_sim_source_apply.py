@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import pickle
 from keras import backend as K
@@ -259,7 +259,7 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
     return ax
 
 import datetime
-def calc_roc_sourceXY(path_image, path_keras_model, path_y_model):
+def calc_roc_sourceXY(path_image, path_keras_model):
     '''
     Returns the Number of events in the threshold for the Az, Zd estimation for simulated events, for observation this means that it is in comparsion to current classifier
     :param path_image:
@@ -296,6 +296,12 @@ def calc_roc_sourceXY(path_image, path_keras_model, path_y_model):
             zd_pointing=zd_point, az_pointing=az_point,
             obstime=obstime
         )
+        df = pd.DataFrame()
+        df['ra_prediction'] = ra
+        df['dec_prediction'] = dec
+        main(df, source="MRK501")
+        main(df)
+        exit()
         images = images#[0:int(0.2*len(images))]
         source_x = source_x#[0:int(0.2*len(source_x))]
         source_y = source_y#[0:int(0.2*len(source_y))]
@@ -309,26 +315,11 @@ def calc_roc_sourceXY(path_image, path_keras_model, path_y_model):
         #print(labels.shape)
         model_x = load_model(path_keras_model)
         predictions = model_x.predict(images, batch_size=64)
-        print(predictions.shape)
-        predictions_x = predictions.reshape(-1,)
+        #print(predictions.shape)
+        predictions_x = predictions[0].reshape(-1,)
 
         # Now convert to model_y things
-        K.clear_session()
-        tf.reset_default_graph()
-        model_y = load_model(path_y_model)
-
-        transformed_images = []
-        for image_one in images:
-            #print(image_one.shape)
-            #image_one = image_one/np.sum(image_one)
-            #print(np.sum(image_one))
-            transformed_images.append(np.rot90(image_one)) # Try rotation to see if helps
-            #print(np.max(image_one))
-        images = np.asarray(transformed_images)
-
-        predictions = model_y.predict(images, batch_size=64)
-        print(predictions.shape)
-        predictions_y = predictions.reshape(-1,)
+        predictions_y = predictions[1].reshape(-1,)
         #predictions[:,0] += 180.975/2 # shifts everything to positive
         #predictions[:,1] += 185.25/2 # shifts everything to positive
         #predictions[:,0] = predictions[:,0] / 4.94 # Ratio between the places
@@ -376,6 +367,7 @@ def calc_roc_sourceXY(path_image, path_keras_model, path_y_model):
     df['ra_prediction'] = ra
     df['dec_prediction'] = dec
     main(df, source="MRK501")
+    main(df)
     plot_skymap(df=df)
 
     df = read_h5py("/run/media/jacob/WDRed8Tb1/dl2_theta/precuts/Mrk421_precuts.hdf5", key='events', last=5000)
@@ -386,4 +378,4 @@ def calc_roc_sourceXY(path_image, path_keras_model, path_y_model):
 
     return NotImplemented
 
-calc_roc_sourceXY(path_mrk501_images, "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/X_MC_CombinedAllShort_b28_p_(3, 3)_drop_0.26_conv_5_pool_1_denseN_251_numDense_2_convN_60_opt_same.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/1455.516Y_MC_CombinedAll_b18_p_(2, 2)_drop_0.63_conv_2_pool_0_denseN_169_numDense_0_convN_22_opt_same.h5")
+calc_roc_sourceXY(path_mrk501_images, "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/Y_SeparateOutputsMC_OneOutputPoolOnlyTrainedAll_drop_0.42.h5")
