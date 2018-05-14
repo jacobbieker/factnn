@@ -177,11 +177,20 @@ sep_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.wa
 energy_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(energy_models)
                 for file in fileName if '.h5' in file]
 
+if os.path.isfile(sep_pickle):
+    with open(sep_pickle, "rb") as f:
+        tmp = pickle.load(f)
+        best_auc_sep = tmp[0]
+        print(best_auc_sep)
+        best_auc_sep_auc = tmp[0]
 for path in sep_paths:
-    try:
-        calc_roc_gammaHad(path_mc_images, path_proton_images, path)
-    except:
-        pass
+    print(path)
+    if path not in best_auc_sep:
+        try:
+            calc_roc_gammaHad(path_mc_images, path_proton_images, path)
+        except Exception as e:
+            print(e)
+            pass
 
 for path in energy_paths:
     calc_roc_energy(path_mc_images, path)
