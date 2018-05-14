@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -38,9 +38,9 @@ def atan2(x, y, epsilon=1.0e-12):
 
 # y in radians and second column is az, first is zd, adds the errors together, seems to work?
 def rmse_360_2(y_true, y_pred):
-    az_error = tf.reduce_mean(K.abs(tf.atan2(K.sin(y_true[:,1] - y_pred[:,1]), K.cos(y_true[:,1] - y_pred[:,1]))))
-    zd_error = K.mean(K.square(y_pred[:,0] - y_true[:,0]), axis=-1)
-    return az_error + zd_error
+    az_error = K.mean(K.abs(tf.atan2(K.sin(y_true - y_pred), K.cos(y_true - y_pred))))
+    #zd_error = K.mean(K.square(y_pred[:,0] - y_true[:,0]), axis=-1)
+    return az_error
 
 def euc_dist_keras(y_true, y_pred):
     taxicab_error_wrong = K.abs(y_true[:,0] - y_pred[:,1]) + K.abs(y_true[:,1] - y_pred[:,0])
@@ -110,7 +110,7 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
 
 batch_sizes = [16, 64, 256]
 patch_sizes = [(2, 2), (3, 3), (5, 5), (4, 4)]
-dropout_layers = [0.3, 0.7]
+dropout_layers = [0.1, 0.6]
 num_conv_layers = [0, 6]
 num_dense_layers = [0, 6]
 num_conv_neurons = [8,128]
@@ -140,9 +140,13 @@ def metaYielder():
 
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
-    images = f['Image'][0:-1]
-    source_x = f['Source_X'][0:-1]
-    source_y = f['Source_Y'][0:-1]
+    images = f['Image'][0:1000]
+    source_x = f['Source_Az'][0:1000]
+    point_x = f['Pointing_Az'][0:1000]
+    point_y = f['Pointing_Zd'][0:1000]
+    source_x = np.deg2rad(source_x)
+    point_x = np.deg2rad(point_x)
+    source_y = f['Source_Zd'][0:1000]
     #images_source_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_az = (-1.*images_source_az + 540) % 360
@@ -153,15 +157,23 @@ with h5py.File(path_mc_images, 'r') as f:
     np.random.shuffle(source_x)
     np.random.set_state(rng_state)
     np.random.shuffle(source_y)
+    np.random.set_state(rng_state)
+    np.random.shuffle(point_x)
+    np.random.set_state(rng_state)
+    np.random.shuffle(point_y)
     transformed_images = []
     #print(np.max(image_one))
     y_train_images = images #np.asarray(transformed_images)
     images_test = images[-int(0.8*len(images)):]#int(0.01*len(images))]
     source_x_test = source_x[-int(0.8*len(source_x)):]#int(0.01*len(source_x))]
     source_y_test = source_y[-int(0.8*len(source_y)):]#int(0.01*len(source_y))]
-    images = images[0:int(0.8*len(images))]#int(0.01*len(images))]
-    source_x = source_x[0:int(0.8*len(source_x))]#int(0.01*len(source_x))]
-    source_y = source_y[0:int(0.8*len(source_y))]#int(0.01*len(source_y))]
+    point_x_test = point_x[-int(0.8*len(source_y)):]#int(0.01*len(source_x))]
+    point_y_test = point_y[-int(0.8*len(source_y)):]#int(0.01*len(source_y))]
+    images = images[0:int(0.1*len(images))]#int(0.01*len(images))]
+    source_x = source_x[0:int(0.1*len(source_x))]#int(0.01*len(source_x))]
+    source_y = source_y[0:int(0.1*len(source_y))]#int(0.01*len(source_y))]
+    point_x = point_x[0:int(len(source_x))]#int(0.01*len(source_x))]
+    point_y = point_y[0:int(len(source_y))]#int(0.01*len(source_y))]
 
     images_test_y = images_test
     #transformed_images = []
@@ -169,8 +181,8 @@ with h5py.File(path_mc_images, 'r') as f:
     # Now convert to this camera's coordinates
     y = images#[1000:-1]#np.rot90(images, axis=2)
     y_train = images
-    title = "SeparateOutputs"
-    desc = "SeparateOutputs"
+    title = "SeparateOutputs AzZd"
+    desc = "SeparateOutputs AzZd"
     print(images.shape)
     print(source_x[0])
     #print(source_y[0])
@@ -195,26 +207,34 @@ with h5py.File(path_mc_images, 'r') as f:
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     #try:
     model_base = ""# base_dir +"/" # + "/Models/FinalSourceXY/test/test/"
-    model_name = "MC_OneOutputPoolOnlyTrainedAll" + "_drop_" + str(dropout_layer)
+    model_name = "MC_OneOutputPoolBatchNorm" + "_drop_" + str(dropout_layer)
     if not os.path.isfile(model_base + model_name + ".csv"):
         csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
         #reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.01, patience=70, min_lr=0.001)
-        early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=4, verbose=0, mode='auto')
+        early_stop = keras.callbacks.EarlyStopping(monitor='loss', min_delta=0, patience=9, verbose=0, mode='auto')
 
         model_checkpointy = keras.callbacks.ModelCheckpoint(model_base + "Y_" + desc + model_name + ".h5", monitor='val_loss', verbose=0,
                                                             save_best_only=True, save_weights_only=False, mode='auto', period=1)
         # Make the model
-        inp = keras.models.Input((75,75,1))
+        inp = keras.layers.Input((75,75,1))
         # Block - conv
-        y = Conv2D(64, 8, 8, border_mode='same', subsample=[4,4], activation='elu', name='yConv1')(inp)
+        y = Conv2D(64, 8, 8, border_mode='same', subsample=[4,4], name='yConv1')(inp)
+        #y = BatchNormalization()(y)
+        y = ELU()(y)
         # Block - conv
-        y = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='yConv2')(y)
+        y = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], name='yConv2')(y)
         # Block - conv
+        #y = BatchNormalization()(y)
+        y = ELU()(y)
         y = MaxPooling2D(padding='same')(y)
         y = Dropout(dropout_layer)(y)
 
-        y = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='yConv3')(y)
-        y = Conv2D(512, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='yConv7')(y)
+        y = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], name='yConv3')(y)
+        #y = BatchNormalization()(y)
+        y = ELU()(y)
+        y = Conv2D(512, 5, 5, border_mode='same', subsample=[2,2], name='yConv7')(y)
+        #y = BatchNormalization()(y)
+        y = ELU()(y)
 
         #y = Dropout(dropout_layer)(y)
 
@@ -226,21 +246,36 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         y = Flatten()(y)
         y = Dropout(dropout_layer)(y)
         y = ELU()(y)
+
+        # Block - bring in pointing zd
+        inp_zd = keras.layers.Input((1,))
+        y = keras.layers.concatenate([y, inp_zd])
         # Block - fully connected
         y = Dense(dense_neuron, activation='elu', name='yFC1')(y)
-        y = Dropout(0.5)(y)
+        y = Dropout(0.3)(y)
+        y = ELU()(y)
+        y = Dense(dense_neuron, activation='elu', name='yFC2')(y)
+        y = Dropout(0.3)(y)
         y = ELU()(y)
 
         # Block - conv
-        x = Conv2D(64, 8, 8, border_mode='same', subsample=[4,4], activation='elu', name='Conv1')(inp)
+        x = Conv2D(64, 8, 8, border_mode='same', subsample=[4,4], name='Conv1')(inp)
+        #x = BatchNormalization()(x)
+        x = ELU()(x)
         # Block - conv
-        x = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv2')(x)
+        x = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], name='Conv2')(x)
+        #x = BatchNormalization()(x)
+        x = ELU()(x)
         # Block - conv
         x = MaxPooling2D(padding='same')(x)
         x = Dropout(dropout_layer)(x)
 
-        x = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv3')(x)
-        x = Conv2D(512, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv7')(x)
+        x = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], name='Conv3')(x)
+        #x = BatchNormalization()(x)
+        x = ELU()(x)
+        x = Conv2D(512, 5, 5, border_mode='same', subsample=[2,2], name='Conv7')(x)
+        #x = BatchNormalization()(x)
+        x = ELU()(x)
 
         #x = Dropout(dropout_layer)(x)
 
@@ -252,28 +287,34 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         x = Flatten()(x)
         x = Dropout(dropout_layer)(x)
         x = ELU()(x)
+        # Block - bring in pointing zd
+        inp_az = keras.layers.Input((1,))
+        x = keras.layers.concatenate([x, inp_az])
         # Block - fully connected
         x = Dense(dense_neuron, activation='elu', name='FC1')(x)
-        x = Dropout(0.5)(x)
+        x = Dropout(0.3)(x)
         x = ELU()(x)
-        x_out = Dense(1, name="x_out")(x)
-        y_out = Dense(1, name="y_out")(y)
+        x = Dense(dense_neuron, activation='elu', name='FC2')(x)
+        x = Dropout(0.3)(x)
+        x = ELU()(x)
+        x_out = Dense(1, name="x_out", activation='linear')(x)
+        y_out = Dense(1, name="y_out", activation='linear')(y)
 
         #merged_out = keras.layers.merge([x, y])
         #combined_out = Dense(2, name="combined_out")(merged_out)
 
-        model = keras.models.Model(inp, [x_out, y_out])
+        model = keras.models.Model([inp,inp_zd,inp_az], [x_out, y_out])
         # Block - output
         model.summary()
         adam = keras.optimizers.adam(lr=0.0001)
-        model.compile(optimizer=adam, loss='mse', metrics=['mae'])
+        model.compile(optimizer=adam, loss=[rmse_360_2,'mse'], metrics=['mae'])
         #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
         #                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
         #K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=8, inter_op_parallelism_threads=8)))
-        model.fit(x=y_train, y=[x_label,y_label], batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, model_checkpointy, csv_logger])
+        model.fit(x=[y_train,point_y,point_x], y=[x_label,y_label], batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, model_checkpointy, csv_logger])
 
-        predictions = model.predict(y_train, batch_size=64)
-        test_pred = model.predict(images_test_y, batch_size=64)
+        predictions = model.predict([y_train, point_y, point_x], batch_size=64)
+        test_pred = model.predict([images_test_y, point_y_test, point_x_test], batch_size=64)
         predictions_x = predictions[0].reshape(-1,)
         predictions_y = predictions[1].reshape(-1,)
         test_pred_y = test_pred[1].reshape(-1,)
@@ -336,7 +377,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         ax.set_title(title + ' Reconstructed Test Y vs. True Y')
         plot_sourceX_Y_confusion(test_pred_y, source_y_test, log_xy=True, ax=ax)
         fig1.show()
-        exit(1)
+        #exit(1)
         K.clear_session()
         tf.reset_default_graph()
 

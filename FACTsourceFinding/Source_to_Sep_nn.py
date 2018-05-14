@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -149,8 +149,8 @@ with h5py.File(path_mc_images, 'r') as f:
         gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
         # Get some truth data for now, just use Crab images
         items = len(f2["Image"])
-        images = f['Image'][0:1000]
-        images_false = f2['Image'][0:1000]
+        images = f['Image'][0:120000]
+        images_false = f2['Image'][0:120000]
         validating_dataset = np.concatenate([images, images_false], axis=0)
         #print(validating_dataset.shape)
         labels = np.array([True] * (len(images)) + [False] * len(images_false))
@@ -185,8 +185,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             #reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.01, patience=70, min_lr=0.001)
             model_checkpoint = keras.callbacks.ModelCheckpoint(model_base + "X_" + desc + model_name + ".h5", monitor='val_loss', verbose=0,
                                                                save_best_only=True, save_weights_only=False, mode='auto', period=1)
-            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=18, verbose=0, mode='auto')
-
+            early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=0, mode='auto')
             # Make the model
             inp = keras.models.Input((75,75,1))
             # Block - conv
@@ -203,7 +202,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # Block - conv
             x = Conv2D(4*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='relu', name='Conv6')(x)
 
-            x = Conv2D(2*conv_neurons, 3, 3, border_mode='same', subsample=[2,2], activation='relu', name='Conv6')(x)
+            x = Conv2D(2*conv_neurons, 3, 3, border_mode='same', subsample=[2,2], activation='relu', name='Conv7')(x)
             # Block - flatten
             x = Flatten()(x)
             x = Dropout(dropout_layer)(x)
@@ -218,7 +217,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model = keras.models.Model(inp, y_out)
             # Block - output
             model.summary()
-            adam = keras.optimizers.adam(lr=0.0001)
+            adam = keras.optimizers.adam(lr=0.001)
             model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['acc'])
             #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
             #                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
