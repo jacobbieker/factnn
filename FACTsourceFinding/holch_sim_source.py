@@ -153,12 +153,12 @@ with h5py.File(path_mc_images, 'r') as f:
     transformed_images = []
     #print(np.max(image_one))
     y_train_images = images #np.asarray(transformed_images)
-    images_test = images[-int(0.9*len(images)):]#int(0.01*len(images))]
-    source_x_test = source_x[-int(0.9*len(source_x)):]#int(0.01*len(source_x))]
-    source_y_test = source_y[-int(0.9*len(source_y)):]#int(0.01*len(source_y))]
-    images = images[0:int(0.9*len(images))]#int(0.01*len(images))]
-    source_x = source_x[0:int(0.9*len(source_x))]#int(0.01*len(source_x))]
-    source_y = source_y[0:int(0.9*len(source_y))]#int(0.01*len(source_y))]
+    images_test = images[-int(0.8*len(images)):]#int(0.01*len(images))]
+    source_x_test = source_x[-int(0.8*len(source_x)):]#int(0.01*len(source_x))]
+    source_y_test = source_y[-int(0.8*len(source_y)):]#int(0.01*len(source_y))]
+    images = images[0:int(0.8*len(images))]#int(0.01*len(images))]
+    source_x = source_x[0:int(0.8*len(source_x))]#int(0.01*len(source_x))]
+    source_y = source_y[0:int(0.8*len(source_y))]#int(0.01*len(source_y))]
 
     '''#Normalize each image
     for image_one in images_test:
@@ -208,9 +208,9 @@ with h5py.File(path_mc_images, 'r') as f:
 
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
-    #try:
+    try:
         model_base = ""# base_dir +"/" # + "/Models/FinalSourceXY/test/test/"
-        model_name = "MC_CombinedAllSame"
+        model_name = "MC_CombinedAllSame" + "_i_" + str(optimizer) + "convNeuron_" + str(conv_neurons) + "drop_" + str(dropout_layer)
         if not os.path.isfile(model_base + model_name + ".csv"):
             csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
             #reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.01, patience=70, min_lr=0.001)
@@ -221,17 +221,17 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # Make the model
             inp = keras.models.Input((75,75,1))
             # Block - conv
-            x = Conv2D(32, 8, 8, border_mode='same', subsample=[4,4], activation='elu', name='Conv1')(inp)
+            x = Conv2D(conv_neurons, 8, 8, border_mode='same', subsample=[4,4], activation='elu', name='Conv1')(inp)
             # Block - conv
-            x = Conv2D(64, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv2')(x)
+            x = Conv2D(2*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv2')(x)
             # Block - conv
-            x = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv3')(x)
+            x = Conv2D(4*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv3')(x)
             x = MaxPooling2D(padding='same')(x)
             x = Dropout(dropout_layer)(x)
             # Block - conv
-            x = Conv2D(64, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv5')(x)
+            x = Conv2D(2*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv5')(x)
             # Block - conv
-            x = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv6')(x)
+            x = Conv2D(4*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv6')(x)
             # Block - flatten
             x = Flatten()(x)
             x = Dropout(dropout_layer)(x)
@@ -248,29 +248,6 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # Block - output
             model.summary()
 
-            '''
-            # Base Conv layer
-            model.add(Conv2D(32, kernel_size=patch_size, strides=(1, 1),
-                             activation='relu', padding=optimizer,
-                             input_shape=(75, 75, 1)))
-            model.add(Conv2D(8, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-            for i in range(num_conv):
-                model.add(Conv2D(16, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-                model.add(Conv2D(16, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-                model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            model.add(Flatten())
-
-            for i in range(num_dense):
-                model.add(Dense(512, activation='linear'))
-                model.add(Dropout(dropout_layer))
-
-
-            # Final Dense layer
-            # 2 so have one for x and one for y
-            model.add(Dense(2, activation='linear'))
-            '''
             adam = keras.optimizers.adam(lr=0.0001)
             model.compile(optimizer=adam, loss='mse', metrics=['mae'])
             #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
@@ -319,29 +296,6 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # Block - output
             model.summary()
 
-            '''
-            # Base Conv layer
-            model.add(Conv2D(32, kernel_size=patch_size, strides=(1, 1),
-                             activation='relu', padding=optimizer,
-                             input_shape=(75, 75, 1)))
-            model.add(Conv2D(8, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-            for i in range(num_conv):
-                model.add(Conv2D(16, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-                model.add(Conv2D(16, patch_size, strides=(1, 1), activation='relu', padding=optimizer))
-                model.add(MaxPooling2D(pool_size=(2, 2), padding=optimizer))
-
-            model.add(Flatten())
-
-            for i in range(num_dense):
-                model.add(Dense(512, activation='linear'))
-                model.add(Dropout(dropout_layer))
-
-
-            # Final Dense layer
-            # 2 so have one for x and one for y
-            model.add(Dense(2, activation='linear'))
-            '''
             adam = keras.optimizers.adam(lr=0.0001)
             model.compile(optimizer=adam, loss='mse', metrics=['mae'])
             #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
@@ -409,7 +363,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # Now make the confusion matrix
 
             #Loss Score so can tell which one it is
-
+            '''
             fig1 = plt.figure()
             ax = fig1.add_subplot(1, 1, 1)
             ax.set_title(title + ' Reconstructed Train X vs. True X')
@@ -460,14 +414,15 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             plot_sourceX_Y_confusion(test_pred_y, source_y_test, log_xy=True, ax=ax)
             fig1.show()
             exit(1)
+            '''
             K.clear_session()
             tf.reset_default_graph()
 
-    #except Exception as e:
-    #    print(e)
-    #    K.clear_session()
-    #    tf.reset_default_graph()
-    #    pass
+    except Exception as e:
+        print(e)
+        K.clear_session()
+        tf.reset_default_graph()
+        pass
 
 
 for i in range(num_runs):
@@ -480,4 +435,4 @@ for i in range(num_runs):
     dense_neuron = np.random.randint(num_dense_neuron[0], num_dense_neuron[1])
     conv_neurons = np.random.randint(num_conv_neurons[0], num_conv_neurons[1])
     optimizer = optimizers[np.random.randint(0,1)]
-    create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer)
+    create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, i)

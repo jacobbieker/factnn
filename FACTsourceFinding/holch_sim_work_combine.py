@@ -77,6 +77,9 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
     else:
         max_ax = max_pred
 
+    if log_z:
+        min_ax = min_label
+        max_ax = max_label
     limits = [
         min_ax,
         max_ax
@@ -90,7 +93,7 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
         prediction,
         bins=[100, 100],
         range=[limits, limits],
-        norm=LogNorm() if log_z is True else None,
+        norm=LogNorm()
     )
     ax.set_aspect(1)
     ax.figure.colorbar(img, ax=ax)
@@ -107,7 +110,7 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
 
 batch_sizes = [16, 64, 256]
 patch_sizes = [(2, 2), (3, 3), (5, 5), (4, 4)]
-dropout_layers = [0.5, 0.5]
+dropout_layers = [0.3, 0.7]
 num_conv_layers = [0, 6]
 num_dense_layers = [0, 6]
 num_conv_neurons = [8,128]
@@ -153,12 +156,12 @@ with h5py.File(path_mc_images, 'r') as f:
     transformed_images = []
     #print(np.max(image_one))
     y_train_images = images #np.asarray(transformed_images)
-    images_test = images[-int(0.99*len(images)):]#int(0.01*len(images))]
-    source_x_test = source_x[-int(0.99*len(source_x)):]#int(0.01*len(source_x))]
-    source_y_test = source_y[-int(0.99*len(source_y)):]#int(0.01*len(source_y))]
-    images = images[0:int(0.01*len(images))]#int(0.01*len(images))]
-    source_x = source_x[0:int(0.01*len(source_x))]#int(0.01*len(source_x))]
-    source_y = source_y[0:int(0.01*len(source_y))]#int(0.01*len(source_y))]
+    images_test = images[-int(0.8*len(images)):]#int(0.01*len(images))]
+    source_x_test = source_x[-int(0.8*len(source_x)):]#int(0.01*len(source_x))]
+    source_y_test = source_y[-int(0.8*len(source_y)):]#int(0.01*len(source_y))]
+    images = images[0:int(0.8*len(images))]#int(0.01*len(images))]
+    source_x = source_x[0:int(0.8*len(source_x))]#int(0.01*len(source_x))]
+    source_y = source_y[0:int(0.8*len(source_y))]#int(0.01*len(source_y))]
 
     images_test_y = images_test
     #transformed_images = []
@@ -166,8 +169,8 @@ with h5py.File(path_mc_images, 'r') as f:
     # Now convert to this camera's coordinates
     y = images#[1000:-1]#np.rot90(images, axis=2)
     y_train = images
-    title = "Holch"
-    desc = "Holch"
+    title = "SeparateOutputs"
+    desc = "SeparateOutputs"
     print(images.shape)
     print(source_x[0])
     #print(source_y[0])
@@ -192,45 +195,31 @@ with h5py.File(path_mc_images, 'r') as f:
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     #try:
     model_base = ""# base_dir +"/" # + "/Models/FinalSourceXY/test/test/"
-    model_name = "MC_OneOutputNoPool4Holch" + "_drop_" + str(dropout_layer)
+    model_name = "MC_OneOutputPoolOnlyTrainedAll" + "_drop_" + str(dropout_layer)
     if not os.path.isfile(model_base + model_name + ".csv"):
         csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
         #reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.01, patience=70, min_lr=0.001)
-        early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=12, verbose=0, mode='auto')
+        early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=4, verbose=0, mode='auto')
 
         model_checkpointy = keras.callbacks.ModelCheckpoint(model_base + "Y_" + desc + model_name + ".h5", monitor='val_loss', verbose=0,
                                                             save_best_only=True, save_weights_only=False, mode='auto', period=1)
         # Make the model
         inp = keras.models.Input((75,75,1))
         # Block - conv
-        y = Conv2D(64, 8, 8, border_mode='same', subsample=[2,2], activation='elu', name='yConv1')(inp)
+        y = Conv2D(64, 8, 8, border_mode='same', subsample=[4,4], activation='elu', name='yConv1')(inp)
         # Block - conv
-        y = Conv2D(128, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='yConv2')(y)
+        y = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='yConv2')(y)
         # Block - conv
         y = MaxPooling2D(padding='same')(y)
         y = Dropout(dropout_layer)(y)
 
-        y = Conv2D(256, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='yConv3')(y)
+        y = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='yConv3')(y)
+        y = Conv2D(512, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='yConv7')(y)
 
-        y = Conv2D(512, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='yConv7')(y)
+        #y = Dropout(dropout_layer)(y)
 
-        y = MaxPooling2D(padding='same')(y)
-        y = Dropout(dropout_layer)(y)
-        # Block - conv
-        y = Conv2D(128, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='yConv5')(y)
-        # Block - conv
-        y = Conv2D(256, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='yConv6')(y)
-        y = MaxPooling2D(padding='same')(y)
-        y = Dropout(dropout_layer)(y)
-
-        y = Conv2D(128, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='yConv8')(y)
-        y = Conv2D(256, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='yConv9')(y)
-        y = MaxPooling2D(padding='same')(y)
-        y = Dropout(dropout_layer)(y)
-
-        y = Conv2D(128, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='yConv10')(y)
-        y = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='yConv11')(y)
-        y = MaxPooling2D(padding='same')(y)
+        #y = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='yConv10')(y)
+        #y = Conv2D(512, 2, 2, border_mode='same', subsample=[2,2], activation='elu', name='yConv11')(y)
 
         # Block - flatten
         # Block - flatten
@@ -243,34 +232,20 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         y = ELU()(y)
 
         # Block - conv
-        x = Conv2D(64, 8, 8, border_mode='same', subsample=[2,2], activation='elu', name='Conv1')(inp)
+        x = Conv2D(64, 8, 8, border_mode='same', subsample=[4,4], activation='elu', name='Conv1')(inp)
         # Block - conv
-        x = Conv2D(128, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='Conv2')(x)
+        x = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv2')(x)
         # Block - conv
         x = MaxPooling2D(padding='same')(x)
         x = Dropout(dropout_layer)(x)
 
-        x = Conv2D(256, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='Conv3')(x)
+        x = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv3')(x)
+        x = Conv2D(512, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv7')(x)
 
-        x = Conv2D(512, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='Conv7')(x)
+        #x = Dropout(dropout_layer)(x)
 
-        x = MaxPooling2D(padding='same')(x)
-        x = Dropout(dropout_layer)(x)
-        # Block - conv
-        x = Conv2D(128, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='Conv5')(x)
-        # Block - conv
-        x = Conv2D(256, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='Conv6')(x)
-        x = MaxPooling2D(padding='same')(x)
-        x = Dropout(dropout_layer)(x)
-
-        x = Conv2D(128, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='Conv8')(x)
-        x = Conv2D(256, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='Conv9')(x)
-        x = MaxPooling2D(padding='same')(x)
-        x = Dropout(dropout_layer)(x)
-
-        x = Conv2D(128, 5, 5, border_mode='same', subsample=[1,1], activation='elu', name='Conv10')(x)
-        x = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv11')(x)
-        x = MaxPooling2D(padding='same')(x)
+        #x = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv10')(x)
+        #x = Conv2D(512, 2, 2, border_mode='same', subsample=[2,2], activation='elu', name='Conv11')(x)
 
         # Block - flatten
         # Block - flatten
@@ -284,25 +259,25 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         x_out = Dense(1, name="x_out")(x)
         y_out = Dense(1, name="y_out")(y)
 
-        merged_out = keras.layers.merge([x, y])
-        combined_out = Dense(2, name="combined_out")(merged_out)
+        #merged_out = keras.layers.merge([x, y])
+        #combined_out = Dense(2, name="combined_out")(merged_out)
 
-        model = keras.models.Model(inp, combined_out)
+        model = keras.models.Model(inp, [x_out, y_out])
         # Block - output
         model.summary()
-        adam = keras.optimizers.adam(lr=0.001)
+        adam = keras.optimizers.adam(lr=0.0001)
         model.compile(optimizer=adam, loss='mse', metrics=['mae'])
         #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
         #                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
         #K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=8, inter_op_parallelism_threads=8)))
-        model.fit(x=y_train, y=np.column_stack((x_label,y_label)), batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, model_checkpointy, csv_logger])
+        model.fit(x=y_train, y=[x_label,y_label], batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, model_checkpointy, csv_logger])
 
         predictions = model.predict(y_train, batch_size=64)
         test_pred = model.predict(images_test_y, batch_size=64)
-        predictions_x = predictions[:,0].reshape(-1,)
-        predictions_y = predictions[:,1].reshape(-1,)
-        test_pred_y = test_pred[:,1].reshape(-1,)
-        test_pred_x = test_pred[:,0].reshape(-1,)
+        predictions_x = predictions[0].reshape(-1,)
+        predictions_y = predictions[1].reshape(-1,)
+        test_pred_y = test_pred[1].reshape(-1,)
+        test_pred_x = test_pred[0].reshape(-1,)
 
         #Loss Score so can tell which one it is
 
@@ -342,6 +317,12 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         ax = fig1.add_subplot(1, 1, 1)
         ax.set_title(title + ' Reconstructed Test X vs. Rec Train Y')
         plot_sourceX_Y_confusion(test_pred_x, test_pred_y, ax=ax)
+        fig1.show()
+
+        fig1 = plt.figure()
+        ax = fig1.add_subplot(1, 1, 1)
+        ax.set_title(title + ' Reconstructed Test X vs. Rec Train Y')
+        plot_sourceX_Y_confusion(test_pred_x, test_pred_y, log_z=False, ax=ax)
         fig1.show()
 
         fig1 = plt.figure()
