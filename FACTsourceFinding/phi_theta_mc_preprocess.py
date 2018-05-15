@@ -39,14 +39,16 @@ path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/gamma/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_BothSource_Images.h5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_DELTAALL_Images.h5"
 path_to_diffuse = "/run/media/jacob/WDRed8Tb1/open_crab_sample_analysis/dl2/gamma_diffuse.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 
-diffuse_df = read_h5py(path_to_diffuse, key="events", columns=["event_num", "@source", "source_position",
+diffuse_df = read_h5py(path_to_diffuse, key="events", columns=["event_num", "@source", "source_position", "cog_x", "cog_y", "delta",
                                                                "az_source_calc", "zd_source_calc",
                                                                "az_tracking", "zd_tracking",
                                                                "corsika_evt_header_total_energy", "corsika_evt_header_az"])
+
+diffuse_df = diffuse_df[0:5000]
 #diffuse_df = diffuse_df[(diffuse_df["@source"].str.contains("uwe")) | (diffuse_df['@source'].str.contains("yoda"))]
 print(diffuse_df)
 run_ids_long = np.array(diffuse_df['@source'].values)
@@ -135,13 +137,13 @@ def batchYielder(paths):
                 if not df_event.empty:
                     # In the event chosen from the file
                     # Each event is the same as each line below
-                    source_pos_x = df_event['source_position_1'].values[0]
-                    source_pos_y = df_event['source_position_0'].values[0]
+                    source_pos_x = df_event['cog_x'].values[0]
+                    source_pos_y = df_event['cog_y'].values[0]
                     energy = event.simulation_truth.air_shower.energy
                     event_photons = event.photon_stream.list_of_lists
                     zd_deg = event.zd
                     az_deg = event.az
-                    act_phi = event.simulation_truth.air_shower.phi
+                    act_phi = df_event['delta'].values[0]
                     act_theta = event.simulation_truth.air_shower.theta
                     sky_source_az = df_event['az_source_calc'].values[0]
                     sky_source_zd = df_event['zd_source_calc'].values[0]
@@ -200,11 +202,11 @@ with h5py.File(path_mc_diffuse_images, 'w') as hdf:
     maxshape_az_deg = (None,) + zd_deg.shape[1:]
     dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
     maxshape_phi = (None,) + zd_deg.shape[1:]
-    dset_phi = hdf.create_dataset('Source_X', shape=phi.shape, maxshape=maxshape_phi, chunks=phi.shape, dtype=phi.dtype)
+    dset_phi = hdf.create_dataset('COG_X', shape=phi.shape, maxshape=maxshape_phi, chunks=phi.shape, dtype=phi.dtype)
     maxshape_theta = (None,) + zd_deg.shape[1:]
-    dset_theta = hdf.create_dataset('Source_Y', shape=theta.shape, maxshape=maxshape_theta, chunks=theta.shape, dtype=theta.dtype)
+    dset_theta = hdf.create_dataset('COG_Y', shape=theta.shape, maxshape=maxshape_theta, chunks=theta.shape, dtype=theta.dtype)
     maxshape_phia = (None,) + zd_deg.shape[1:]
-    dset_phia = hdf.create_dataset('Phi', shape=act_phi.shape, maxshape=maxshape_phia, chunks=act_phi.shape, dtype=act_phi.dtype)
+    dset_phia = hdf.create_dataset('Delta', shape=act_phi.shape, maxshape=maxshape_phia, chunks=act_phi.shape, dtype=act_phi.dtype)
     maxshape_thetaa = (None,) + zd_deg.shape[1:]
     dset_thetaa = hdf.create_dataset('Theta', shape=act_theta.shape, maxshape=maxshape_thetaa, chunks=act_theta.shape, dtype=act_theta.dtype)
     maxshape_zd = (None,) + zd_deg.shape[1:]

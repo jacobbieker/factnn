@@ -334,7 +334,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         predictions = model.predict(y_train, batch_size=64)
         test_pred = model.predict(images_test_y, batch_size=64)
         #print(roc_auc_score(x_label, predictions))
-       # print(roc_auc_score(sign_test, test_pred))
+        # print(roc_auc_score(sign_test, test_pred))
         predictions_x = predictions.reshape(-1,)
         predictions_y = predictions.reshape(-1,)
         test_pred_y = test_pred.reshape(-1,)

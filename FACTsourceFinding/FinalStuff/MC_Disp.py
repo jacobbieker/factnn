@@ -95,7 +95,7 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
         prediction,
         bins=[100, 100],
         range=[limits, limits],
-        #norm=LogNorm()
+        norm=LogNorm() if log_xy is False else None
     )
     ax.set_aspect(1)
     ax.figure.colorbar(img, ax=ax)
@@ -130,7 +130,7 @@ def euclidean_distance(x1, y1, x2, y2):
 
 path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_DELTA5000_Images.h5"
-path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_Gamma_BothSource_Images.h5"
+path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_DELTA53100_Images.h5"
 #path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
 
 #mrk501 = read_h5py(path_mrk501, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
@@ -148,31 +148,31 @@ def metaYielder():
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
     images = f['Image'][0:-1]
-    #source_az = f['Source_Az'][0:-1]
-    #point_x = f['Az_deg'][0:-1]
-    #point_y = f['Zd_deg'][0:-1]
+    source_az = f['Source_Az'][0:-1]
+    point_x = f['Az_deg'][0:-1]
+    point_y = f['Zd_deg'][0:-1]
     #source_x = np.deg2rad(source_x)
     #point_x = np.deg2rad(point_x)
-    #source_zd = f['Source_Zd'][0:-1]
-    #cog_x = f['COG_X'][0:-1]
-    #cog_y = f['COG_Y'][0:-1]
+    source_zd = f['Source_Zd'][0:-1]
+    cog_x = f['COG_X'][0:-1]
+    cog_y = f['COG_Y'][0:-1]
     #delta = f['Delta'][0:-1]
-    energy = f['Energy'][0:-1]
+    #energy = f['Energy'][0:-1]
     #images_source_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_az = (-1.*images_source_az + 540) % 360
     np.random.seed(0)
-    #source_x, source_y = horizontal_to_camera(
-    #    az=source_az,
-    #    zd=source_zd,
-    #    az_pointing=point_x,
-    #    zd_pointing=point_y,
-    #)
+    source_x, source_y = horizontal_to_camera(
+        az=source_az,
+        zd=source_zd,
+        az_pointing=point_x,
+        zd_pointing=point_y,
+    )
 
-    #true_disp = euclidean_distance(
-    #    source_x, source_y,
-    #    cog_x, cog_y
-    #)
+    true_disp = euclidean_distance(
+        source_x, source_y,
+        cog_x, cog_y
+    )
     #true_delta = np.arctan2(
     #    cog_y - source_y,
     #    cog_x - source_x,
@@ -188,12 +188,12 @@ with h5py.File(path_mc_images, 'r') as f:
     #print(np.max(image_one))
     y_train_images = images #np.asarray(transformed_images)
     images_test = images[-int(0.5*len(images)):]#int(0.01*len(images))]
-    disp_test = energy[-int(0.5*len(images)):]
+    disp_test = true_disp[-int(0.5*len(images)):]
     #sign_test = true_sign[-int(0.5*len(images)):]
     #source_x_test = source_x[-int(0.5*len(source_x)):]#int(0.01*len(source_x))]
     #source_y_test = source_y[-int(0.5*len(source_y)):]#int(0.01*len(source_y))]
     images = images[0:int(0.5*len(images))]#int(0.01*len(images))]
-    disp_train = energy[0:int(0.5*len(energy))]
+    disp_train = true_disp[0:int(0.5*len(true_disp))]
     #sign_train = true_sign[0:int(0.5*len(true_sign))]
     #source_x = source_x[0:int(0.5*len(source_x))]#int(0.01*len(source_x))]
     #source_y = source_y[0:int(0.5*len(source_y))]#int(0.01*len(source_y))]
@@ -204,8 +204,8 @@ with h5py.File(path_mc_images, 'r') as f:
     # Now convert to this camera's coordinates
     y = images#[1000:-1]#np.rot90(images, axis=2)
     y_train = images
-    title = "SeparateOutputs Energy"
-    desc = "SeparateOutputs Energy"
+    title = "SeparateOutputs Disp"
+    desc = "SeparateOutputs Disp"
     print(images.shape)
     #print(source_x[0])
     #print(source_y[0])
@@ -218,10 +218,10 @@ with h5py.File(path_mc_images, 'r') as f:
     print(np.mean(y_label))
     print(np.median(y_label))
     print("X Values:")
-    #print(np.min(x_label))
-    #print(np.max(x_label))
-    #print(np.mean(x_label))
-    #print(np.median(x_label))
+    print(np.min(x_label))
+    print(np.max(x_label))
+    print(np.mean(x_label))
+    print(np.median(x_label))
     print(y_label.shape)
     y_label = y_label
     print("Finished getting data")
@@ -326,78 +326,32 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         model.summary()
         adam = keras.optimizers.adam(lr=0.001)
         model.compile(optimizer=adam, loss='mse', metrics=['mae'])
-        #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
-        #                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
-        #K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=8, inter_op_parallelism_threads=8)))
         model.fit(x=y_train, y=y_label, batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, model_checkpointy, csv_logger])
 
         predictions = model.predict(y_train, batch_size=64)
         test_pred = model.predict(images_test_y, batch_size=64)
-        #print(roc_auc_score(x_label, predictions))
-       # print(roc_auc_score(sign_test, test_pred))
         predictions_x = predictions.reshape(-1,)
-        predictions_y = predictions.reshape(-1,)
-        test_pred_y = test_pred.reshape(-1,)
         test_pred_x = test_pred.reshape(-1,)
 
-        #Loss Score so can tell which one it is
-
-        #fig1 = plt.figure()
-        #ax = fig1.add_subplot(1, 1, 1)
-        #ax.set_title(title + ' Reconstructed Train X vs. True X')
-        #plot_sourceX_Y_confusion(predictions_x, x_label, ax=ax)
-        #fig1.show()
-
 
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' Reconstructed Train X vs. Rec Train Y')
-        plot_sourceX_Y_confusion(predictions_x, predictions_y, ax=ax)
-        fig1.show()
-
-        #fig1 = plt.figure()
-        #ax = fig1.add_subplot(1, 1, 1)
-        #ax.set_title(' True Train X vs. True Train Y')
-        #plot_sourceX_Y_confusion(x_label, y_label, ax=ax)
-        #fig1.show()
-
-        fig1 = plt.figure()
-        ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' Reconstructed Train Y vs. True Y')
-        plot_sourceX_Y_confusion(predictions_y, y_label, log_xy=True, ax=ax)
-        fig1.show()
-
-        #fig1 = plt.figure()
-        #ax = fig1.add_subplot(1, 1, 1)
-        #ax.set_title(title + ' Reconstructed Test X vs. True X (Act)')
-        #plot_sourceX_Y_confusion(test_pred_x, source_x_test, ax=ax)
-        #fig1.show()
-
-
-        fig1 = plt.figure()
-        ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' Reconstructed Test X vs. Rec Train Y')
-        plot_sourceX_Y_confusion(test_pred_x, test_pred_y, ax=ax)
+        ax.set_title(title + ' Reconstructed Train Disp vs. True Train Disp')
+        plot_sourceX_Y_confusion(predictions_x, y_label, ax=ax)
         fig1.show()
 
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' Reconstructed Test X vs. Rec Train Y')
-        plot_sourceX_Y_confusion(test_pred_x, test_pred_y, log_z=False, ax=ax)
-        fig1.show()
-        '''
-        fig1 = plt.figure()
-        ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' True Test X vs. True Test Y')
-        plot_sourceX_Y_confusion(source_x_test, source_y_test, ax=ax)
+        ax.set_title(title + ' Reconstructed Test Disp vs. True Test Disp (Lienar)')
+        plot_sourceX_Y_confusion(test_pred_x, disp_test, log_z=False, ax=ax)
         fig1.show()
 
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' Reconstructed Test Y vs. True Y')
-        plot_sourceX_Y_confusion(test_pred_y, source_y_test, log_xy=True, ax=ax)
+        ax.set_title(title + ' Reconstructed Test Disp vs. True Test Disp (Log)')
+        plot_sourceX_Y_confusion(test_pred_x, disp_test, log_xy=False, ax=ax)
         fig1.show()
-        '''     #exit(1)
+
         K.clear_session()
         tf.reset_default_graph()
 
