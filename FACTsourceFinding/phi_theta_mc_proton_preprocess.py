@@ -39,7 +39,7 @@ path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/proton/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_JustImage2_Images.h5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_STDDEV_Images.h5"
 path_to_diffuse = "/run/media/jacob/WDRed8Tb1/open_crab_sample_analysis/dl2/proton.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 
@@ -143,9 +143,12 @@ def batchYielder(paths):
                 chid_to_pixel = id_position[0]
                 pixel_index_to_grid = id_position[1]
                 for index in range(1440):
+                    event_photons[index] = len(event_photons[index])
+                event_photons = (event_photons - np.mean(event_photons)) / np.std(event_photons)
+                for index in range(1440):
                     for element in chid_to_pixel[index]:
                         coords = pixel_index_to_grid[element[0]]
-                        input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
+                        input_matrix[coords[0]][coords[1]] += element[1]*event_photons[index]
 
                 data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x, source_pos_y, act_phi, act_theta, sky_source_zd, sky_source_az, zd_deg1, az_deg1])
         #exit(1)

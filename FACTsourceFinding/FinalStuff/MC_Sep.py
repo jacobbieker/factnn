@@ -63,13 +63,13 @@ with h5py.File(path_mc_images, 'r') as f:
         gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
         # Get some truth data for now, just use Crab images
         items = len(f2["Image"])
-        images = f['Image'][0:10000]
-        images_false = f2['Image'][0:10000]
+        images = f['Image'][0:100000]
+        images_false = f2['Image'][0:100000]
         temp_train = []
         temp_test = []
         tmp_test_label = []
         tmp_train_label = []
-        for batcher in range(10000):
+        for batcher in range(len(images_false)):
             # Mix the datasets
             if batcher < 0.8*len(images):
                 temp_train.append(images[batcher])
@@ -86,6 +86,10 @@ with h5py.File(path_mc_images, 'r') as f:
         train_labels = np.asarray(tmp_train_label)
         test_dataset = np.asarray(temp_test)
         validation_dataset = np.asarray(temp_train)
+        del tmp_test_label
+        del tmp_train_label
+        del temp_test
+        del temp_train
         #validating_dataset = np.concatenate([images, images_false], axis=0)
         #print(validating_dataset.shape)
         #labels = np.array([True] * (len(images)) + [False] * len(images_false))
@@ -102,13 +106,16 @@ with h5py.File(path_mc_images, 'r') as f:
         #validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
         y = validation_dataset
         y_label = train_labels
+        print(test_dataset.shape)
+        print(y.shape)
+        #exit()
 
         print("Finished getting data")
 
 from sklearn.metrics import roc_auc_score
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch):
-    try:
+    #try:
         model_base = "" #base_dir + "/Models/RealFinalSep/"
         model_name = "MC_SepNoGenNoShuffle_b" + str(batch_size) + "_p_" + str(
             patch_size) + "_drop_" + str(dropout_layer) + "_numDense_" + str(num_dense) \
@@ -127,69 +134,27 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                                                        patience=10 * frac_per_epoch,
                                                        verbose=0, mode='auto')
 
-            def batchYielder():
-                gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
-                with h5py.File(path_mc_images, 'r') as f:
-                    with h5py.File(path_proton_images, 'r') as f2:
-                        items = len(f2['Image'])
-                        items = items - (hadron_anteil * number_of_testing) - (hadron_anteil  * number_validate)
-                        # Shuffle every time it starts from the beginning again
-                        #rng_state = np.random.get_state()
-                        times_train_in_items = int(np.floor(items / number_of_training))
-                        if items > (hadron_anteil * number_of_training):
-                            items = int(np.floor((hadron_anteil * number_of_training)))
-                        section = 0
-                        #section = section % times_train_in_items
-                        offset = 0 * items
-                        image1 = f['Image'][offset:int(offset + items)]
-                        #np.random.set_state(rng_state)
-                        image_false1 = f2['Image'][offset:int(offset + items)]
-                        while True:
-                            # Get some truth data for now, just use Crab images
-                            batch_num = 0
-                            np.random.shuffle(image1)
-                            np.random.shuffle(image_false1)
-
-                            # Roughly 5.6 times more simulated Gamma events than proton, so using most of them
-                            while (hadron_anteil * batch_size) * (batch_num + 1) < items:
-                                # Now the data is shuffled each time, hopefully improvi
-                                images1 = image1[int(np.floor((batch_num) * (batch_size * gamma_anteil))):int(
-                                    np.floor((batch_num + 1) * (batch_size * gamma_anteil)))]
-                                images_false1 = image_false1[int(np.floor(batch_num * batch_size * hadron_anteil)):int(
-                                    (batch_num + 1) * batch_size * hadron_anteil)]
-                                validating_dataset1 = np.concatenate([images1, images_false1], axis=0)
-                                labels1 = np.array([True] * (len(images1)) + [False] * len(images_false1))
-                                #rng_state = np.random.get_state()
-                                #np.random.set_state(rng_state)
-                                #np.random.shuffle(validating_dataset1)
-                                #np.random.set_state(rng_state)
-                                #np.random.shuffle(labels1)
-                                validation_labels1 = (np.arange(2) == labels1[:, None]).astype(np.float32)
-                                x = validating_dataset1
-                                x_label = validation_labels1
-                                # print("Finished getting data")
-                                batch_num += 1
-                                yield (x, x_label)
-                            section += 1
             # Make the model
             model = Sequential()
 
             # Base Conv layer
-            model.add(Conv2D(64, kernel_size=(6,6), strides=(2, 2),
+            model.add(Conv2D(conv_neurons, kernel_size=(6,6), strides=(2, 2),
                              padding='same',
                              input_shape=(75, 75, 1)))
-            model.add(LeakyReLU())
+            #model.add(LeakyReLU())
+            model.add(Activation('relu'))
+
             model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
-            model.add(Dropout(0.25))
+            model.add(Dropout(dropout_layer))
 
             model.add(
-                Conv2D(128, (3,3), strides=(1, 1),
+                Conv2D(2*conv_neurons, (3,3), strides=(1, 1),
                        padding='same'))
             #model.add(BatchNormalization())
-            model.add(LeakyReLU())
-            #model.add(Activation('relu'))
+            #model.add(LeakyReLU())
+            model.add(Activation('relu'))
             model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
-            model.add(Dropout(0.25))
+            model.add(Dropout(dropout_layer))
             '''
             model.add(
                 Conv2D(128, (3,3), strides=(1, 1),
@@ -224,11 +189,11 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             #    if dropout_layer > 0.0:
             #        model.add(Dropout(dropout_layer))
             model.add(Dense(512, activation='relu'))
-            model.add(Dropout(0.2))
+            model.add(Dropout(0.3))
             model.add(Dense(256, activation='relu'))
-            model.add(Dropout(0.2))
+            model.add(Dropout(0.3))
             model.add(Dense(128, activation='relu'))
-            model.add(Dropout(0.2))
+            model.add(Dropout(0.3))
 
             # Final Dense layer
             model.add(Dense(num_labels, activation='softmax'))
@@ -249,11 +214,11 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             K.clear_session()
             tf.reset_default_graph()
 
-    except Exception as e:
-        print(e)
-        K.clear_session()
-        tf.reset_default_graph()
-        pass
+    #except Exception as e:
+    #    print(e)
+    #    K.clear_session()
+    #    tf.reset_default_graph()
+    #    pass
 
 
 batch_sizes = [64,256]

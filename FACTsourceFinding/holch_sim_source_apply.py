@@ -18,7 +18,7 @@ import numpy as np
 from numpy import savetxt, loadtxt, round, zeros, sin, cos, arctan2, clip, pi, tanh, exp, arange, dot, outer, array, shape, zeros_like, reshape, mean, median, max, min
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
-from fact.coordinates.utils import horizontal_to_camera
+from fact.coordinates.utils import horizontal_to_camera, camera_to_equatorial
 from sklearn.metrics import roc_auc_score
 from sklearn import metrics
 
@@ -69,7 +69,7 @@ path_diffuse_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_BothSource_Ima
 path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_Gamma_BothSource_Images.h5"
 path_proton_images = "/run/media/jacob/SSD/Rebinned_5_MC_Proton_BothTracking_Images.h5"
 path_crab_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_BothSource_Images.h5"
-path_mrk501_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_Mrk501_5000_Images.h5"
+path_mrk501_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_Mrk501_500000_Images.h5"
 path_crab_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_1_Images.h5"
 
 plot_config = {
@@ -273,8 +273,8 @@ def calc_roc_sourceXY(path_image, path_keras_model):
         images = f['Image'][0:-1]
         source_x = f['Source_X'][0:-1]
         source_y = f['Source_Y'][0:-1]
-        az_point = f['Pointing_Az'][0:-1]
-        zd_point = f['Pointing_Zd'][0:-1]
+        az_point = f['Az_deg'][0:-1]
+        zd_point = f['Zd_deg'][0:-1]
         obstime = f['Time'][0:-1]
         #obstime = np.asarray(converted_time)
         np.random.seed(0)
@@ -290,7 +290,8 @@ def calc_roc_sourceXY(path_image, path_keras_model):
         #np.random.shuffle(zd_point)
         #np.random.set_state(rng_state)
         #np.random.shuffle(obstime)
-        obstime = pd.to_datetime(obstime, unit='us')
+        obstime = pd.to_datetime(obstime, unit='s')
+        print(obstime[0])
         ra, dec = camera_to_equatorial(
             x = source_x, y=source_y,
             zd_pointing=zd_point, az_pointing=az_point,
