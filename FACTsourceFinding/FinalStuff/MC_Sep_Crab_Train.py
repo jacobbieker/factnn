@@ -65,30 +65,47 @@ with h5py.File(path_mc_images, 'r') as f:
         items = len(f2["Image"])
         images = f['Image'][0:10000]
         images_false = f2['Image'][0:10000]
-        validating_dataset = np.concatenate([images, images_false], axis=0)
+        temp_train = []
+        temp_test = []
+        tmp_test_label = []
+        tmp_train_label = []
+        for batcher in range(10000):
+            # Mix the datasets
+            if batcher < 0.8*len(images):
+                temp_train.append(images[batcher])
+                temp_train.append(images_false[batcher])
+                tmp_train_label.append([0,1])
+                tmp_train_label.append([1,0])
+            else:
+                temp_test.append(images[batcher])
+                temp_test.append(images_false[batcher])
+                tmp_test_label.append([0,1])
+                tmp_test_label.append([1,0])
+
+        test_labels = np.asarray(tmp_test_label)
+        train_labels = np.asarray(tmp_train_label)
+        test_dataset = np.asarray(temp_test)
+        validation_dataset = np.asarray(temp_train)
+        #validating_dataset = np.concatenate([images, images_false], axis=0)
         #print(validating_dataset.shape)
-        labels = np.array([True] * (len(images)) + [False] * len(images_false))
+        #labels = np.array([True] * (len(images)) + [False] * len(images_false))
         np.random.seed(0)
         #rng_state = np.random.get_state()
         #np.random.shuffle(validating_dataset)
         #np.random.set_state(rng_state)
         #np.random.shuffle(labels)
-        validating_dataset = validating_dataset[0:int(0.8*len(validating_dataset))]
-        labels = labels[0:int(0.8*len(labels))]
-        #print(ind)
-        #print(counts)
-        #rng_state = np.random.get_state()
-        #np.random.set_state(rng_state)
-        #np.random.shuffle(validating_dataset)
-        #np.random.set_state(rng_state)
-        #np.random.shuffle(labels)
-        #del images
-        #del images_false
-        validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
-        y = validating_dataset
-        y_label = validation_labels
+        #test_dataset = validating_dataset[-int(0.8*len(validating_dataset)):]
+        #test_labels = labels[-int(0.8*len(labels)):]
+        #test_labels = (np.arange(2) == test_labels[:, None]).astype(np.float32)
+        #validating_dataset = validating_dataset[0:int(0.8*len(validating_dataset))]
+        #labels = labels[0:int(0.8*len(labels))]
+        #validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
+        y = validation_dataset
+        y_label = train_labels
+
         print("Finished getting data")
 
+from sklearn.metrics import roc_auc_score
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch):
     try:
@@ -159,7 +176,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
             # Base Conv layer
             model.add(Conv2D(64, kernel_size=(6,6), strides=(2, 2),
-                            padding='same',
+                             padding='same',
                              input_shape=(75, 75, 1)))
             model.add(LeakyReLU())
             model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
@@ -203,7 +220,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # Now do the dense layers
             #for i in range(num_dense):
             #    model.add(Dense(dense_neuron, activation='relu'))
-                #model.add(BatchNormalization())
+            #model.add(BatchNormalization())
             #    if dropout_layer > 0.0:
             #        model.add(Dropout(dropout_layer))
             model.add(Dense(512, activation='relu'))
@@ -213,7 +230,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model.add(Dense(128, activation='relu'))
             model.add(Dropout(0.2))
 
-        # Final Dense layer
+            # Final Dense layer
             model.add(Dense(num_labels, activation='softmax'))
             model.compile(optimizer='adam', loss='categorical_crossentropy',
                           metrics=['acc'])
@@ -225,7 +242,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             #                    verbose=2, validation_data=(y, y_label),
             #                    callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
             model.fit(x=y, y=y_label, batch_size=batch_size, epochs=num_epochs, verbose=2, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
-
+            predictions = model.predict(y, batch_size=64)
+            test_pred = model.predict(test_dataset, batch_size=64)
+            print(roc_auc_score(y_label, predictions))
+            print(roc_auc_score(test_labels, test_pred))
             K.clear_session()
             tf.reset_default_graph()
 
