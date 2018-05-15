@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -15,7 +15,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Conv1D, ELU, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
 import pandas as pd
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, r2_score
 
 
 architecture = 'manjaro'
@@ -64,10 +64,10 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
         label = np.log10(label)
         prediction = np.log10(prediction)
 
-    min_label = np.floor(np.min(label))
-    min_pred = np.floor(np.min(prediction))
-    max_pred = np.ceil(np.max(prediction))
-    max_label = np.ceil(np.max(label))
+    min_label = np.min(label)
+    min_pred = np.min(prediction)
+    max_pred = np.max(prediction)
+    max_label = np.max(label)
 
     if min_label < min_pred:
         min_ax = min_label
@@ -204,8 +204,8 @@ with h5py.File(path_mc_images, 'r') as f:
     # Now convert to this camera's coordinates
     y = images#[1000:-1]#np.rot90(images, axis=2)
     y_train = images
-    title = "SeparateOutputs Energy"
-    desc = "SeparateOutputs Energy"
+    title = "SeparateOutputs EnergyDRIVER"
+    desc = "SeparateOutputs EnergyDRIVER"
     print(images.shape)
     #print(source_x[0])
     #print(source_y[0])
@@ -324,7 +324,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         model = keras.models.Model(inp, y_out)
         # Block - output
         model.summary()
-        adam = keras.optimizers.adam(lr=0.001)
+        adam = keras.optimizers.adam(lr=0.0005)
         model.compile(optimizer=adam, loss='mse', metrics=['mae'])
         #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
         #                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
@@ -337,34 +337,17 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         # print(roc_auc_score(sign_test, test_pred))
         predictions_x = predictions.reshape(-1,)
         predictions_y = predictions.reshape(-1,)
-        test_pred_y = test_pred.reshape(-1,)
         test_pred_x = test_pred.reshape(-1,)
 
         #Loss Score so can tell which one it is
-
-        #fig1 = plt.figure()
-        #ax = fig1.add_subplot(1, 1, 1)
-        #ax.set_title(title + ' Reconstructed Train X vs. True X')
-        #plot_sourceX_Y_confusion(predictions_x, x_label, ax=ax)
-        #fig1.show()
+        score = r2_score(y_label, predictions_x)
+        score_test = r2_score(disp_test, test_pred_x)
 
 
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' Reconstructed Train X vs. Rec Train Y')
-        plot_sourceX_Y_confusion(predictions_x, predictions_y, ax=ax)
-        fig1.show()
-
-        #fig1 = plt.figure()
-        #ax = fig1.add_subplot(1, 1, 1)
-        #ax.set_title(' True Train X vs. True Train Y')
-        #plot_sourceX_Y_confusion(x_label, y_label, ax=ax)
-        #fig1.show()
-
-        fig1 = plt.figure()
-        ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' Reconstructed Train Y vs. True Y')
-        plot_sourceX_Y_confusion(predictions_y, y_label, log_xy=True, ax=ax)
+        ax.set_title(title + 'R^2: ' + str(score) + ' Reconstructed Train Energy vs. True Energy')
+        plot_sourceX_Y_confusion(predictions_y, y_label, log_xy=False, ax=ax)
         fig1.show()
 
         #fig1 = plt.figure()
@@ -376,28 +359,11 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' Reconstructed Test X vs. Rec Train Y')
-        plot_sourceX_Y_confusion(test_pred_x, test_pred_y, ax=ax)
+        ax.set_title(title + 'R^2: ' + str(score_test) + ' Reconstructed Test Energy vs. Test True Energy')
+        plot_sourceX_Y_confusion(test_pred_x, disp_test, log_xy=False, ax=ax)
         fig1.show()
 
-        fig1 = plt.figure()
-        ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' Reconstructed Test X vs. Rec Train Y')
-        plot_sourceX_Y_confusion(test_pred_x, test_pred_y, log_z=False, ax=ax)
-        fig1.show()
-        '''
-        fig1 = plt.figure()
-        ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' True Test X vs. True Test Y')
-        plot_sourceX_Y_confusion(source_x_test, source_y_test, ax=ax)
-        fig1.show()
-
-        fig1 = plt.figure()
-        ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' Reconstructed Test Y vs. True Y')
-        plot_sourceX_Y_confusion(test_pred_y, source_y_test, log_xy=True, ax=ax)
-        fig1.show()
-        '''     #exit(1)
+        #exit(1)
         K.clear_session()
         tf.reset_default_graph()
 

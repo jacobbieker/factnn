@@ -15,7 +15,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Conv1D, ELU, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
 import pandas as pd
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, r2_score
 
 
 architecture = 'manjaro'
@@ -64,10 +64,10 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
         label = np.log10(label)
         prediction = np.log10(prediction)
 
-    min_label = np.floor(np.min(label))
-    min_pred = np.floor(np.min(prediction))
-    max_pred = np.ceil(np.max(prediction))
-    max_label = np.ceil(np.max(label))
+    min_label = np.min(label)
+    min_pred = np.min(prediction)
+    max_pred = np.max(prediction)
+    max_label = np.max(label)
 
     if min_label < min_pred:
         min_ax = min_label
@@ -130,7 +130,7 @@ def euclidean_distance(x1, y1, x2, y2):
 
 path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_DELTA5000_Images.h5"
-path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_Gamma_BothSource_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_SOURCEXYALLSTDDEV_Images.h5"
 #path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
 
 #mrk501 = read_h5py(path_mrk501, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
@@ -148,12 +148,12 @@ def metaYielder():
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
     images = f['Image'][0:-1]
-    source_az = f['Source_Az'][0:-1]
-    point_x = f['Az_deg'][0:-1]
-    point_y = f['Zd_deg'][0:-1]
+    source_y = f['Source_Y'][0:-1]
+    #point_x = f['Az_deg'][0:-1]
+    #point_y = f['Zd_deg'][0:-1]
     #source_x = np.deg2rad(source_x)
     #point_x = np.deg2rad(point_x)
-    source_zd = f['Source_Zd'][0:-1]
+    source_x = f['Source_X'][0:-1]
     #cog_x = f['COG_X'][0:-1]
     #cog_y = f['COG_Y'][0:-1]
     #delta = f['Delta'][0:-1]
@@ -162,12 +162,12 @@ with h5py.File(path_mc_images, 'r') as f:
     #images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_az = (-1.*images_source_az + 540) % 360
     np.random.seed(0)
-    source_x, source_y = horizontal_to_camera(
-        az=source_az,
-        zd=source_zd,
-        az_pointing=point_x,
-        zd_pointing=point_y,
-    )
+    #source_x, source_y = horizontal_to_camera(
+    #    az=source_az,
+    #    zd=source_zd,
+    #    az_pointing=point_x,
+    #    zd_pointing=point_y,
+    #)
 
     #true_disp = euclidean_distance(
     #    source_x, source_y,
@@ -187,16 +187,16 @@ with h5py.File(path_mc_images, 'r') as f:
     #transformed_images = []
     #print(np.max(image_one))
     y_train_images = images #np.asarray(transformed_images)
-    images_test = images[-int(0.5*len(images)):]#int(0.01*len(images))]
+    images_test = images[-int(0.8*len(images)):]#int(0.01*len(images))]
     #disp_test = energy[-int(0.5*len(images)):]
     #sign_test = true_sign[-int(0.5*len(images)):]
-    source_x_test = source_x[-int(0.5*len(source_x)):]#int(0.01*len(source_x))]
-    source_y_test = source_y[-int(0.5*len(source_y)):]#int(0.01*len(source_y))]
-    images = images[0:int(0.5*len(images))]#int(0.01*len(images))]
+    source_x_test = source_x[-int(0.8*len(source_x)):]#int(0.01*len(source_x))]
+    source_y_test = source_y[-int(0.8*len(source_y)):]#int(0.01*len(source_y))]
+    images = images[0:int(0.8*len(images))]#int(0.01*len(images))]
     #disp_train = energy[0:int(0.5*len(energy))]
     #sign_train = true_sign[0:int(0.5*len(true_sign))]
-    source_x = source_x[0:int(0.5*len(source_x))]#int(0.01*len(source_x))]
-    source_y = source_y[0:int(0.5*len(source_y))]#int(0.01*len(source_y))]
+    source_x = source_x[0:int(0.8*len(source_x))]#int(0.01*len(source_x))]
+    source_y = source_y[0:int(0.8*len(source_y))]#int(0.01*len(source_y))]
 
     images_test_y = images_test
     #transformed_images = []
@@ -230,7 +230,7 @@ with h5py.File(path_mc_images, 'r') as f:
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     #try:
     model_base = ""# base_dir +"/" # + "/Models/FinalSourceXY/test/test/"
-    model_name = "MC_OneOutputPoolSOURCEXY" + "_drop_" + str(dropout_layer)
+    model_name = "MC_OneOutputPoolSOURCEXYSTDDEV" + "_drop_" + str(dropout_layer)
     if not os.path.isfile(model_base + model_name + ".csv"):
         csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
         #reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.01, patience=70, min_lr=0.001)
@@ -345,7 +345,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
         ax.set_title(title + ' Reconstructed Train X vs. True X')
-        plot_sourceX_Y_confusion(predictions_x, x_label, ax=ax)
+        plot_sourceX_Y_confusion(predictions_x, x_label, log_z=True, ax=ax)
         fig1.show()
 
 
@@ -364,7 +364,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
         ax.set_title(title + ' Reconstructed Train Y vs. True Y')
-        plot_sourceX_Y_confusion(predictions_y, y_label, log_xy=True, ax=ax)
+        plot_sourceX_Y_confusion(predictions_y, y_label, log_xy=True, log_z=True, ax=ax)
         fig1.show()
 
         fig1 = plt.figure()

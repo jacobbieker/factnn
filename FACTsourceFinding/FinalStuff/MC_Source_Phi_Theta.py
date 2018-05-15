@@ -145,7 +145,7 @@ def metaYielder():
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
     images = f['Image'][0:-1]
-    source_az = f['Source_Az'][0:-1]
+    source_az = f['Theta'][0:-1]
     point_x = f['Az_deg'][0:-1]
     point_y = f['Zd_deg'][0:-1]
     #source_x = np.deg2rad(source_x)
@@ -231,10 +231,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         # Block - bring in pointing zd
         # Block - fully connected
         y = Dense(dense_neuron, activation='elu', name='yFC1')(y)
-        y = Dropout(0.3)(y)
-        y = ELU()(y)
-        y = Dense(dense_neuron, activation='elu', name='yFC2')(y)
-        y = Dropout(0.3)(y)
+        y = Dropout(0.5)(y)
         y = ELU()(y)
 
         # Block - conv
@@ -268,10 +265,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         x = ELU()(x)
         # Block - fully connected
         x = Dense(dense_neuron, activation='elu', name='FC1')(x)
-        x = Dropout(0.3)(x)
-        x = ELU()(x)
-        x = Dense(dense_neuron, activation='elu', name='FC2')(x)
-        x = Dropout(0.3)(x)
+        x = Dropout(0.5)(x)
         x = ELU()(x)
         x_out = Dense(2, name="x_out", activation='softmax')(x)
         y_out = Dense(1, name="y_out", activation='linear')(y)

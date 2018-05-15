@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -130,7 +130,7 @@ def euclidean_distance(x1, y1, x2, y2):
 
 path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_DELTA5000_Images.h5"
-path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_DELTA53100_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_DELTAALL_Images.h5"
 #path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
 
 #mrk501 = read_h5py(path_mrk501, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
@@ -211,7 +211,7 @@ with h5py.File(path_mc_images, 'r') as f:
     print("Finished getting data")
 
 def create_model2(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch):
-    try:
+    #try:
         model_base = "" #base_dir + "/Models/RealFinalSep/"
         model_name = "MC_SignModel_b" + str(batch_size) + "_p_" + str(
             patch_size) + "_drop_" + str(dropout_layer) + "_numDense_" + str(num_dense) \
@@ -306,11 +306,11 @@ def create_model2(batch_size, patch_size, dropout_layer, num_dense, num_conv, nu
             K.clear_session()
             tf.reset_default_graph()
 
-    except Exception as e:
-        print(e)
-        K.clear_session()
-        tf.reset_default_graph()
-        pass
+    #except Exception as e:
+    #    print(e)
+    #    K.clear_session()
+    #    tf.reset_default_graph()
+    #    pass
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     #try:

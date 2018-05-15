@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -15,7 +15,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Conv1D, ELU, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
 import pandas as pd
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, r2_score
 
 
 architecture = 'manjaro'
@@ -64,10 +64,10 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
         label = np.log10(label)
         prediction = np.log10(prediction)
 
-    min_label = np.floor(np.min(label))
-    min_pred = np.floor(np.min(prediction))
-    max_pred = np.ceil(np.max(prediction))
-    max_label = np.ceil(np.max(label))
+    min_label = np.min(label)
+    min_pred = np.min(prediction)
+    max_pred = np.max(prediction)
+    max_label = np.max(label)
 
     if min_label < min_pred:
         min_ax = min_label
@@ -130,7 +130,7 @@ def euclidean_distance(x1, y1, x2, y2):
 
 path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_DELTA5000_Images.h5"
-path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_DELTA53100_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_SOURCEXYALLSTDDEV_Images.h5"
 #path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
 
 #mrk501 = read_h5py(path_mrk501, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
@@ -148,12 +148,12 @@ def metaYielder():
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
     images = f['Image'][0:-1]
-    source_az = f['Source_Az'][0:-1]
-    point_x = f['Az_deg'][0:-1]
-    point_y = f['Zd_deg'][0:-1]
+    source_y = f['Source_X'][0:-1]
+    #point_x = f['Az_deg'][0:-1]
+    #point_y = f['Zd_deg'][0:-1]
     #source_x = np.deg2rad(source_x)
     #point_x = np.deg2rad(point_x)
-    source_zd = f['Source_Zd'][0:-1]
+    source_x = f['Source_Y'][0:-1]
     cog_x = f['COG_X'][0:-1]
     cog_y = f['COG_Y'][0:-1]
     #delta = f['Delta'][0:-1]
@@ -162,12 +162,12 @@ with h5py.File(path_mc_images, 'r') as f:
     #images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_az = (-1.*images_source_az + 540) % 360
     np.random.seed(0)
-    source_x, source_y = horizontal_to_camera(
-        az=source_az,
-        zd=source_zd,
-        az_pointing=point_x,
-        zd_pointing=point_y,
-    )
+    #source_x, source_y = horizontal_to_camera(
+    #    az=source_az,
+    #    zd=source_zd,
+    #    az_pointing=point_x,
+    #    zd_pointing=point_y,
+    #)
 
     true_disp = euclidean_distance(
         source_x, source_y,
@@ -187,13 +187,13 @@ with h5py.File(path_mc_images, 'r') as f:
     #transformed_images = []
     #print(np.max(image_one))
     y_train_images = images #np.asarray(transformed_images)
-    images_test = images[-int(0.5*len(images)):]#int(0.01*len(images))]
-    disp_test = true_disp[-int(0.5*len(images)):]
+    images_test = images[-int(0.8*len(images)):]#int(0.01*len(images))]
+    disp_test = true_disp[-int(0.8*len(images)):]
     #sign_test = true_sign[-int(0.5*len(images)):]
     #source_x_test = source_x[-int(0.5*len(source_x)):]#int(0.01*len(source_x))]
     #source_y_test = source_y[-int(0.5*len(source_y)):]#int(0.01*len(source_y))]
-    images = images[0:int(0.5*len(images))]#int(0.01*len(images))]
-    disp_train = true_disp[0:int(0.5*len(true_disp))]
+    images = images[0:int(0.8*len(images))]#int(0.01*len(images))]
+    disp_train = true_disp[0:int(0.8*len(true_disp))]
     #sign_train = true_sign[0:int(0.5*len(true_sign))]
     #source_x = source_x[0:int(0.5*len(source_x))]#int(0.01*len(source_x))]
     #source_y = source_y[0:int(0.5*len(source_y))]#int(0.01*len(source_y))]
@@ -333,22 +333,25 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         predictions_x = predictions.reshape(-1,)
         test_pred_x = test_pred.reshape(-1,)
 
+        score = r2_score(y_label, predictions_x)
+        score_test = r2_score(disp_test, test_pred_x)
+
 
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' Reconstructed Train Disp vs. True Train Disp')
+        ax.set_title(title + " R^2: " + str(score) + ' Reconstructed Train Disp vs. True Train Disp')
         plot_sourceX_Y_confusion(predictions_x, y_label, ax=ax)
         fig1.show()
 
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' Reconstructed Test Disp vs. True Test Disp (Lienar)')
+        ax.set_title(title + " R^2: " + str(score_test) +' Reconstructed Train Disp vs. True Train Disp (Log)')
         plot_sourceX_Y_confusion(test_pred_x, disp_test, log_z=False, ax=ax)
         fig1.show()
 
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + ' Reconstructed Test Disp vs. True Test Disp (Log)')
+        ax.set_title(title + " R^2: " + str(score_test) + ' Reconstructed Test Disp vs. True Test Disp (Log)')
         plot_sourceX_Y_confusion(test_pred_x, disp_test, log_xy=False, ax=ax)
         fig1.show()
 
