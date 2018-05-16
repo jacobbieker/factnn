@@ -95,7 +95,7 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
         prediction,
         bins=[100, 100],
         range=[limits, limits],
-        norm=LogNorm() if log_xy is False else None
+        norm=LogNorm() if log_z is True else None
     )
     ax.set_aspect(1)
     ax.figure.colorbar(img, ax=ax)
@@ -130,7 +130,7 @@ def euclidean_distance(x1, y1, x2, y2):
 
 path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_DELTA5000_Images.h5"
-path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_SOURCEXYALLSTDDEV_Images.h5"
+path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_Gamma_BothSource_Images.h5"
 #path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
 
 #mrk501 = read_h5py(path_mrk501, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
@@ -147,17 +147,18 @@ def metaYielder():
 
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
-    images = f['Image'][0:-1]
-    source_y = f['Source_X'][0:-1]
+    images = f['Image'][0:50000]
+    #source_az = f['Source_Az'][0:-1]
     #point_x = f['Az_deg'][0:-1]
     #point_y = f['Zd_deg'][0:-1]
     #source_x = np.deg2rad(source_x)
     #point_x = np.deg2rad(point_x)
-    source_x = f['Source_Y'][0:-1]
-    cog_x = f['COG_X'][0:-1]
-    cog_y = f['COG_Y'][0:-1]
+    #source_zd = f['Source_Zd'][0:-1]
+    #cog_x = f['COG_X'][0:-1]
+    #cog_y = f['COG_Y'][0:-1]
     #delta = f['Delta'][0:-1]
-    #energy = f['Energy'][0:-1]
+    energy = f['Theta'][0:50000]
+    energy = 100000 * np.abs(energy)
     #images_source_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_az = (-1.*images_source_az + 540) % 360
@@ -169,10 +170,10 @@ with h5py.File(path_mc_images, 'r') as f:
     #    zd_pointing=point_y,
     #)
 
-    true_disp = euclidean_distance(
-        source_x, source_y,
-        cog_x, cog_y
-    )
+    #true_disp = euclidean_distance(
+    #    source_x, source_y,
+    #    cog_x, cog_y
+    #)
     #true_delta = np.arctan2(
     #    cog_y - source_y,
     #    cog_x - source_x,
@@ -188,12 +189,12 @@ with h5py.File(path_mc_images, 'r') as f:
     #print(np.max(image_one))
     y_train_images = images #np.asarray(transformed_images)
     images_test = images[-int(0.8*len(images)):]#int(0.01*len(images))]
-    disp_test = true_disp[-int(0.8*len(images)):]
+    disp_test = energy[-int(0.8*len(images)):]
     #sign_test = true_sign[-int(0.5*len(images)):]
     #source_x_test = source_x[-int(0.5*len(source_x)):]#int(0.01*len(source_x))]
     #source_y_test = source_y[-int(0.5*len(source_y)):]#int(0.01*len(source_y))]
     images = images[0:int(0.8*len(images))]#int(0.01*len(images))]
-    disp_train = true_disp[0:int(0.8*len(true_disp))]
+    disp_train = energy[0:int(0.8*len(energy))]
     #sign_train = true_sign[0:int(0.5*len(true_sign))]
     #source_x = source_x[0:int(0.5*len(source_x))]#int(0.01*len(source_x))]
     #source_y = source_y[0:int(0.5*len(source_y))]#int(0.01*len(source_y))]
@@ -204,8 +205,8 @@ with h5py.File(path_mc_images, 'r') as f:
     # Now convert to this camera's coordinates
     y = images#[1000:-1]#np.rot90(images, axis=2)
     y_train = images
-    title = "SeparateOutputs Disp DENSE"
-    desc = "SeparateOutputs Disp DENSE"
+    title = "THETACONV"
+    desc = "THETACONV"
     print(images.shape)
     #print(source_x[0])
     #print(source_y[0])
@@ -218,84 +219,103 @@ with h5py.File(path_mc_images, 'r') as f:
     print(np.mean(y_label))
     print(np.median(y_label))
     print("X Values:")
-    print(np.min(x_label))
-    print(np.max(x_label))
-    print(np.mean(x_label))
-    print(np.median(x_label))
+    #print(np.min(x_label))
+    #print(np.max(x_label))
+    #print(np.mean(x_label))
+    #print(np.median(x_label))
     print(y_label.shape)
     y_label = y_label
     print("Finished getting data")
 
 
-
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     #try:
     model_base = ""# base_dir +"/" # + "/Models/FinalSourceXY/test/test/"
-    model_name = "MC_OneOutputPoolDISPDENSE" + "_drop_" + str(dropout_layer)
+    model_name = "MC_THETACONV" + "_drop_" + str(dropout_layer)
     if not os.path.isfile(model_base + model_name + ".csv"):
         csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
         #reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.01, patience=70, min_lr=0.001)
-        early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=20, verbose=0, mode='auto')
+        early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=9, verbose=0, mode='auto')
 
         model_checkpointy = keras.callbacks.ModelCheckpoint(model_base + "Y_" + desc + model_name + ".h5", monitor='val_loss', verbose=0,
                                                             save_best_only=True, save_weights_only=False, mode='auto', period=1)
         # Make the model
         inp = keras.layers.Input((75,75,1))
-        y = Flatten()(inp)
-        y = Dense(1024, activation='relu')(y)
-        y = Dropout(0.1)(y)
-        y = Dense(512, activation='relu')(y)
-        y = Dropout(0.1)(y)
-        y = Dense(256, activation='relu')(y)
-        y = Dropout(0.1)(y)
-        #x_out = Dense(2, name="x_out", activation='softmax')(x)
-        y_out = Dense(1, name="y_out", activation='linear')(y)
+        # Block - conv
+        y = Conv2D(32, 8, 8, border_mode='same', subsample=[4,4], name='yConv1')(inp)
+        y = ELU()(y)
+        y = Conv2D(64, 5, 5, border_mode='same', subsample=[2,2], name='yConv2')(y)
+        y = ELU()(y)
+        y = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], name='yConv3')(y)
+        y = ELU()(y)
+        y = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], name='yConv7')(y)
+        y = ELU()(y)
 
+        # Block - flatten
+        y = Flatten()(y)
+        # Block - fully connected
         y_out = Dense(1, name="y_out", activation='linear')(y)
-
-        #merged_out = keras.layers.merge([x, y])
-        #combined_out = Dense(2, name="combined_out")(merged_out)
 
         model = keras.models.Model(inp, y_out)
         # Block - output
         model.summary()
-        adam = keras.optimizers.adam(lr=0.0001)
+        adam = keras.optimizers.adam(lr=0.001)
         model.compile(optimizer=adam, loss='mse', metrics=['mae'])
+        #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
+        #                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
+        #K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=8, inter_op_parallelism_threads=8)))
         model.fit(x=y_train, y=y_label, batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, model_checkpointy, csv_logger])
 
         predictions = model.predict(y_train, batch_size=64)
         test_pred = model.predict(images_test_y, batch_size=64)
-        predictions_x = predictions.reshape(-1,)
-        test_pred_x = test_pred.reshape(-1,)
+        #print(roc_auc_score(x_label, predictions))
+        # print(roc_auc_score(sign_test, test_pred))
+        predictions_x = predictions.reshape(-1,)/100000
+        predictions_y = predictions.reshape(-1,)/100000
+        test_pred_x = test_pred.reshape(-1,)/100000
 
-        score = r2_score(y_label, predictions_x)
-        score_test = r2_score(disp_test, test_pred_x)
+        #Loss Score so can tell which one it is
+        score = r2_score(y_label/100000, predictions_x)
+        score_test = r2_score(disp_test/100000, test_pred_x)
+
+        fig1 = plt.figure()
+        ax = fig1.add_subplot(1, 1, 1)
+        ax.set_title(title + 'R^2: ' + str(score) + ' Reconstructed Train Theta vs. True Theta')
+        plot_sourceX_Y_confusion(predictions_y, y_label/100000, log_xy=False, ax=ax)
+        fig1.show()
+
+        #fig1 = plt.figure()
+        #ax = fig1.add_subplot(1, 1, 1)
+        #ax.set_title(title + ' Reconstructed Test X vs. True X (Act)')
+        #plot_sourceX_Y_confusion(test_pred_x, source_x_test, ax=ax)
+        #fig1.show()
 
 
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + " R^2: " + str(score) + ' Reconstructed Train Disp vs. True Train Disp')
-        plot_sourceX_Y_confusion(predictions_x, y_label, ax=ax)
+        ax.set_title(title + 'R^2: ' + str(score_test) + ' Reconstructed Test Theta vs. Test True Theta')
+        plot_sourceX_Y_confusion(test_pred_x, disp_test/100000, log_xy=False, ax=ax)
         fig1.show()
 
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + " R^2: " + str(score) +' Reconstructed Train Disp vs. True Train Disp (Log)')
-        plot_sourceX_Y_confusion(predictions_x, y_label, log_xy=False, ax=ax)
+        ax.set_title(title + 'R^2: ' + str(score) + ' Reconstructed Train Theta vs. True Theta')
+        plot_sourceX_Y_confusion(predictions_y, y_label/100000, log_z=False, log_xy=False, ax=ax)
         fig1.show()
+
+        #fig1 = plt.figure()
+        #ax = fig1.add_subplot(1, 1, 1)
+        #ax.set_title(title + ' Reconstructed Test X vs. True X (Act)')
+        #plot_sourceX_Y_confusion(test_pred_x, source_x_test, ax=ax)
+        #fig1.show()
+
 
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + " R^2: " + str(score_test) + ' Reconstructed Test Disp vs. True Test Disp (Lienar)')
-        plot_sourceX_Y_confusion(test_pred_x, disp_test, log_z=False, ax=ax)
+        ax.set_title(title + 'R^2: ' + str(score_test) + ' Reconstructed Test Energy vs. Test True Energy')
+        plot_sourceX_Y_confusion(test_pred_x, disp_test/100000, log_z=False, log_xy=False, ax=ax)
         fig1.show()
-
-        fig1 = plt.figure()
-        ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + " R^2: " + str(score_test) + ' Reconstructed Test Disp vs. True Test Disp (Log)')
-        plot_sourceX_Y_confusion(test_pred_x, disp_test, log_xy=False, ax=ax)
-        fig1.show()
-
+        #exit(1)
         K.clear_session()
         tf.reset_default_graph()
 
