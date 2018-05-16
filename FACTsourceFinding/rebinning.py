@@ -103,7 +103,7 @@ hexagon = MultiPoint([p1, p2, p3, p4, p5, p6]).convex_hull
 
 
 square_start = 186
-square_size = 2
+square_size = 5
 square = Polygon([(-square_start,square_start), (-square_start+square_size,square_start),
                   (-square_start+square_size,square_start-square_size), (-square_start, square_start-square_size),
                   (-square_start,square_start)])
@@ -148,7 +148,9 @@ ax.set_ylim(top=186, bottom=-186)
 ax.set_xlim(left=-186, right=186)
 plt.show()
 '''
-#factplot.camera(df['CHID'])
+factplot.camera(df['CHID'])
+plt.savefig("FactDefault.png", transparent=True, dpi=300)
+plt.clf()
 #plt.show()
 
 # Now take squares and build grid over the whole thing
@@ -203,6 +205,6 @@ for index in range(1440):
 plt.clf()
 plt.imshow(np.fliplr(np.rot90(test_rebin, 3)), cmap="Greys")
 #plt.title("Testing Rebin at " + str(square_size))
-plt.show()
-#plt.savefig("Rebin_size_5.png", dpi=300)
+#plt.show()
+plt.savefig("Rebin_size_5.png", transparent=True, dpi=300)
 # HAVE IT!!!

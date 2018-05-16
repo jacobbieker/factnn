@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from keras import backend as K
 import h5py
@@ -34,8 +34,8 @@ num_labels = 2
 frac_per_epoch = 1
 num_epochs = 1000*frac_per_epoch
 
-path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_Gamma_BothSource_Images.h5"
-path_proton_images = "/run/media/jacob/SSD/Rebinned_5_MC_Proton_BothTracking_Images.h5"
+path_mc_images = base_dir + "/Rebinned_5_MC_Gamma_BothSource_Images.h5"
+path_proton_images = base_dir + "/Rebinned_5_MC_Proton_BothTracking_Images.h5"
 np.random.seed(0)
 
 def metaYielder():
@@ -138,48 +138,44 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model = Sequential()
 
             # Base Conv layer
-            model.add(Conv2D(conv_neurons, kernel_size=(6,6), strides=(2, 2),
+            model.add(Conv2D(conv_neurons, kernel_size=(3,3), strides=(2, 2),
                              padding='same',
                              input_shape=(75, 75, 1)))
             #model.add(LeakyReLU())
             model.add(Activation('relu'))
 
-            model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
+            #model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
             model.add(Dropout(dropout_layer))
 
             model.add(
-                Conv2D(2*conv_neurons, (3,3), strides=(1, 1),
+                Conv2D(2*conv_neurons, (3,3), strides=(2, 2),
                        padding='same'))
-            #model.add(BatchNormalization())
-            #model.add(LeakyReLU())
             model.add(Activation('relu'))
-            model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
+            #model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
             model.add(Dropout(dropout_layer))
-            '''
             model.add(
-                Conv2D(128, (3,3), strides=(1, 1),
+                Conv2D(4*conv_neurons, (3,3), strides=(2, 2),
                        padding='same'))
             #model.add(BatchNormalization())
             model.add(Activation('relu'))
-            model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
+            #model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
             
             #model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-            model.add(Dropout(0.25))
-
-            model.add(
-                Conv2D(64, patch_size, strides=(1, 1),
-                       padding='same'))
-            #model.add(BatchNormalization())
-            model.add(Activation('relu'))
-
-            model.add(
-                Conv2D(32, patch_size, strides=(1, 1),
-                       padding='same'))
-            #model.add(BatchNormalization())
-            model.add(Activation('relu'))
-            model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
             model.add(Dropout(dropout_layer))
-            '''
+
+            #model.add(
+           #     Conv2D(64, patch_size, strides=(1, 1),
+           #            padding='same'))
+            #model.add(BatchNormalization())
+           # model.add(Activation('relu'))
+
+            model.add(
+                Conv2D(128, patch_size, strides=(2, 2),
+                       padding='same'))
+            #model.add(BatchNormalization())
+            model.add(Activation('relu'))
+            #model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+            model.add(Dropout(dropout_layer))
             model.add(Flatten())
 
             # Now do the dense layers
@@ -189,11 +185,11 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             #    if dropout_layer > 0.0:
             #        model.add(Dropout(dropout_layer))
             model.add(Dense(512, activation='relu'))
-            model.add(Dropout(0.3))
+            model.add(Dropout(dropout_layer/1.2))
             model.add(Dense(256, activation='relu'))
-            model.add(Dropout(0.3))
+            model.add(Dropout(dropout_layer/1.2))
             model.add(Dense(128, activation='relu'))
-            model.add(Dropout(0.3))
+            model.add(Dropout(dropout_layer/1.2))
 
             # Final Dense layer
             model.add(Dense(num_labels, activation='softmax'))
