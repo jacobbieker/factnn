@@ -39,8 +39,8 @@ path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/sim/gamma/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_gamma_SOURCEXY100000STDDEV_Images.h5"
-path_to_diffuse = "/run/media/jacob/WDRed8Tb1/open_crab_sample_analysis/dl2/gamma.hdf5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_gamma_SOURCEXYREALALLSTDDEV_Images.h5"
+path_to_diffuse = "/run/media/jacob/WDRed8Tb1/dl2_theta/gamma_diffuse_precuts.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 
 diffuse_df = read_h5py(path_to_diffuse, key="events", columns=["event_num", "@source", "source_position", "cog_x", "cog_y", "delta",
@@ -48,7 +48,7 @@ diffuse_df = read_h5py(path_to_diffuse, key="events", columns=["event_num", "@so
                                                                "az_tracking", "zd_tracking",
                                                                "corsika_evt_header_total_energy", "corsika_evt_header_az"])
 
-diffuse_df = diffuse_df[0::10]
+diffuse_df = diffuse_df#[0::10]
 #diffuse_df = diffuse_df[(diffuse_df["@source"].str.contains("uwe")) | (diffuse_df['@source'].str.contains("yoda"))]
 print(diffuse_df)
 run_ids_long = np.array(diffuse_df['@source'].values)
@@ -60,7 +60,7 @@ source_y = diffuse_df['source_position_0'].values
 
 run_ids = []
 for id in run_ids_long:
-    tmp = id.split("_12/")[1]
+    tmp = id.split("/")[12]
     #print(tmp)
     tmp = tmp.split("/")[0]
     run_ids.append(int(tmp))
@@ -90,7 +90,7 @@ def getMetadata(path_folder):
     '''
     run_ids = []
     for id in run_ids_long:
-        tmp = id.split("_12/")[1]
+        tmp = id.split("/")[12]
         tmp = tmp.split("/")[0]
         run_ids.append(tmp)
     # Iterate over every file in the subdirs and check if it has the right file extension

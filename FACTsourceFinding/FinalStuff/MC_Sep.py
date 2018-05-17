@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from keras import backend as K
 import h5py
@@ -34,8 +34,8 @@ num_labels = 2
 frac_per_epoch = 1
 num_epochs = 1000*frac_per_epoch
 
-path_mc_images = base_dir + "/Rebinned_5_MC_Gamma_BothSource_Images.h5"
-path_proton_images = base_dir + "/Rebinned_5_MC_Proton_BothTracking_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_gamma_SOURCEXYALLSTDDEV_Images.h5"
+path_proton_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_STDDEV_Images.h5"
 np.random.seed(0)
 
 def metaYielder():
@@ -63,15 +63,15 @@ with h5py.File(path_mc_images, 'r') as f:
         gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
         # Get some truth data for now, just use Crab images
         items = len(f2["Image"])
-        images = f['Image'][0:100000]
-        images_false = f2['Image'][0:100000]
+        images = f['Image'][0:10000]
+        images_false = f2['Image'][0:10000]
         temp_train = []
         temp_test = []
         tmp_test_label = []
         tmp_train_label = []
         for batcher in range(len(images_false)):
             # Mix the datasets
-            if batcher < 0.8*len(images):
+            if batcher < 0.8*len(images_false):
                 temp_train.append(images[batcher])
                 temp_train.append(images_false[batcher])
                 tmp_train_label.append([0,1])
@@ -86,10 +86,10 @@ with h5py.File(path_mc_images, 'r') as f:
         train_labels = np.asarray(tmp_train_label)
         test_dataset = np.asarray(temp_test)
         validation_dataset = np.asarray(temp_train)
-        del tmp_test_label
-        del tmp_train_label
-        del temp_test
-        del temp_train
+        #del tmp_test_label
+        #del tmp_train_label
+        #del temp_test
+        #del temp_train
         #validating_dataset = np.concatenate([images, images_false], axis=0)
         #print(validating_dataset.shape)
         #labels = np.array([True] * (len(images)) + [False] * len(images_false))
@@ -117,7 +117,7 @@ from sklearn.metrics import roc_auc_score
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch):
     #try:
         model_base = "" #base_dir + "/Models/RealFinalSep/"
-        model_name = "MC_SepNoGenNoShuffle_b" + str(batch_size) + "_p_" + str(
+        model_name = "MC_SepSTDDEV_b" + str(batch_size) + "_p_" + str(
             patch_size) + "_drop_" + str(dropout_layer) + "_numDense_" + str(num_dense) \
                      + "_conv_" + str(num_conv) + "_pool_" + str(num_pooling_layer) + \
                      "_denseN_" + str(dense_neuron) + "_convN_" + str(conv_neurons)
@@ -138,7 +138,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model = Sequential()
 
             # Base Conv layer
-            model.add(Conv2D(conv_neurons, kernel_size=(3,3), strides=(2, 2),
+            model.add(Conv2D(64, kernel_size=(3,3), strides=(2, 2),
                              padding='same',
                              input_shape=(75, 75, 1)))
             #model.add(LeakyReLU())
@@ -148,13 +148,13 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model.add(Dropout(dropout_layer))
 
             model.add(
-                Conv2D(2*conv_neurons, (3,3), strides=(2, 2),
+                Conv2D(128, (3,3), strides=(2, 2),
                        padding='same'))
             model.add(Activation('relu'))
             #model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
             model.add(Dropout(dropout_layer))
             model.add(
-                Conv2D(4*conv_neurons, (3,3), strides=(2, 2),
+                Conv2D(256, (3,3), strides=(2, 2),
                        padding='same'))
             #model.add(BatchNormalization())
             model.add(Activation('relu'))
@@ -184,12 +184,13 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             #model.add(BatchNormalization())
             #    if dropout_layer > 0.0:
             #        model.add(Dropout(dropout_layer))
-            model.add(Dense(512, activation='relu'))
-            model.add(Dropout(dropout_layer/1.2))
-            model.add(Dense(256, activation='relu'))
-            model.add(Dropout(dropout_layer/1.2))
-            model.add(Dense(128, activation='relu'))
-            model.add(Dropout(dropout_layer/1.2))
+            for i in range(1):
+                model.add(Dense(512, activation='relu'))
+                model.add(Dropout(dropout_layer/2))
+                model.add(Dense(256, activation='relu'))
+                model.add(Dropout(dropout_layer/2))
+                model.add(Dense(128, activation='relu'))
+                model.add(Dropout(dropout_layer/2))
 
             # Final Dense layer
             model.add(Dense(num_labels, activation='softmax'))
@@ -204,9 +205,9 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             #                    callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
             model.fit(x=y, y=y_label, batch_size=batch_size, epochs=num_epochs, verbose=2, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
             predictions = model.predict(y, batch_size=64)
-            test_pred = model.predict(test_dataset, batch_size=64)
+            #test_pred = model.predict(test_dataset, batch_size=64)
             print(roc_auc_score(y_label, predictions))
-            print(roc_auc_score(test_labels, test_pred))
+            #print(roc_auc_score(test_labels, test_pred))
             K.clear_session()
             tf.reset_default_graph()
 

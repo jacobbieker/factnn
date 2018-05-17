@@ -384,23 +384,40 @@ def calc_roc_gammaHad(path_image, proton_image, path_keras_model):
             # stream the data in to predict on it, safe region for all is the last 40%, except for the latest sep models
             items = len(f['Image'])
             items_proton = len(f2['Image'])
-            test_images = f['Image'][int(items*.8):-1]
-            test_images_false = f2['Image'][-int(items*.8):-1]
+            test_images = f['Image'][int(items*.8):]
+            test_images_false = f2['Image'][-int(items*.8):]
             # Since the mc AzZd ones are in radians, need these to be to, could convert back if need be later
             validating_dataset = np.concatenate([test_images, test_images_false], axis=0)
             labels = np.array([True] * (len(test_images)) + [False] * len(test_images_false))
             validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
             print(labels.shape)
 
-            predictions = model.predict_proba(validating_dataset, batch_size=64)
+            predictions = model.predict_classes(validating_dataset, batch_size=64)
             print(predictions.shape)
+            print(predictions)
+            from sklearn.preprocessing import label_binarize
+            from itertools import cycle
+            n_classes = 1
+            predictions = label_binarize(predictions, [0,1]) #predictions.reshape(-1,1)
+            validation_labels = label_binarize(validation_labels, [0,1])
+            labels = labels.reshape(-1,1)
+            y_test = labels
+            y_score = predictions
+            print(labels.shape)
+            print(y_score.shape)
 
-            # get ROC and AUC score
-            best_auc_sep.append(path_keras_model)
-            best_auc_sep.append(roc_auc_score(validation_labels, predictions))
-            print(roc_auc_score(validation_labels, predictions))
+            fpr_keras, tpr_keras, thresholds_keras = roc_curve(y_test, y_score)
+            plt.figure(1)
+            plt.plot([0, 1], [0, 1], 'k--')
+            plt.plot(fpr_keras, tpr_keras)
+            plt.xlabel('False positive rate')
+            plt.ylabel('True positive rate')
+            plt.title('ROC curve AUC: {:.4f}'.format(roc_auc_score(y_test, y_score)))
+            plt.show()
+
             with open(sep_pickle, "wb") as f:
                 pickle.dump([best_auc_sep, best_auc_sep_auc], f)
+
 
 
     # TODO Change this to work with my simulated ones, this uses both hadron and gamma truths
@@ -705,7 +722,7 @@ import os
 #calc_roc_azzd(path_diffuse_images, "/run/media/jacob/WDRed8Tb1/Models/Disp/0.036_MC_ZdAz_b54_p_(5, 5)_drop_0.571_conv_9_pool_1_denseN_349_numDense_2_convN_10_opt_adam.h5")
 #calc_roc_thetaphi(path_diffuse_images, "/run/media/jacob/WDRed8Tb1/Models/Disp/0.003_MC_ThetaPhiCustomError_b46_p_(2, 2)_drop_0.956_conv_5_pool_1_denseN_372_numDense_0_convN_241_opt_adam.h5")
 #calc_roc_gammaHad(path_mc_images, path_proton_images, "/run/media/jacob/WDRed8Tb1/Models/Sep/0.172_MC_SepAll_b20_p_(3, 3)_drop_0.0_numDense_2_conv_5_pool_1_denseN_112_convN_37.h5")
-sep_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(sep_models)
+sep_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/testing/")
              for file in fileName if '.h5' in file]
 
 energy_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(energy_models)
@@ -714,10 +731,20 @@ energy_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os
 source_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(xy_models)
              for file in fileName if '.h5' in file]
 
-disp_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/test/")
+disp_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/testing/")
                 for file in fileName if '.h5' in file]
 
 
+for path in sep_paths:
+    print(path)
+    #if path not in best_auc_sep:
+        #try:
+    calc_roc_gammaHad(path_mc_images, path_proton_images, path)
+        #except Exception as e:
+        #    print(e)
+        #    pass
+
+exit()
 #for path in disp_paths:
 #    try:
 #        calc_roc_thetaphi(path_mc_images, path)
@@ -738,14 +765,6 @@ if os.path.isfile(sep_pickle):
         best_auc_sep = tmp[0]
         print(best_auc_sep)
         best_auc_sep_auc = tmp[0]
-for path in sep_paths:
-    print(path)
-    if path not in best_auc_sep:
-        try:
-            calc_roc_gammaHad(path_mc_images, path_proton_images, path)
-        except Exception as e:
-            print(e)
-            pass
 
 #
 #
