@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -147,13 +147,14 @@ def metaYielder():
 
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
-    images = f['Image'][0:-1]
-    source_y = f['Source_Y'][0:-1]
+    num_used = 10000
+    images = f['Image'][0:num_used]
+    source_y = f['Source_X'][0:num_used]
     #point_x = f['Az_deg'][0:-1]
     #point_y = f['Zd_deg'][0:-1]
     #source_x = np.deg2rad(source_x)
     #point_x = np.deg2rad(point_x)
-    source_x = f['Source_X'][0:-1]
+    source_x = f['Source_Y'][0:num_used]
     #cog_x = f['COG_X'][0:-1]
     #cog_y = f['COG_Y'][0:-1]
     #delta = f['Delta'][0:-1]
@@ -204,12 +205,12 @@ with h5py.File(path_mc_images, 'r') as f:
     # Now convert to this camera's coordinates
     y = images#[1000:-1]#np.rot90(images, axis=2)
     y_train = images
-    title = "SingleOutputSOURCE"
+    title = "SingleOutput SOURCE"
     desc = "SingleOutput SOURCE"
     print(images.shape)
     #print(source_x[0])
     #print(source_y[0])
-    y_label = np.concatenate([source_x,source_y], axis=1)#[1000:-1]
+    y_label = np.column_stack((source_x,source_y))#[1000:-1]
     print(y_label[0])
     print("Y values: ")
     print(np.min(y_label))

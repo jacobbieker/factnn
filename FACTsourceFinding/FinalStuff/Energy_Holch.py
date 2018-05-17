@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -112,7 +112,7 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
 
 batch_sizes = [16, 64, 256]
 patch_sizes = [(2, 2), (3, 3), (5, 5), (4, 4)]
-dropout_layers = [0.1, 0.6]
+dropout_layers = [0.01, 0.6]
 num_conv_layers = [0, 6]
 num_dense_layers = [0, 6]
 num_conv_neurons = [8,128]
@@ -147,7 +147,7 @@ def metaYielder():
 
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
-    images = f['Image'][0:100000]
+    images = f['Image'][0:-1]
     #source_az = f['Source_Az'][0:-1]
     #point_x = f['Az_deg'][0:-1]
     #point_y = f['Zd_deg'][0:-1]
@@ -157,7 +157,7 @@ with h5py.File(path_mc_images, 'r') as f:
     #cog_x = f['COG_X'][0:-1]
     #cog_y = f['COG_Y'][0:-1]
     #delta = f['Delta'][0:-1]
-    energy = f['Energy'][0:100000]
+    energy = f['Energy'][0:-1]
     #images_source_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_az = (-1.*images_source_az + 540) % 360
@@ -245,12 +245,15 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         y = Activation('relu')(y)
         y = Conv2D(64, 5, 5, border_mode='same', subsample=[2,2], name='yConv2')(y)
         y = Activation('relu')(y)
+        y = Dropout(dropout_layer)(y)
         y = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], name='yConv3')(y)
         y = Activation('relu')(y)
         y = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], name='yConv7')(y)
         y = Activation('relu')(y)
+        y = Dropout(dropout_layer)(y)
         y = Conv2D(512, 3, 3, border_mode='same', subsample=[2,2], name='yConv9')(y)
         y = Activation('relu')(y)
+        y = Dropout(dropout_layer)(y)
         # Block - flatten
         y = Flatten()(y)
         # Block - fully connected

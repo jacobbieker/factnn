@@ -19,9 +19,9 @@ from sklearn import metrics
 
 
 rf = read_h5py("/run/media/jacob/WDRed8Tb1/dl2_theta/separator_performance.hdf5", key='data')
-
-labels = rf['label']
-predictions = rf['label_prediction']
+rf = read_h5py("/run/media/jacob/WDRed8Tb1/dl2_theta/cv_disp.hdf5", key='data')
+labels = rf['sign']
+predictions = rf['sign_prediction']
 
 labels = labels.reshape(-1,1)
 y_test = labels

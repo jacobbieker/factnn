@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -112,10 +112,10 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
 
 batch_sizes = [16, 64, 256]
 patch_sizes = [(2, 2), (3, 3), (5, 5), (4, 4)]
-dropout_layers = [0.1, 0.6]
+dropout_layers = [0.01, 0.7]
 num_conv_layers = [0, 6]
 num_dense_layers = [0, 6]
-num_conv_neurons = [8,128]
+num_conv_neurons = [8,64]
 num_dense_neuron = [8,256]
 num_pooling_layers = [0, 2]
 num_runs = 500
@@ -143,21 +143,19 @@ def metaYielder():
     return gamma_anteil, gamma_count
 
 
-
-
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
-    num_used = 10000
-    images = f['Image'][0:num_used]
-    source_y = f['Source_X'][0:num_used]
+    num_used = 0
+    images = f['Image'][num_used:]
+    source_y = f['Source_X'][num_used:]
     #point_x = f['Az_deg'][0:-1]
     #point_y = f['Zd_deg'][0:-1]
     #source_x = np.deg2rad(source_x)
     #point_x = np.deg2rad(point_x)
-    source_x = f['Source_Y'][0:num_used]
-    cog_x = f['COG_X'][0:num_used]
-    cog_y = f['COG_Y'][0:num_used]
-    delta = f['Delta'][0:num_used]
+    source_x = f['Source_Y'][num_used:]
+    cog_x = f['COG_X'][num_used:]
+    cog_y = f['COG_Y'][num_used:]
+    delta = f['Delta'][num_used:]
     #energy = f['Energy'][0:-1]
     #images_source_az = f['Az_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
     #images_source_zd = f['Zd_deg'][-int(np.floor((gamma_anteil*number_of_testing))):-1]
@@ -186,6 +184,7 @@ with h5py.File(path_mc_images, 'r') as f:
         else:
             temp_sign.append([0,1])
     true_sign = np.asarray(temp_sign)
+    del true_disp
     #rng_state = np.random.get_state()
     #np.random.shuffle(images)
     #np.random.set_state(rng_state)
@@ -235,7 +234,6 @@ with h5py.File(path_mc_images, 'r') as f:
     print("Finished getting data")
 
 
-
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     try:
         model_base = ""# base_dir +"/" # + "/Models/FinalSourceXY/test/test/"
@@ -251,14 +249,19 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             inp = keras.layers.Input((75,75,1))
             y = Conv2D(conv_neurons, 8, 8, border_mode='same', subsample=[2,2], name='yConv1')(inp)
             y = Activation('relu')(y)
+            y = Dropout(dropout_layer)(y)
             y = Conv2D(2*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], name='yConv2')(y)
             y = Activation('relu')(y)
+            y = Dropout(dropout_layer)(y)
             y = Conv2D(4*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], name='yConv3')(y)
             y = Activation('relu')(y)
+            y = Dropout(dropout_layer)(y)
             y = Conv2D(8*conv_neurons, 5, 5, border_mode='same', subsample=[2,2], name='yConv7')(y)
             y = Activation('relu')(y)
+            y = Dropout(dropout_layer)(y)
             y = Conv2D(16*conv_neurons, 3, 3, border_mode='same', subsample=[2,2], name='yConv9')(y)
             y = Activation('relu')(y)
+            y = Dropout(dropout_layer)(y)
             # Block - flatten
             y = Flatten()(y)
 
