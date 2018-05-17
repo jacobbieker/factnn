@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -130,7 +130,7 @@ def euclidean_distance(x1, y1, x2, y2):
 
 path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_BothSource_Images.h5"
 path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_DELTA5000_Images.h5"
-path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_SOURCEXYALLSTDDEV_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_gamma_SOURCEXYALLSTDDEV_Images.h5"
 #path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
 
 #mrk501 = read_h5py(path_mrk501, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
