@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import pickle
 from keras import backend as K
@@ -734,15 +734,19 @@ source_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os
 disp_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/testing/")
                 for file in fileName if '.h5' in file]
 
+calc_roc_gammaHad("/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_gamma_SOURCEXYALLSTDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_STDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/SOURCE_MC_SepSTDDEV_b143_p_(5, 5)_drop_0.22_numDense_3_conv_3_pool_1_denseN_219_convN_109.h5")
 
+exit()
 for path in sep_paths:
     print(path)
-    #if path not in best_auc_sep:
-        #try:
-    calc_roc_gammaHad(path_mc_images, path_proton_images, path)
-        #except Exception as e:
-        #    print(e)
-        #    pass
+    if path not in best_auc_sep:
+        try:
+            calc_roc_gammaHad(path_mc_images, path_proton_images, path)
+        except Exception as e:
+            print(e)
+            pass
+sep_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/")
+             for file in fileName if '.h5' in file]
 
 exit()
 #for path in disp_paths:

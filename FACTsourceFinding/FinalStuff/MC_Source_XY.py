@@ -147,13 +147,14 @@ def metaYielder():
 
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
-    images = f['Image'][0:-1]
-    source_y = f['Source_Y'][0:-1]
+    num_used = 10000
+    images = f['Image'][0:num_used]
+    source_y = f['Source_X'][0:num_used]
     #point_x = f['Az_deg'][0:-1]
     #point_y = f['Zd_deg'][0:-1]
     #source_x = np.deg2rad(source_x)
     #point_x = np.deg2rad(point_x)
-    source_x = f['Source_X'][0:-1]
+    source_x = f['Source_Y'][0:num_used]
     #cog_x = f['COG_X'][0:-1]
     #cog_y = f['COG_Y'][0:-1]
     #delta = f['Delta'][0:-1]

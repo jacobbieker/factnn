@@ -28,7 +28,7 @@ path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/obs/Crab/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_5_Images.h5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_STDDEV50000_Images.h5"
 path_to_diffuse = "/run/media/jacob/WDRed8Tb1/dl2_theta/crab_precuts.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 path_store_runlist = "Crab1314_std_analysis.p"
@@ -37,7 +37,7 @@ print("Read file")
 diffuse_df = read_h5py(path_to_diffuse, key="events", columns=["event_num", "run_id", "night",
                                                                "az_source_calc", "zd_source_calc", "source_position",
                                                                "unix_time_utc", "az_tracking", "zd_tracking"])
-
+diffuse_df = diffuse_df[0:50000]
 
 def getMetadata(path_folder):
     '''
@@ -103,6 +103,9 @@ def batchYielder(paths):
                     source_pos_y = df_event['source_position_0'].values[0]
                     energy = df_event['unix_time_utc_0'].values[0] * 1e6 + df_event['unix_time_utc_1'].values[0]
                     event_photons = event.photon_stream.list_of_lists
+                    for index in range(1440):
+                        event_photons[index] = len(event_photons[index])
+                    event_photons = (event_photons - np.mean(event_photons)) / np.std(event_photons)
                     zd_deg = event.zd
                     az_deg = event.az
                     sky_source_az = df_event['az_source_calc'].values[0]
@@ -115,11 +118,12 @@ def batchYielder(paths):
                     for index in range(1440):
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
-                            input_matrix[coords[0]][coords[1]] += element[1]*len(event_photons[index])
+                            input_matrix[coords[0]][coords[1]] += element[1]*event_photons[index]
 
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x, source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1])
             yield data
-        except:
+        except Exception as e:
+            print(e)
             pass
 
 

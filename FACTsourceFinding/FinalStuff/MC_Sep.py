@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from keras import backend as K
 import h5py
@@ -13,6 +13,7 @@ import numpy as np
 from keras.models import Sequential
 import tensorflow as tf
 from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, LeakyReLU, Reshape, BatchNormalization, Conv2D, MaxPooling2D
+import fact.plotting as factplot
 
 architecture = 'manjaro'
 
@@ -57,14 +58,14 @@ def metaYielder():
 
     return gamma_anteil, hadron_anteil, gamma_count, hadron_count
 
-
+import matplotlib.pyplot as plt
 with h5py.File(path_mc_images, 'r') as f:
     with h5py.File(path_proton_images, 'r') as f2:
         gamma_anteil, hadron_anteil, gamma_count, hadron_count = metaYielder()
         # Get some truth data for now, just use Crab images
         items = len(f2["Image"])
-        images = f['Image'][0:10000]
-        images_false = f2['Image'][0:10000]
+        images = f['Image'][0:130000]
+        images_false = f2['Image'][0:130000]
         temp_train = []
         temp_test = []
         tmp_test_label = []
@@ -138,27 +139,27 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model = Sequential()
 
             # Base Conv layer
-            model.add(Conv2D(64, kernel_size=(3,3), strides=(2, 2),
+            model.add(Conv2D(64, kernel_size=(3,3), strides=(1, 1),
                              padding='same',
                              input_shape=(75, 75, 1)))
             #model.add(LeakyReLU())
             model.add(Activation('relu'))
 
-            #model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
+            model.add(keras.layers.MaxPooling2D(pool_size=(2, 2), padding='same'))
             model.add(Dropout(dropout_layer))
 
             model.add(
-                Conv2D(128, (3,3), strides=(2, 2),
+                Conv2D(128, (3,3), strides=(1, 1),
                        padding='same'))
             model.add(Activation('relu'))
-            #model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
+            model.add(keras.layers.MaxPooling2D(pool_size=(2, 2), padding='same'))
             model.add(Dropout(dropout_layer))
             model.add(
-                Conv2D(256, (3,3), strides=(2, 2),
+                Conv2D(256, (3,3), strides=(1, 1),
                        padding='same'))
             #model.add(BatchNormalization())
             model.add(Activation('relu'))
-            #model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
+            model.add(keras.layers.MaxPooling2D(pool_size=(2, 2), padding='same'))
             
             #model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
             model.add(Dropout(dropout_layer))
@@ -169,13 +170,13 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             #model.add(BatchNormalization())
            # model.add(Activation('relu'))
 
-            model.add(
-                Conv2D(128, patch_size, strides=(2, 2),
-                       padding='same'))
+            #model.add(
+            #    Conv2D(128, patch_size, strides=(2, 2),
+            #           padding='same'))
             #model.add(BatchNormalization())
-            model.add(Activation('relu'))
+            #model.add(Activation('relu'))
             #model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
-            model.add(Dropout(dropout_layer))
+            #model.add(Dropout(dropout_layer))
             model.add(Flatten())
 
             # Now do the dense layers
