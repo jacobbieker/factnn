@@ -143,6 +143,97 @@ def metaYielder():
     return gamma_anteil, gamma_count
 
 
+    # Make the model
+inp = keras.layers.Input((75,75,1))
+# Block - conv
+y = Conv2D(64, 8, 8, border_mode='same', subsample=[4,4], name='yConv1')(inp)
+#y = BatchNormalization()(y)
+y = ELU()(y)
+# Block - conv
+y = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], name='yConv2')(y)
+# Block - conv
+#y = BatchNormalization()(y)
+y = ELU()(y)
+y = MaxPooling2D(padding='same')(y)
+y = Dropout(1)(y)
+
+y = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], name='yConv3')(y)
+#y = BatchNormalization()(y)
+y = ELU()(y)
+y = Conv2D(512, 5, 5, border_mode='same', subsample=[2,2], name='yConv4')(y)
+#y = BatchNormalization()(y)
+y = ELU()(y)
+
+#y = Dropout(dropout_layer)(y)
+
+#y = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='yConv10')(y)
+#y = Conv2D(512, 2, 2, border_mode='same', subsample=[2,2], activation='elu', name='yConv11')(y)
+
+# Block - flatten
+# Block - flatten
+y = Flatten()(y)
+y = Dropout(1)(y)
+y = ELU()(y)
+
+# Block - bring in pointing zd
+# Block - fully connected
+y = Dense(1, activation='elu', name='yFC1')(y)
+y = Dropout(0.3)(y)
+y = ELU()(y)
+y = Dense(1, activation='elu', name='yFC2')(y)
+y = Dropout(0.3)(y)
+y = ELU()(y)
+
+# Block - conv
+x = Conv2D(64, 8, 8, border_mode='same', subsample=[4,4], name='Conv1')(inp)
+#x = BatchNormalization()(x)
+x = ELU()(x)
+# Block - conv
+x = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], name='Conv2')(x)
+#x = BatchNormalization()(x)
+x = ELU()(x)
+# Block - conv
+x = MaxPooling2D(padding='same')(x)
+x = Dropout(1)(x)
+
+x = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], name='Conv3')(x)
+#x = BatchNormalization()(x)
+x = ELU()(x)
+x = Conv2D(512, 5, 5, border_mode='same', subsample=[2,2], name='Conv4')(x)
+#x = BatchNormalization()(x)
+x = ELU()(x)
+
+#x = Dropout(dropout_layer)(x)
+
+#x = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], activation='elu', name='Conv10')(x)
+#x = Conv2D(512, 2, 2, border_mode='same', subsample=[2,2], activation='elu', name='Conv11')(x)
+
+# Block - flatten
+# Block - flatten
+x = Flatten()(x)
+x = Dropout(1)(x)
+x = ELU()(x)
+# Block - fully connected
+x = Dense(1, activation='elu', name='FC1')(x)
+x = Dropout(0.3)(x)
+x = ELU()(x)
+x = Dense(1, activation='elu', name='FC2')(x)
+x = Dropout(0.3)(x)
+x = ELU()(x)
+x_out = Dense(2, name="x_out", activation='softmax')(x)
+y_out = Dense(1, name="y_out", activation='linear')(y)
+
+#merged_out = keras.layers.merge([x, y])
+#combined_out = Dense(2, name="combined_out")(merged_out)
+
+model = keras.models.Model(inp, x_out)
+# Block - output
+model.summary()
+adam = keras.optimizers.adam(lr=0.001)
+model.compile(optimizer=adam, loss='mse', metrics=['mae'])
+from keras.utils.vis_utils import plot_model
+plot_model(model, to_file="Disp_Model.png")
+exit()
 
 
 with h5py.File(path_mc_images, 'r') as f:
@@ -326,6 +417,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         model.summary()
         adam = keras.optimizers.adam(lr=0.001)
         model.compile(optimizer=adam, loss='mse', metrics=['mae'])
+        from keras.utils.vis_utils import plot_model
+        plot_model(model, to_file="Energy_Nice_Holch.png")
+        exit()
+
         model.fit(x=y_train, y=y_label, batch_size=batch_size, epochs=500, verbose=2, validation_split=0.2, callbacks=[early_stop, model_checkpointy, csv_logger])
 
         predictions = model.predict(y_train, batch_size=64)

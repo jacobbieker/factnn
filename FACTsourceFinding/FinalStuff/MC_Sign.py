@@ -142,7 +142,71 @@ def metaYielder():
 
     return gamma_anteil, gamma_count
 
+    # Make the model
+model = Sequential()
 
+# Base Conv layer
+model.add(Conv2D(64, kernel_size=(6,6), strides=(2, 2),
+                 padding='same',
+                 input_shape=(75, 75, 1)))
+model.add(Activation('relu'))
+model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
+model.add(Dropout(0.25))
+
+model.add(
+    Conv2D(128, (3,3), strides=(1, 1),
+           padding='same'))
+#model.add(BatchNormalization())
+model.add(Activation('relu'))
+#model.add(Activation('relu'))
+model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
+model.add(Dropout(0.25))
+model.add(
+    Conv2D(128, (3,3), strides=(1, 1),
+           padding='same'))
+#model.add(BatchNormalization())
+model.add(Activation('relu'))
+model.add(keras.layers.AveragePooling2D(pool_size=(2, 2), padding='same'))
+
+#model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+model.add(Dropout(0.25))
+
+model.add(
+    Conv2D(64, 2, strides=(1, 1),
+           padding='same'))
+#model.add(BatchNormalization())
+model.add(Activation('relu'))
+
+model.add(
+    Conv2D(32, 2, strides=(1, 1),
+           padding='same'))
+#model.add(BatchNormalization())
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
+model.add(Dropout(1))
+model.add(Flatten())
+
+# Now do the dense layers
+#for i in range(num_dense):
+#    model.add(Dense(dense_neuron, activation='relu'))
+#model.add(BatchNormalization())
+#    if dropout_layer > 0.0:
+#        model.add(Dropout(dropout_layer))
+model.add(Dense(512, activation='relu'))
+model.add(Dropout(0.2))
+model.add(Dense(256, activation='relu'))
+model.add(Dropout(0.2))
+model.add(Dense(128, activation='relu'))
+model.add(Dropout(0.2))
+
+# Final Dense layer
+model.add(Dense(2, activation='softmax'))
+model.compile(optimizer='adam', loss='categorical_crossentropy',
+              metrics=['acc'])
+model.summary()
+from keras.utils.vis_utils import plot_model
+plot_model(model, to_file="Sign_Model.png")
+exit()
 
 
 with h5py.File(path_mc_images, 'r') as f:
@@ -292,6 +356,9 @@ def create_model2(batch_size, patch_size, dropout_layer, num_dense, num_conv, nu
             model.compile(optimizer='adam', loss='categorical_crossentropy',
                           metrics=['acc'])
             model.summary()
+            from keras.utils.vis_utils import plot_model
+            plot_model(model, to_file="Sign_Model.png")
+            exit()
             # Makes it only use
             #model.fit_generator(generator=batchYielder(), steps_per_epoch=int(
             #    np.floor(((number_of_training / (frac_per_epoch * batch_size)))))

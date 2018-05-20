@@ -270,7 +270,6 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['acc'])
             model.fit(x=y, y=[class_labelsx, class_labelsy], batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 
-
             K.clear_session()
             tf.reset_default_graph()
 

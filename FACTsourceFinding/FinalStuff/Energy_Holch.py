@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -53,7 +53,7 @@ def euc_dist_keras(y_true, y_pred):
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
-def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=None):
+def plot_regressor_confusion(performace_df, label, log_xy=True, log_z=True, ax=None):
 
     ax = ax or plt.gca()
 
@@ -79,9 +79,6 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
     else:
         max_ax = max_pred
 
-    if log_z:
-        min_ax = min_label
-        max_ax = max_label
     limits = [
         min_ax,
         max_ax
@@ -101,11 +98,11 @@ def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
     ax.figure.colorbar(img, ax=ax)
 
     if log_xy is True:
-        ax.set_xlabel(r'$X$')
-        ax.set_ylabel(r'$Y$')
+        ax.set_xlabel(r'$\log_{10}(E_{\mathrm{MC}} \,\, / \,\, \mathrm{GeV})$')
+        ax.set_ylabel(r'$\log_{10}(E_{\mathrm{Est}} \,\, / \,\, \mathrm{GeV})$')
     else:
-        ax.set_xlabel(r'$X_{\mathrm{MC}}$')
-        ax.set_ylabel(r'$Y_{\mathrm{Est}}$')
+        ax.set_xlabel(r'$E_{\mathrm{MC}} \,\, / \,\, \mathrm{GeV}$')
+        ax.set_ylabel(r'$E_{\mathrm{Est}} \,\, / \,\, \mathrm{GeV}$')
 
     return ax
 
@@ -144,7 +141,7 @@ def metaYielder():
 
 
 
-
+'''
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
     images = f['Image'][0:-1]
@@ -226,44 +223,50 @@ with h5py.File(path_mc_images, 'r') as f:
     y_label = y_label
     print("Finished getting data")
 
+'''
+
+inp = keras.layers.Input((75,75,1))
+# Block - conv
+y = Conv2D(32, 8, 8, border_mode='same', subsample=[2,2], name='Conv1')(inp)
+y = Activation('relu')(y)
+y = Conv2D(64, 5, 5, border_mode='same', subsample=[2,2], name='Conv2')(y)
+y = Activation('relu')(y)
+y = Dropout(1)(y)
+y = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], name='Conv3')(y)
+y = Activation('relu')(y)
+y = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], name='Conv4')(y)
+y = Activation('relu')(y)
+y = Dropout(1)(y)
+y = Conv2D(512, 3, 3, border_mode='same', subsample=[2,2], name='Conv5')(y)
+y = Activation('relu')(y)
+y = Dropout(1)(y)
+# Block - flatten
+y = Flatten()(y)
+# Block - fully connected
+y_out = Dense(1, name="y_out", activation='linear')(y)
+
+model = keras.models.Model(inp, y_out)
+# Block - output
+model.summary()
+adam = keras.optimizers.adam(lr=0.001)
+model.compile(optimizer=adam, loss='mse', metrics=['mae'])
+from keras.utils.vis_utils import plot_model
+plot_model(model, to_file="Energy_Nice_Holch.png")
+exit()
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     #try:
     model_base = ""# base_dir +"/" # + "/Models/FinalSourceXY/test/test/"
-    model_name = "MC_OneOutputPoolENERGYCONV" + "_drop_" + str(dropout_layer)
+    model_name = "MC_LastTest" + "_drop_" + str(dropout_layer)
     if not os.path.isfile(model_base + model_name + ".csv"):
         csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
         #reduceLR = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.01, patience=70, min_lr=0.001)
         early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=9, verbose=0, mode='auto')
 
         model_checkpointy = keras.callbacks.ModelCheckpoint(model_base + "Y_" + desc + model_name + ".h5", monitor='val_loss', verbose=0,
-                                                            save_best_only=True, save_weights_only=False, mode='auto', period=1)
+                                                            save_best_only=False, save_weights_only=False, mode='auto', period=1)
         # Make the model
-        inp = keras.layers.Input((75,75,1))
-        # Block - conv
-        y = Conv2D(32, 8, 8, border_mode='same', subsample=[2,2], name='yConv1')(inp)
-        y = Activation('relu')(y)
-        y = Conv2D(64, 5, 5, border_mode='same', subsample=[2,2], name='yConv2')(y)
-        y = Activation('relu')(y)
-        y = Dropout(dropout_layer)(y)
-        y = Conv2D(128, 5, 5, border_mode='same', subsample=[2,2], name='yConv3')(y)
-        y = Activation('relu')(y)
-        y = Conv2D(256, 5, 5, border_mode='same', subsample=[2,2], name='yConv7')(y)
-        y = Activation('relu')(y)
-        y = Dropout(dropout_layer)(y)
-        y = Conv2D(512, 3, 3, border_mode='same', subsample=[2,2], name='yConv9')(y)
-        y = Activation('relu')(y)
-        y = Dropout(dropout_layer)(y)
-        # Block - flatten
-        y = Flatten()(y)
-        # Block - fully connected
-        y_out = Dense(1, name="y_out", activation='linear')(y)
 
-        model = keras.models.Model(inp, y_out)
-        # Block - output
-        model.summary()
-        adam = keras.optimizers.adam(lr=0.001)
-        model.compile(optimizer=adam, loss='mse', metrics=['mae'])
         #model.fit_generator(generator=batchYielder(), steps_per_epoch=np.floor(((number_of_training / batch_size))), epochs=epoch,
         #                    verbose=2, validation_data=(y, y_label), callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
         #K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=8, inter_op_parallelism_threads=8)))
@@ -276,49 +279,185 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         predictions_x = predictions.reshape(-1,)
         predictions_y = predictions.reshape(-1,)
         test_pred_x = test_pred.reshape(-1,)
+        lower_limit = 1000
+        higher_limit = 10000
 
-        #Loss Score so can tell which one it is
-        score = r2_score(y_label, predictions_x)
-        score_test = r2_score(disp_test, test_pred_x)
+        smaller_labels = np.where(y_label < lower_limit)[0]
+        higher_labels = np.where(y_label > higher_limit)[0]
+        mid_labels = np.where(y_label < higher_limit)[0]
+        tmp_med = []
+        for index in mid_labels:
+            tmp_med.append(y_label[index])
+        tmp_med = np.asarray(tmp_med)
+        mid_labels = np.where(tmp_med > lower_limit)[0]
+        small_test_images = []
+        large_test_images = []
+        middle_test_images = []
+        small_labels = []
+        large_labels = []
+        middle_labels = []
+        for index in smaller_labels:
+            small_test_images.append(images[index])
+            small_labels.append(disp_train[index])
+        for index in higher_labels:
+            large_test_images.append(images[index])
+            large_labels.append(disp_train[index])
+        for index in mid_labels:
+            middle_test_images.append(images[index])
+            middle_labels.append(disp_train[index])
 
+        small_test_images = np.asarray(small_test_images)
+        middle_test_images = np.asarray(middle_test_images)
+        large_test_images = np.asarray(large_test_images)
+
+        print(small_test_images.shape)
+        print(middle_test_images.shape)
+        print(large_test_images.shape)
+
+        predictions = model.predict(small_test_images, batch_size=64)
+        print(predictions.shape)
+        predictions = predictions.reshape(-1,)
+        score = r2_score(small_labels, predictions)
+        print("Lower R2:")
+        print(score)
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + 'R^2: ' + str(score) + ' Reconstructed Train Energy vs. True Energy')
-        plot_sourceX_Y_confusion(predictions_y, y_label, log_xy=False, ax=ax)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (log color scale)')
+        plot_regressor_confusion(predictions, small_labels, ax=ax)
         fig1.show()
 
-        #fig1 = plt.figure()
-        #ax = fig1.add_subplot(1, 1, 1)
-        #ax.set_title(title + ' Reconstructed Test X vs. True X (Act)')
-        #plot_sourceX_Y_confusion(test_pred_x, source_x_test, ax=ax)
-        #fig1.show()
-
-
+        # Plot confusion
+        fig2 = plt.figure()
+        ax = fig2.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (linear color scale)')
+        plot_regressor_confusion(predictions, small_labels, log_z=False, ax=ax)
+        fig2.show()
+        predictions = model.predict(middle_test_images, batch_size=64)
+        print(predictions.shape)
+        predictions = predictions.reshape(-1,)
+        score = r2_score(middle_labels, predictions)
+        print("Mid R2:")
+        print(score)
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + 'R^2: ' + str(score_test) + ' Reconstructed Test Energy vs. Test True Energy')
-        plot_sourceX_Y_confusion(test_pred_x, disp_test, log_xy=False, ax=ax)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (log color scale)')
+        plot_regressor_confusion(predictions, middle_labels, ax=ax)
         fig1.show()
 
+        # Plot confusion
+        fig2 = plt.figure()
+        ax = fig2.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (linear color scale)')
+        plot_regressor_confusion(predictions, middle_labels, log_z=False, ax=ax)
+        fig2.show()
+        predictions = model.predict(large_test_images, batch_size=64)
+        print(predictions.shape)
+        predictions = predictions.reshape(-1,)
+        score = r2_score(large_labels, predictions)
+        print("Upper R2:")
+        print(score)
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + 'R^2: ' + str(score) + ' Reconstructed Train Energy vs. True Energy')
-        plot_sourceX_Y_confusion(predictions_y, y_label, log_z=False, log_xy=False, ax=ax)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (log color scale)')
+        plot_regressor_confusion(predictions, large_labels, ax=ax)
         fig1.show()
 
-        #fig1 = plt.figure()
-        #ax = fig1.add_subplot(1, 1, 1)
-        #ax.set_title(title + ' Reconstructed Test X vs. True X (Act)')
-        #plot_sourceX_Y_confusion(test_pred_x, source_x_test, ax=ax)
-        #fig1.show()
+        # Plot confusion
+        fig2 = plt.figure()
+        ax = fig2.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (linear color scale)')
+        plot_regressor_confusion(predictions, large_labels, log_z=False, ax=ax)
+        fig2.show()
 
+        smaller_labels = np.where(disp_test < lower_limit)[0]
+        higher_labels = np.where(disp_test > higher_limit)[0]
+        mid_labels = np.where(disp_test < higher_limit)[0]
+        tmp_med = []
+        for index in mid_labels:
+            tmp_med.append(y_label[index])
+        tmp_med = np.asarray(tmp_med)
+        mid_labels = np.where(tmp_med > lower_limit)[0]
+        small_test_images = []
+        large_test_images = []
+        middle_test_images = []
+        small_labels = []
+        large_labels = []
+        middle_labels = []
+        for index in smaller_labels:
+            small_test_images.append(images[index])
+            small_labels.append(disp_test[index])
+        for index in higher_labels:
+            large_test_images.append(images[index])
+            large_labels.append(disp_test[index])
+        for index in mid_labels:
+            middle_test_images.append(images[index])
+            middle_labels.append(disp_test[index])
 
+        small_test_images = np.asarray(small_test_images)
+        middle_test_images = np.asarray(middle_test_images)
+        large_test_images = np.asarray(large_test_images)
+
+        print(small_test_images.shape)
+        print(middle_test_images.shape)
+        print(large_test_images.shape)
+
+        predictions = model.predict(small_test_images, batch_size=64)
+        print(predictions.shape)
+        predictions = predictions.reshape(-1,)
+        score = r2_score(small_labels, predictions)
+        print("Lower R2:")
+        print(score)
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(title + 'R^2: ' + str(score_test) + ' Reconstructed Test Energy vs. Test True Energy')
-        plot_sourceX_Y_confusion(test_pred_x, disp_test, log_z=False, log_xy=False, ax=ax)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (log color scale)')
+        plot_regressor_confusion(predictions, small_labels, ax=ax)
         fig1.show()
-        #exit(1)
+
+        # Plot confusion
+        fig2 = plt.figure()
+        ax = fig2.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (linear color scale)')
+        plot_regressor_confusion(predictions, small_labels, log_z=False, ax=ax)
+        fig2.show()
+        predictions = model.predict(middle_test_images, batch_size=64)
+        print(predictions.shape)
+        predictions = predictions.reshape(-1,)
+        score = r2_score(middle_labels, predictions)
+        print("Mid R2:")
+        print(score)
+        fig1 = plt.figure()
+        ax = fig1.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (log color scale)')
+        plot_regressor_confusion(predictions, middle_labels, ax=ax)
+        fig1.show()
+
+        # Plot confusion
+        fig2 = plt.figure()
+        ax = fig2.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (linear color scale)')
+        plot_regressor_confusion(predictions, middle_labels, log_z=False, ax=ax)
+        fig2.show()
+        predictions = model.predict(large_test_images, batch_size=64)
+        print(predictions.shape)
+        predictions = predictions.reshape(-1,)
+        score = r2_score(large_labels, predictions)
+        print("Upper R2:")
+        print(score)
+        fig1 = plt.figure()
+        ax = fig1.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (log color scale)')
+        plot_regressor_confusion(predictions, large_labels, ax=ax)
+        fig1.show()
+
+        # Plot confusion
+        fig2 = plt.figure()
+        ax = fig2.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (linear color scale)')
+        plot_regressor_confusion(predictions, large_labels, log_z=False, ax=ax)
+        fig2.show()
+        K.clear_session()
+        tf.reset_default_graph()
+
         K.clear_session()
         tf.reset_default_graph()
 
