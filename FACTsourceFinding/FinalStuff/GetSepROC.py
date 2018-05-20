@@ -17,25 +17,47 @@ from fact.coordinates.utils import horizontal_to_camera
 from sklearn.metrics import roc_auc_score,  roc_curve, r2_score
 from sklearn import metrics
 
+def plot_roc(performace_df, model, ax=None):
+
+    ax = ax or plt.gca()
+
+    ax.axvline(0, color='lightgray')
+    ax.axvline(1, color='lightgray')
+    ax.axhline(0, color='lightgray')
+    ax.axhline(1, color='lightgray')
+
+    roc_aucs = []
+
+    mean_fpr, mean_tpr, _ = metrics.roc_curve(performace_df, model)
+
+    ax.set_title('Area Under Curve: {:.4f}'.format(
+        metrics.roc_auc_score(performace_df, model)
+    ))
+
+    ax.plot(mean_fpr, mean_tpr, label='ROC curve')
+    ax.legend()
+    ax.set_aspect(1)
+
+    ax.set_xlabel('false positive rate')
+    ax.set_ylabel('true positive rate')
+    ax.figure.tight_layout()
+
+    return ax
+
 
 rf = read_h5py("/run/media/jacob/WDRed8Tb1/dl2_theta/separator_performance.hdf5", key='data')
 rf = read_h5py("/run/media/jacob/WDRed8Tb1/dl2_theta/cv_disp.hdf5", key='data')
 labels = rf['sign']
 predictions = rf['sign_prediction']
 
-labels = labels.reshape(-1,1)
+#labels = labels.reshape(-1,1)
 y_test = labels
 y_score = predictions
 print(labels.shape)
 print(y_score.shape)
-
-fpr_keras, tpr_keras, thresholds_keras = roc_curve(y_test, y_score)
-plt.figure(1)
-plt.plot([0, 1], [0, 1], 'k--')
-plt.plot(fpr_keras, tpr_keras)
-plt.xlabel('False positive rate')
-plt.ylabel('True positive rate')
-plt.title('ROC curve AUC: {:.4f}'.format(roc_auc_score(y_test, y_score)))
+fig1 = plt.figure()
+ax = fig1.add_subplot(1,1,1)
+plot_roc(y_test, y_score, ax)
 plt.show()
 
 
@@ -50,6 +72,7 @@ predictions_x = predictions.reshape((-1,))
 print(labels.shape)
 print(y_score.shape)
 score = r2_score(y_label, predictions_x)
+print(score)
 
 def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=None):
 

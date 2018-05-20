@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import pickle
 from keras import backend as K
@@ -57,7 +57,7 @@ path_mrk501_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_mrk501_preprocessed_
 path_crab_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_1_Images.h5"
 
 disp_models = "/run/media/jacob/WDRed8Tb1/Models/FinalDisp/"
-energy_models = "/run/media/jacob/WDRed8Tb1/Models/Energy/"
+energy_models = "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/Energy/"
 sep_models = "/run/media/jacob/WDRed8Tb2/Sep/"
 xy_models = "/run/media/jacob/WDRed8Tb1/Models/FinalSourceXY/"
 
@@ -78,6 +78,34 @@ best_azzd_auc = []
 
 best_xy = []
 best_xy_auc = []
+
+def plot_roc(performace_df, model, ax=None):
+
+    ax = ax or plt.gca()
+
+    ax.axvline(0, color='lightgray')
+    ax.axvline(1, color='lightgray')
+    ax.axhline(0, color='lightgray')
+    ax.axhline(1, color='lightgray')
+
+    roc_aucs = []
+
+    mean_fpr, mean_tpr, _ = metrics.roc_curve(performace_df, model)
+
+    ax.set_title('Area Under Curve: {:.4f}'.format(
+        metrics.roc_auc_score(performace_df, model)
+    ))
+
+    ax.plot(mean_fpr, mean_tpr, label='ROC curve')
+    ax.legend()
+    ax.set_aspect(1)
+
+    ax.set_xlabel('false positive rate')
+    ax.set_ylabel('true positive rate')
+    ax.figure.tight_layout()
+
+    return ax
+
 
 def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=None):
 
@@ -143,10 +171,10 @@ def plot_regressor_confusion(performace_df, label, log_xy=True, log_z=True, ax=N
         label = np.log10(label)
         prediction = np.log10(prediction)
 
-    min_label = np.floor(np.min(label))
-    min_pred = np.floor(np.min(prediction))
-    max_pred = np.ceil(np.max(prediction))
-    max_label = np.ceil(np.max(label))
+    min_label = np.min(label)
+    min_pred = np.min(prediction)
+    max_pred = np.max(prediction)
+    max_label = np.max(label)
 
     if min_label < min_pred:
         min_ax = min_label
@@ -292,39 +320,21 @@ def plot_phiTheta_confusion(performace_df, label, log_xy=False, log_z=True, ax=N
 
     return ax
 
-def plot_sourceXY_confusion(performace_df, label, log_xy=False, log_z=True, ax=None):
+def plot_sourceX_Y_confusion(performace_df, label, log_xy=True, log_z=True, ax=None):
 
     ax = ax or plt.gca()
 
     #label = performace_df.label.copy()
     prediction = performace_df.copy()
-    print("Prediction 0: ")
-    print(prediction[0])
-    print("Prediction 1: ")
-    print(prediction[1])
-    print("Label 0: ")
-    print(label[0])
-    print("Label 1: ")
-    print(label[1])
-    print("Prediction [:,0]")
-    print(prediction[:,0])
-    print("Prediction[:,1]")
-    print(prediction[:,1])
-    print("Label [:,0]")
-    print(label[:,0])
-    print("Label[:,1]")
-    print(label[:,1])
-    if log_xy is True:
-        label = label[:,0]
-        prediction = prediction[:,0]
-    else:
-        label = label[:,1]
-        prediction = prediction[:,1]
 
-    min_label = np.floor(np.min(label))
-    min_pred = np.floor(np.min(prediction))
-    max_pred = np.ceil(np.max(prediction))
-    max_label = np.ceil(np.max(label))
+    if log_xy is False:
+        label = np.log10(label)
+        prediction = np.log10(prediction)
+
+    min_label = np.min(label)
+    min_pred = np.min(prediction)
+    max_pred = np.max(prediction)
+    max_label = np.max(label)
 
     if min_label < min_pred:
         min_ax = min_label
@@ -340,26 +350,28 @@ def plot_sourceXY_confusion(performace_df, label, log_xy=False, log_z=True, ax=N
         min_ax,
         max_ax
     ]
+    print(limits)
+    print("Max, min Label")
+    print([min_label, max_label])
 
     counts, x_edges, y_edges, img = ax.hist2d(
         label,
         prediction,
         bins=[100, 100],
         range=[limits, limits],
-        norm=LogNorm() if log_z is True else None
+        norm=LogNorm() if log_xy is False else None
     )
     ax.set_aspect(1)
     ax.figure.colorbar(img, ax=ax)
 
     if log_xy is True:
-        ax.set_xlabel(r'$X_{\mathrm{MC}} \,\, / \,\, \mathrm{Pixels}$')
-        ax.set_ylabel(r'$X_{\mathrm{Est}} \,\, / \,\, \mathrm{Pixels}$')
+        ax.set_xlabel(r'$X$')
+        ax.set_ylabel(r'$Y$')
     else:
-        ax.set_xlabel(r'$Y_{\mathrm{MC}} \,\, / \,\, \mathrm{Pixels}$')
-        ax.set_ylabel(r'$Y_{\mathrm{Est}} \,\, / \,\, \mathrm{Pixels}$')
+        ax.set_xlabel(r'$X_{\mathrm{MC}}$')
+        ax.set_ylabel(r'$Y_{\mathrm{Est}}$')
 
     return ax
-
 from sklearn import svm, datasets
 from sklearn.metrics import roc_curve, auc
 from sklearn.model_selection import train_test_split
@@ -368,6 +380,24 @@ from sklearn.multiclass import OneVsRestClassifier
 from scipy import interp
 from itertools import cycle
 
+def plot_probabilities(performace_df, model=None, ax=None, classnames=('Proton', 'Gamma')):
+
+    ax = ax or plt.gca()
+
+    bin_edges = np.linspace(0, 1, 100+2)
+    ax.hist(
+        performace_df,
+        bins=bin_edges, label="Gamma", histtype='step',
+    )
+    if model is not None:
+        ax.hist(
+            model,
+            bins=bin_edges, label="Proton", histtype='step',
+        )
+
+    ax.legend()
+    ax.set_xlabel('Gamma confidence'.format(classnames[1]))
+    ax.figure.tight_layout()
 
 def calc_roc_gammaHad(path_image, proton_image, path_keras_model):
     '''
@@ -378,44 +408,46 @@ def calc_roc_gammaHad(path_image, proton_image, path_keras_model):
     '''
 
     model = load_model(path_keras_model)
+    from keras.utils.vis_utils import plot_model
+    plot_model(model, to_file="gamma_HadBest.png")
 
     with h5py.File(path_image, 'r') as f:
         with h5py.File(proton_image, 'r') as f2:
             # stream the data in to predict on it, safe region for all is the last 40%, except for the latest sep models
             items = len(f['Image'])
             items_proton = len(f2['Image'])
-            test_images = f['Image'][int(items*.8):]
-            test_images_false = f2['Image'][-int(items*.8):]
+            test_images = f['Image'][-int(items*.5):]
+            test_images_false = f2['Image'][-int(items_proton*.8):]
             # Since the mc AzZd ones are in radians, need these to be to, could convert back if need be later
-            validating_dataset = np.concatenate([test_images, test_images_false], axis=0)
-            labels = np.array([True] * (len(test_images)) + [False] * len(test_images_false))
-            validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
-            print(labels.shape)
+            validating_dataset = test_images#np.concatenate([test_images, test_images_false], axis=0)
+            #labels = np.array([True] * (len(test_images)))
+            #labels = np.array([True] * (len(test_images)) + [False] * len(test_images_false))
+            #validation_labels = (np.arange(2) == labels[:, None]).astype(np.float32)
+            #print(labels.shape)
 
-            predictions = model.predict_classes(validating_dataset, batch_size=64)
+            predictions = model.predict(test_images, batch_size=64)
+            predictions2 = model.predict(test_images_false, batch_size=64)
             print(predictions.shape)
             print(predictions)
             from sklearn.preprocessing import label_binarize
             from itertools import cycle
             n_classes = 1
-            predictions = label_binarize(predictions, [0,1]) #predictions.reshape(-1,1)
-            validation_labels = label_binarize(validation_labels, [0,1])
-            labels = labels.reshape(-1,1)
-            y_test = labels
-            y_score = predictions
-            print(labels.shape)
-            print(y_score.shape)
-
-            fpr_keras, tpr_keras, thresholds_keras = roc_curve(y_test, y_score)
-            plt.figure(1)
-            plt.plot([0, 1], [0, 1], 'k--')
-            plt.plot(fpr_keras, tpr_keras)
-            plt.xlabel('False positive rate')
-            plt.ylabel('True positive rate')
-            plt.title('ROC curve AUC: {:.4f}'.format(roc_auc_score(y_test, y_score)))
+            #predictions = label_binarize(predictions, [0,1]) #predictions.reshape(-1,1)
+            #validation_labels = label_binarize(validation_labels, [0,1])
+            #labels = labels.reshape(-1,1)
+            predictions = predictions[:,1].reshape((-1,))
+            prediction2 = predictions2[:,1].reshape((-1,))
+            plt.clf()
+            fig1 = plt.figure()
+            ax = fig1.add_subplot(1,1,1)
+            plot_probabilities(predictions, prediction2, ax)
             plt.show()
 
-            with open(sep_pickle, "wb") as f:
+            K.clear_session()
+            tf.reset_default_graph()
+
+
+        with open(sep_pickle, "wb") as f:
                 pickle.dump([best_auc_sep, best_auc_sep_auc], f)
 
 
@@ -565,6 +597,7 @@ def calc_roc_thetaphi(path_image, path_keras_model):
 
     return NotImplemented
 
+from sklearn.metrics import r2_score
 def calc_roc_sourceXY(path_image, path_keras_model):
     '''
     Returns the Number of events in the threshold for the Az, Zd estimation for simulated events, for observation this means that it is in comparsion to current classifier
@@ -575,7 +608,9 @@ def calc_roc_sourceXY(path_image, path_keras_model):
 
 
     model = load_model(path_keras_model)
-
+    from keras.utils.vis_utils import plot_model
+    plot_model(model, to_file="sourceXY_model_OneOut.png")
+    return 0
     with h5py.File(path_image, 'r') as f:
         # stream the data in to predict on it, safe region for all is the last 40%, except for the latest sep models
         items = len(f['Image'])
@@ -589,58 +624,59 @@ def calc_roc_sourceXY(path_image, path_keras_model):
         np.random.shuffle(source_x)
         np.random.set_state(rng_state)
         np.random.shuffle(source_y)
-        images = images[0:int(0.2*len(images))]
-        source_x = source_x[0:int(0.2*len(source_x))]
-        source_y = source_y[0:int(0.2*len(source_y))]
+        images = images[-int(0.5*len(images)):]
+        source_x = source_x[-int(0.5*len(source_x)):]
+        source_y = source_y[-int(0.5*len(source_y)):]
 
-        source_x += 180.975/2 # shifts everything to positive
-        source_y += 185.25/2 # shifts everything to positive
-        source_x = source_x / 4.94 # Ratio between the places
-        source_y = source_y / 4.826 # Ratio between y in original and y here
         # Since the mc AzZd ones are in radians, need these to be to, could convert back if need be later
         labels = np.column_stack((source_x, source_y))
         print(labels.shape)
-        predictions = model.predict(images, batch_size=64)
-        print(predictions.shape)
-        predictions = predictions
-        predictions[:,0] += 180.975/2 # shifts everything to positive
-        predictions[:,1] += 185.25/2 # shifts everything to positive
-        predictions[:,0] = predictions[:,0] / 4.94 # Ratio between the places
-        predictions[:,1] = predictions[:,1] / 4.826 # Ratio between y in original and y here
+        #predictions = model.predict(images, batch_size=64)
+        #print(predictions.shape)
+        #predictions = predictions
+
     # Now make the confusion matrix
+    predictions = model.predict(images, batch_size=64)
+    #test_pred = model.predict(images_test_y, batch_size=64)
+    #print(roc_auc_score(x_label, predictions))
+    # print(roc_auc_score(sign_test, test_pred))
+    predictions_x = predictions[0].reshape(-1,)
+    predictions_y = predictions[1].reshape(-1,)
+    test_pred_y = source_x.reshape(-1,)
+    test_pred_x = source_y.reshape(-1,)
+    score_y = r2_score(test_pred_y, predictions_y)
+    score_x = r2_score(test_pred_x, predictions_x)
 
     #Loss Score so can tell which one it is
-    filename = path_keras_model.split("/")[-1]
-    filename = filename.split("_")[0]
 
     fig1 = plt.figure()
     ax = fig1.add_subplot(1, 1, 1)
-    ax.set_title(filename + ' Reconstructed vs. True X')
-    plot_sourceX_Y_confusion(predictions[:,0], labels[:,0], ax=ax)
+    ax.set_title(str(score_x) + ' Reconstructed Train X vs. True X')
+    plot_sourceX_Y_confusion(predictions_x, test_pred_x, log_z=True, ax=ax)
     fig1.show()
 
 
     fig1 = plt.figure()
     ax = fig1.add_subplot(1, 1, 1)
-    ax.set_title(filename + ' Reconstructed X vs. Rec Y')
-    plot_sourceX_Y_confusion(predictions[:,0], predictions[:,1], ax=ax)
+    ax.set_title(' Reconstructed Train X vs. Rec Train Y')
+    plot_sourceX_Y_confusion(predictions_x, predictions_y, ax=ax)
     fig1.show()
 
     fig1 = plt.figure()
     ax = fig1.add_subplot(1, 1, 1)
-    ax.set_title(filename + ' True X vs. True Y')
-    plot_sourceX_Y_confusion(labels[:,0], labels[:,1], ax=ax)
+    ax.set_title(' True Train X vs. True Train Y')
+    plot_sourceX_Y_confusion(test_pred_x, test_pred_y, ax=ax)
     fig1.show()
 
     fig1 = plt.figure()
     ax = fig1.add_subplot(1, 1, 1)
-    ax.set_title(filename + ' Reconstructed vs. True Y')
-    plot_sourceX_Y_confusion(predictions[:,1], labels[:,1], log_xy=True, ax=ax)
+    ax.set_title(str(score_y) + ' Reconstructed Train Y vs. True Y')
+    plot_sourceX_Y_confusion(predictions_y, test_pred_y, log_xy=True, log_z=True, ax=ax)
     fig1.show()
 
-    error = predictions - labels
-    best_xy.append(path_keras_model)
-    best_xy_auc.append([np.mean(error, axis=1), np.mean(error)])
+    #exit(1)
+    K.clear_session()
+    tf.reset_default_graph()
 
     with open(sourceXY_pickle, "wb") as f:
         pickle.dump([best_xy, best_xy_auc], f)
@@ -656,47 +692,133 @@ def calc_roc_energy(path_image, path_keras_model):
     '''
 
     model = load_model(path_keras_model)
+    from keras.utils.vis_utils import plot_model
+    plot_model(model, to_file="Energy_Best_Holch.png")
+    return 0
 
-    with h5py.File(path_image, 'r') as f:
+    with h5py.File("/run/media/jacob/SSD/Rebinned_5_MC_Gamma_BothSource_Images.h5", 'r') as f:
         # stream the data in to predict on it, safe region for all is the last 40%, except for the latest sep models
         items = len(f['Image'])
-        test_images = f['Image'][-int(items*.4):-1]
-        labels = f['Energy'][-int(items*.4):-1]
-        print(labels.shape)
+        test_images = f['Image'][-int(items*1.0):]
+        labels = f['Energy'][-int(items*1.0):]
 
-        predictions = model.predict(test_images, batch_size=64)
-        print(predictions.shape)
-        predictions = predictions.reshape(-1,)
-    # Now make the confusion matrix
+        # Get low, med, high
+        mean_energy = np.mean(labels)
+        std_dev = np.std(labels)
 
-    #Loss Score so can tell which one it is
-    try:
-        filename = path_keras_model.split("/")[-1]
-        filename = filename.split("_")[0]
+        lower_limit = 1000
+        higher_limit = 10000
+
+        smaller_labels = np.where(labels < lower_limit)[0]
+        higher_labels = np.where(labels > higher_limit)[0]
+        mid_labels = np.where(labels < higher_limit)[0]
+        tmp_med = []
+        for index in mid_labels:
+            tmp_med.append(labels[index])
+        tmp_med = np.asarray(tmp_med)
+        mid_labels = np.where(tmp_med > lower_limit)[0]
+        small_test_images = []
+        large_test_images = []
+        middle_test_images = []
+        small_labels = []
+        large_labels = []
+        middle_labels = []
+        for index in smaller_labels:
+            small_test_images.append(test_images[index])
+            small_labels.append(labels[index])
+        for index in higher_labels:
+            large_test_images.append(test_images[index])
+            large_labels.append(labels[index])
+        for index in mid_labels:
+            middle_test_images.append(test_images[index])
+            middle_labels.append(labels[index])
+
+        small_test_images = np.asarray(small_test_images)
+        middle_test_images = np.asarray(middle_test_images)
+        large_test_images = np.asarray(large_test_images)
+
+        print(small_test_images.shape)
+        print(middle_test_images.shape)
+        print(large_test_images.shape)
+
+    predictions = model.predict(test_images, batch_size=64)
+    print(predictions.shape)
+    predictions = predictions.reshape(-1,)
+    score = r2_score(labels, predictions)
+    print("Total R2:")
+    print(score)
+    if score > 0.65:
         fig1 = plt.figure()
         ax = fig1.add_subplot(1, 1, 1)
-        ax.set_title(filename + ' Reconstructed vs. True Energy (log color scale)')
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (log color scale)')
         plot_regressor_confusion(predictions, labels, ax=ax)
         fig1.show()
 
         # Plot confusion
         fig2 = plt.figure()
         ax = fig2.add_subplot(1, 1, 1)
-        ax.set_title(filename + 'Reconstructed vs. True Energy (linear color scale)')
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (linear color scale)')
         plot_regressor_confusion(predictions, labels, log_z=False, ax=ax)
         fig2.show()
+        predictions = model.predict(small_test_images, batch_size=64)
+        print(predictions.shape)
+        predictions = predictions.reshape(-1,)
+        score = r2_score(small_labels, predictions)
+        print("Lower R2:")
+        print(score)
+        fig1 = plt.figure()
+        ax = fig1.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (log color scale)')
+        plot_regressor_confusion(predictions, small_labels, ax=ax)
+        fig1.show()
 
-        error = predictions - labels
-        best_energy.append(path_keras_model)
-        best_energy_auc.append(np.mean(error))
+        # Plot confusion
+        fig2 = plt.figure()
+        ax = fig2.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (linear color scale)')
+        plot_regressor_confusion(predictions, small_labels, log_z=False, ax=ax)
+        fig2.show()
+        predictions = model.predict(middle_test_images, batch_size=64)
+        print(predictions.shape)
+        predictions = predictions.reshape(-1,)
+        score = r2_score(middle_labels, predictions)
+        print("Mid R2:")
+        print(score)
+        fig1 = plt.figure()
+        ax = fig1.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (log color scale)')
+        plot_regressor_confusion(predictions, middle_labels, ax=ax)
+        fig1.show()
 
-        with open(energy_pickle, "wb") as f:
-            pickle.dump([best_energy, best_energy_auc], f)
+        # Plot confusion
+        fig2 = plt.figure()
+        ax = fig2.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (linear color scale)')
+        plot_regressor_confusion(predictions, middle_labels, log_z=False, ax=ax)
+        fig2.show()
+        predictions = model.predict(large_test_images, batch_size=64)
+        print(predictions.shape)
+        predictions = predictions.reshape(-1,)
+        score = r2_score(large_labels, predictions)
+        print("Upper R2:")
+        print(score)
+        fig1 = plt.figure()
+        ax = fig1.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (log color scale)')
+        plot_regressor_confusion(predictions, large_labels, ax=ax)
+        fig1.show()
 
-    except Exception as e:
-        print(e)
-        print(path_keras_model)
+        # Plot confusion
+        fig2 = plt.figure()
+        ax = fig2.add_subplot(1, 1, 1)
+        ax.set_title(str(score) + ' Reconstructed vs. True Energy (linear color scale)')
+        plot_regressor_confusion(predictions, large_labels, log_z=False, ax=ax)
+        fig2.show()
+    # Now make the confusion matrix
 
+    #Loss Score so can tell which one it is
+    K.clear_session()
+    tf.reset_default_graph()
     return NotImplemented
 
 def calc_roc_radec(path_image, path_keras_model):
@@ -719,47 +841,98 @@ import os
 
 
 #calc_roc_sourceXY(path_mc_images, "/run/media/jacob/WDRed8Tb1/Models/FinalSourceXY/test/test/25.999_MC_holchSsourceXYFinalTrainZeroedOne_b28_p_(3, 3)_drop_0.26_conv_5_pool_1_denseN_251_numDense_2_convN_60_opt_same.h5")
+
 #calc_roc_azzd(path_diffuse_images, "/run/media/jacob/WDRed8Tb1/Models/Disp/0.036_MC_ZdAz_b54_p_(5, 5)_drop_0.571_conv_9_pool_1_denseN_349_numDense_2_convN_10_opt_adam.h5")
 #calc_roc_thetaphi(path_diffuse_images, "/run/media/jacob/WDRed8Tb1/Models/Disp/0.003_MC_ThetaPhiCustomError_b46_p_(2, 2)_drop_0.956_conv_5_pool_1_denseN_372_numDense_0_convN_241_opt_adam.h5")
 #calc_roc_gammaHad(path_mc_images, path_proton_images, "/run/media/jacob/WDRed8Tb1/Models/Sep/0.172_MC_SepAll_b20_p_(3, 3)_drop_0.0_numDense_2_conv_5_pool_1_denseN_112_convN_37.h5")
-sep_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/testing/")
+sep_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/Sep/")
              for file in fileName if '.h5' in file]
 
-energy_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(energy_models)
+energy_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/WDRed8Tb2/RealFinalEnergy/")
               for file in fileName if '.h5' in file]
 
-source_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk(xy_models)
+source_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/finalSource/")
              for file in fileName if '.h5' in file]
 
 disp_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/testing/")
                 for file in fileName if '.h5' in file]
 
+calc_roc_energy(path_mc_images, "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/Energy/Y_ENERGYCONVMC_OneOutputPoolENERGYCONV_drop_0.27.h5")
+calc_roc_sourceXY(path_crab_images, "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/finalSource/Y_SeparateOutputs SOURCEMC_OneOutputPoolSOURCEXYSTDDEV_drop_0.09.h5")
+
+exit()
+
 calc_roc_gammaHad("/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_gamma_SOURCEXYALLSTDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_STDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/SOURCE_MC_SepSTDDEV_b143_p_(5, 5)_drop_0.22_numDense_3_conv_3_pool_1_denseN_219_convN_109.h5")
+calc_roc_gammaHad("/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_gamma_SOURCEXYALLSTDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_STDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/CrabOnes/SOURCE_MC_CrabSTDDEV_b64_p_(5, 5)_drop_0.99_numDense_3_conv_3_pool_1_denseN_69_convN_62.h5")
+
+exit()
+calc_roc_gammaHad("/run/media/jacob/WDRed8Tb1/Rebinned_5_Mrk501_HALFMILSTDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Rebinned_5_Mrk501_HALFMILSTDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/SOURCE_MC_SepSTDDEV_b143_p_(5, 5)_drop_0.22_numDense_3_conv_3_pool_1_denseN_219_convN_109.h5")
+calc_roc_gammaHad("/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_STDDEV_Images.h5", "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_STDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/SOURCE_MC_SepSTDDEV_b143_p_(5, 5)_drop_0.22_numDense_3_conv_3_pool_1_denseN_219_convN_109.h5")
+
+calc_roc_gammaHad("/run/media/jacob/WDRed8Tb1/Rebinned_5_Mrk501_HALFMILSTDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Rebinned_5_Mrk501_HALFMILSTDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/CrabOnes/SOURCE_MC_CrabSTDDEV_b64_p_(5, 5)_drop_0.99_numDense_3_conv_3_pool_1_denseN_69_convN_62.h5")
+calc_roc_gammaHad("/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_STDDEV_Images.h5", "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_STDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/CrabOnes/SOURCE_MC_CrabSTDDEV_b64_p_(5, 5)_drop_0.99_numDense_3_conv_3_pool_1_denseN_69_convN_62.h5")
+
+calc_roc_energy(path_mc_images, "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/Energy/5210276.532_MC_energyNoGenDriver_b32_p_(2, 2)_drop_0.16_conv_4_pool_1_denseN_96_numDense_2_convN_17_opt_adam.h5")
+calc_roc_sourceXY(path_crab_images, "/run/media/jacob/WDRed8Tb1/Models/FinalSourceXY/test/test/156.727_MC_holchSsourceXYFinal_b18_p_(2, 2)_drop_0.63_conv_2_pool_0_denseN_169_numDense_0_convN_22_opt_same.h5")
+
+exit()
+
+sep_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/Sep/")
+             for file in fileName if '.h5' in file]
+
+
+for path in energy_paths:
+    print(path)
+    try:
+        calc_roc_energy(path_mc_images, path)
+        K.clear_session()
+        tf.reset_default_graph()
+    except Exception as e:
+        print(e)
+        K.clear_session()
+        tf.reset_default_graph()
+        pass
+
+exit()
+
+for path in source_paths:
+    print(path)
+    try:
+        calc_roc_sourceXY("/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_gamma_SOURCEXYREALALLSTDDEV_Images.h5", path)
+    except:
+        pass
 
 exit()
 for path in sep_paths:
     print(path)
-    if path not in best_auc_sep:
-        try:
-            calc_roc_gammaHad(path_mc_images, path_proton_images, path)
-        except Exception as e:
-            print(e)
-            pass
-sep_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/")
-             for file in fileName if '.h5' in file]
+    #if path not in best_auc_sep:
+    try:
+        calc_roc_gammaHad("/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_gamma_SOURCEXYALLSTDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_STDDEV_Images.h5", path)
+    except Exception as e:
+        print(e)
+        pass
 
+for path in sep_paths:
+    #print(path)
+    #if path not in best_auc_sep:
+    try:
+        calc_roc_gammaHad(path_mc_images, path_proton_images, path)
+    except Exception as e:
+        print(e)
+        pass
+exit()
 exit()
 #for path in disp_paths:
 #    try:
 #        calc_roc_thetaphi(path_mc_images, path)
 #    except:
 #        pass
-#for path in source_paths:
-#    print(path)
-#    try:
-#        calc_roc_sourceXY(path_mc_images, path)
-#    except:
-#        pass
+for path in source_paths:
+    print(path)
+    try:
+        calc_roc_sourceXY(path_mc_images, path)
+    except:
+        pass
 #
 #exit(1)
 
@@ -773,7 +946,7 @@ if os.path.isfile(sep_pickle):
 #
 #
 
-#calc_roc_sourceXY(path_crab_images, "/run/media/jacob/WDRed8Tb1/Models/FinalSourceXY/test/test/156.727_MC_holchSsourceXYFinal_b18_p_(2, 2)_drop_0.63_conv_2_pool_0_denseN_169_numDense_0_convN_22_opt_same.h5")
+calc_roc_sourceXY(path_crab_images, "/run/media/jacob/WDRed8Tb1/Models/FinalSourceXY/test/test/156.727_MC_holchSsourceXYFinal_b18_p_(2, 2)_drop_0.63_conv_2_pool_0_denseN_169_numDense_0_convN_22_opt_same.h5")
 
 
 
@@ -781,14 +954,6 @@ for path in disp_paths:
     print(path)
     try:
         calc_roc_thetaphi(path_mc_images, path)
-    except Exception as e:
-        print(e)
-        pass
-
-for path in energy_paths:
-    print(path)
-    try:
-        calc_roc_energy(path_mc_images, path)
     except Exception as e:
         print(e)
         pass

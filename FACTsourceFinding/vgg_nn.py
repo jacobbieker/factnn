@@ -71,6 +71,51 @@ def metaYielder():
 
     return gamma_anteil, gamma_count
 
+model = Sequential()
+optimizer = 'same'
+# Base Conv layer
+model.add(Conv2D(64, kernel_size=(3, 3),
+                 activation='relu', padding=optimizer,
+                 input_shape=(75, 75, 1)))
+model.add(Conv2D(64, (3, 3), activation='relu', padding=optimizer))
+model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding=optimizer))
+
+model.add(Conv2D(128, (3, 3), activation='relu', padding=optimizer))
+model.add(Conv2D(128, (3, 3), activation='relu', padding=optimizer))
+model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding=optimizer))
+
+model.add(Conv2D(256, (3, 3), activation='relu', padding=optimizer))
+model.add(Conv2D(256, (3, 3), activation='relu', padding=optimizer))
+model.add(Conv2D(256, (3, 3), activation='relu', padding=optimizer))
+model.add(Conv2D(256, (3, 3), activation='relu', padding=optimizer))
+model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding=optimizer))
+
+model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding=optimizer))
+
+model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+model.add(Conv2D(512, (3, 3), activation='relu', padding=optimizer))
+model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding=optimizer))
+
+# Now classification part
+model.add(Flatten())
+model.add(Dense(4096, activation='relu'))
+model.add(Dense(4096, activation='relu'))
+
+
+
+# Final Dense layer
+# 2 so have one for x and one for y
+model.add(Dense(2, activation='linear'))
+model.compile(optimizer='adam', loss=rmse_360_2, metrics=['mae', 'mse'])
+from keras.utils.vis_utils import plot_model
+plot_model(model, to_file="VGG_Model.png")
+exit()
 
 with h5py.File(path_mc_images, 'r') as f:
     gamma_anteil, gamma_count = metaYielder()
@@ -216,6 +261,10 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             # 2 so have one for x and one for y
             model.add(Dense(2, activation='linear'))
             model.compile(optimizer='adam', loss=rmse_360_2, metrics=['mae', 'mse'])
+            from keras.utils.vis_utils import plot_model
+            plot_model(model, to_file="VGG_Model.png")
+            exit()
+
             model.fit(x=y, y=y_label, batch_size=batch_size, epochs=epoch, validation_split=0.2, callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
 
 
