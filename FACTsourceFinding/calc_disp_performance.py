@@ -387,17 +387,35 @@ def plot_probabilities(performace_df, model=None, ax=None, classnames=('Proton',
     bin_edges = np.linspace(0, 1, 100+2)
     ax.hist(
         performace_df,
-        bins=bin_edges, label="Gamma", histtype='step',
+        bins=bin_edges, label="Proton", histtype='step',
     )
     if model is not None:
         ax.hist(
             model,
-            bins=bin_edges, label="Proton", histtype='step',
+            bins=bin_edges, label="Gamma", histtype='step',
         )
 
     ax.legend()
     ax.set_xlabel('Gamma confidence'.format(classnames[1]))
     ax.figure.tight_layout()
+
+crabdf = read_h5py("/run/media/jacob/WDRed8Tb1/testing/open_mrk501_sample_analysis/build/proton_test.hdf5", key='events')
+mrk501 = read_h5py("/run/media/jacob/WDRed8Tb1/testing/open_mrk501_sample_analysis/build/gamma_test.hdf5", key="events")
+
+plt.clf()
+fig1 = plt.figure()
+ax = fig1.add_subplot(1,1,1)
+plot_probabilities(crabdf['gamma_prediction'].dropna().values, mrk501['gamma_prediction'], ax)
+plt.show()
+exit()
+
+plt.clf()
+fig1 = plt.figure()
+ax = fig1.add_subplot(1,1,1)
+plot_probabilities(mrk501['gamma_prediction'].dropna().values, None, ax)
+plt.show()
+
+
 
 def calc_roc_gammaHad(path_image, proton_image, path_keras_model):
     '''
@@ -407,6 +425,7 @@ def calc_roc_gammaHad(path_image, proton_image, path_keras_model):
     :return:
     '''
 
+    #model = load_model("/run/media/jacob/WDRed8Tb1/Models/FinalSep/0.503_MC_vggSepNoGen_b58_p_(5, 5)_drop_0.93_conv_3_pool_0_denseN_109_numDense_2_convN_98_opt_same.h5")
     model = load_model(path_keras_model)
     from keras.utils.vis_utils import plot_model
     plot_model(model, to_file="gamma_HadBest.png")
@@ -426,6 +445,31 @@ def calc_roc_gammaHad(path_image, proton_image, path_keras_model):
             #print(labels.shape)
 
             predictions = model.predict(test_images, batch_size=64)
+
+            high_pred = crabdf.index[(crabdf["gamma_prediction"] > 0.95)]
+            pred_high = predictions[:,1].reshape((-1,))
+            print(high_pred)
+            print(pred_high)
+            temp_high = []
+            for index, pred in enumerate(pred_high):
+                if pred > 0.5:
+                    temp_high.append(index)
+            pred_high = temp_high
+            print(high_pred)
+            print(pred_high)
+
+            high_vale = crabdf.iloc[high_pred,:]
+            high_pred = crabdf.iloc[pred_high,:]
+
+            high_vale.describe().to_csv("RF_mrk501.csv")
+            high_pred.describe().to_csv("NN_mrk501.csv")
+
+
+            # Compare the two
+            high_pred.summary()
+
+
+
             predictions2 = model.predict(test_images_false, batch_size=64)
             print(predictions.shape)
             print(predictions)
@@ -437,10 +481,12 @@ def calc_roc_gammaHad(path_image, proton_image, path_keras_model):
             #labels = labels.reshape(-1,1)
             predictions = predictions[:,1].reshape((-1,))
             prediction2 = predictions2[:,1].reshape((-1,))
+            #crabdf = read_h5py("/run/media/jacob/WDRed8Tb1/testing/open_crab_sample_analysis/build/crab_dl3.hdf5", key='events', last=647000)
+            #mrk501 = read_h5py("/run/media/jacob/WDRed8Tb1/testing/open_mrk501_sample_analysis/build/crab_dl3.hdf5", key="events", last=448000)
             plt.clf()
             fig1 = plt.figure()
             ax = fig1.add_subplot(1,1,1)
-            plot_probabilities(predictions, prediction2, ax)
+            plot_probabilities(prediction2, predictions, ax)
             plt.show()
 
             K.clear_session()
@@ -857,18 +903,18 @@ source_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os
 disp_paths = [os.path.join(dirPath, file) for dirPath, dirName, fileName in os.walk("/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/testing/")
                 for file in fileName if '.h5' in file]
 
-calc_roc_energy(path_mc_images, "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/Energy/Y_ENERGYCONVMC_OneOutputPoolENERGYCONV_drop_0.27.h5")
-calc_roc_sourceXY(path_crab_images, "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/finalSource/Y_SeparateOutputs SOURCEMC_OneOutputPoolSOURCEXYSTDDEV_drop_0.09.h5")
+#calc_roc_energy(path_mc_images, "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/Energy/Y_ENERGYCONVMC_OneOutputPoolENERGYCONV_drop_0.27.h5")
+#calc_roc_sourceXY(path_crab_images, "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/finalSource/Y_SeparateOutputs SOURCEMC_OneOutputPoolSOURCEXYSTDDEV_drop_0.09.h5")
 
-exit()
+#exit()
 
-calc_roc_gammaHad("/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_gamma_SOURCEXYALLSTDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_STDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/SOURCE_MC_SepSTDDEV_b143_p_(5, 5)_drop_0.22_numDense_3_conv_3_pool_1_denseN_219_convN_109.h5")
-calc_roc_gammaHad("/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_gamma_SOURCEXYALLSTDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_STDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/CrabOnes/SOURCE_MC_CrabSTDDEV_b64_p_(5, 5)_drop_0.99_numDense_3_conv_3_pool_1_denseN_69_convN_62.h5")
+#calc_roc_gammaHad("/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_gamma_SOURCEXYALLSTDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_STDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Models/FinalSep/3.459_MC_vggSepNoGen_b16_p_(3, 3)_drop_0.55_conv_3_pool_1_denseN_29_numDense_3_convN_122_opt_same.h5")
+#exit()
+#calc_roc_gammaHad("/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_gamma_SOURCEXYALLSTDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_STDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/CrabOnes/SOURCE_MC_CrabSTDDEV_b64_p_(5, 5)_drop_0.99_numDense_3_conv_3_pool_1_denseN_69_convN_62.h5")
 
-exit()
-calc_roc_gammaHad("/run/media/jacob/WDRed8Tb1/Rebinned_5_Mrk501_HALFMILSTDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Rebinned_5_Mrk501_HALFMILSTDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/SOURCE_MC_SepSTDDEV_b143_p_(5, 5)_drop_0.22_numDense_3_conv_3_pool_1_denseN_219_convN_109.h5")
-calc_roc_gammaHad("/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_STDDEV_Images.h5", "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_STDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/SOURCE_MC_SepSTDDEV_b143_p_(5, 5)_drop_0.22_numDense_3_conv_3_pool_1_denseN_219_convN_109.h5")
-
+#exit()
+#calc_roc_gammaHad("/run/media/jacob/WDRed8Tb1/Rebinned_5_Mrk501_HALFMILSTDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Rebinned_5_Mrk501_HALFMILSTDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/SOURCE_MC_SepSTDDEV_b143_p_(5, 5)_drop_0.22_numDense_3_conv_3_pool_1_denseN_219_convN_109.h5")
+#calc_roc_gammaHad("/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_STDDEV_Images.h5", "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_STDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/SOURCE_MC_SepSTDDEV_b143_p_(5, 5)_drop_0.22_numDense_3_conv_3_pool_1_denseN_219_convN_109.h5")
 calc_roc_gammaHad("/run/media/jacob/WDRed8Tb1/Rebinned_5_Mrk501_HALFMILSTDDEV_Images.h5", "/run/media/jacob/WDRed8Tb1/Rebinned_5_Mrk501_HALFMILSTDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/CrabOnes/SOURCE_MC_CrabSTDDEV_b64_p_(5, 5)_drop_0.99_numDense_3_conv_3_pool_1_denseN_69_convN_62.h5")
 calc_roc_gammaHad("/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_STDDEV_Images.h5", "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_STDDEV_Images.h5", "/run/media/jacob/SSD/Development/thesis/FACTsourceFinding/FinalStuff/CrabOnes/SOURCE_MC_CrabSTDDEV_b64_p_(5, 5)_drop_0.99_numDense_3_conv_3_pool_1_denseN_69_convN_62.h5")
 

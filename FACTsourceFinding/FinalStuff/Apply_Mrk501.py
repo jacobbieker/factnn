@@ -39,6 +39,12 @@ import pandas as pd
 #to_h5py(mrk501df, "/home/jacob/open_crab_sample_analysis/build/Mrk501_shrunk1_runs.hdf5", key="runs")
 #exit()
 import h5py
+
+crabdf = read_h5py("/run/media/jacob/WDRed8Tb1/testing/open_crab_sample_analysis/build/crab_dl3.hdf5", key='events', last=647000)
+mrk501 = read_h5py("/run/media/jacob/WDRed8Tb1/testing/open_mrk501_sample_analysis/build/crab_dl3.hdf5", key="events", last=448000)
+
+
+exit()
 with h5py.File("/home/jacob/open_crab_sample_analysis/open_crab_sample_analysis/build/mrk501_2014_std_analysis_v1.0.0.hdf5", "r+") as f:
     print(len(f["events"]))
 exit()

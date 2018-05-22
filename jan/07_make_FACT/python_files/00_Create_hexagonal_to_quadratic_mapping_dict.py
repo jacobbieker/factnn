@@ -25,6 +25,7 @@ for i in range(1440):
     x1, y1 = position_dict[i]
     test[int(x1)][int(y1)] = i
 
+test = np.rot90(test, )
 plt.imshow(test, cmap="Greys")
 plt.savefig("SkewedFACT.png", dpi=300)
 pickle.dump(position_dict, open(path_store_mapping_dict, 'wb'))
