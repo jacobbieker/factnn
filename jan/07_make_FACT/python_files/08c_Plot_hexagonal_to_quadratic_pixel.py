@@ -31,7 +31,7 @@ for id, pos in positions.items():
 df = pd.DataFrame(data, columns=['id', 'x', 'y'])
 
 #Plot the skewed camera image (quadratic)
-df.plot.scatter(x='x', y='y', c='id', cmap=plt.cm.Reds, marker='h')
+df.plot.scatter(x='x', y='y', c='id', cmap=plt.cm.Greys, marker='h')
 plt.title('Skewed Camera Image FACT with quadratic pixel')
 plt.xlabel('x Position')
 plt.ylabel('y Position')

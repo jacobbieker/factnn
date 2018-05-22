@@ -52,7 +52,7 @@ def get_events_near_crab(path_crab_image, len_images):
     # Get the events that have the right ra and dec
     # Give to Gamma/Hadron sep, use Mrk 501 because brighter source
     #df_event = crabdf.index[(crabdf['ra_prediction'] < 1.0025*center_ra) & (crabdf['ra_prediction'] > 0.995*center_ra) & (crabdf['dec_prediction'] < 1.0025*center_dec) & (crabdf['dec_prediction'] > 0.995*center_ra)]
-    df_event = crabdf.index[(((crabdf['ra_prediction'] - center_ra)**2) < 0.025) & (((crabdf['dec_prediction'] - center_dec)**2) < 0.025)]
+    df_event = crabdf.index[(((crabdf['ra_prediction'] - center_ra)**2) < 0.0001) & (((crabdf['dec_prediction'] - center_dec)**2) < 0.0001)]
     off_event = crabdf.index[(((crabdf['ra_prediction'] - center_ra)**2) > 1.0) | (((crabdf['dec_prediction'] - center_dec)**2) > 1.0)]
     print(off_event)
     print(df_event)
