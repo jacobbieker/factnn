@@ -24,7 +24,6 @@ def batchYielder(path_to_training_data, type_training, percent_training, num_eve
         items = int(items*percent_training)
         length_dataset = len(f['Image'])
         section = 0
-        offset = int(section * num_events_per_epoch)
         times_train_in_items = int(np.floor(items / num_events_per_epoch))
         image = f['Image']
         if type_training == 'Energy':
@@ -54,7 +53,7 @@ def batchYielder(path_to_training_data, type_training, percent_training, num_eve
             # Now create the batches from labels and other things
             batch_num = 0
             section = section % times_train_in_items
-
+            offset = int(section * num_events_per_epoch)
             while batch_size * (batch_num + 1) < items:
                 batch_images = image[offset + int(batch_num*batch_size):offset + int((batch_num+1)*batch_size)]
                 if type_training == 'Energy':
@@ -115,25 +114,38 @@ path_proton_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_Timing_Ima
 np.random.seed(0)
 # Make the model
 
-import matplotlib.pyplot as plt
-with h5py.File(path_mc_images, 'r') as f:
-    with h5py.File(path_proton_images, 'r') as f2:
-        # Get some truth data for now, just use Crab images
-        items = len(f2["Image"])
-        validation_test = 0.2 * items
-        images = f['Image'][-validation_test:]
-        images_false = f2['Image'][-validation_test:]
-        #images = np.swapaxes(images, 0, 2)
-        #images_false = np.swapaxes(images_false, 0, 2)
-        print(images_false.shape)
-        labels = np.array([True] * (len(images)) + [False] * len(images_false))
-        batch_val_label = (np.arange(2) == labels[:, None]).astype(np.float32)
-        batch_images = np.concatenate([images, images_false], axis=0)
-        y = batch_images
-        y_label = batch_val_label
-        print(y.shape)
+# Get length of model for later use
+with h5py.File(path_proton_images, 'r') as f2:
+    length_items = len(f2['Image'])
 
-        print("Finished getting data")
+predicting_labels = []
+
+# Need validation generator
+def validationGenerator(validation_percentage, batch_size=64, predicting=False):
+    with h5py.File(path_mc_images, 'r') as f:
+        with h5py.File(path_proton_images, 'r') as f2:
+            # Get some truth data for now, just use Crab images
+            items = len(f2["Image"])
+            validation_test = validation_percentage * items
+            num_batch_in_validate = int(validation_test / batch_size)
+            section = 0
+            images = f['Image']
+            images_false = f2['Image']
+            while True:
+                batch_num = 0
+                section = section % num_batch_in_validate
+                offset = int(section * num_batch_in_validate)
+                while batch_size * (batch_num + 1) < items:
+                    batch_images = images[-1*(offset + int((batch_num+1)*batch_size)):-1*(offset + int((batch_num)*batch_size))]
+                    proton_images = images_false[-1*(offset + int((batch_num+1)*batch_size)):-1*(offset + int((batch_num)*batch_size))]
+                    labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
+                    batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
+                    batch_images = np.concatenate([batch_images, proton_images], axis=0)
+                    batch_num += 1
+                    if predicting:
+                        predicting_labels = np.concatenate([predicting_labels, batch_image_label], axis=0)
+                    yield (batch_images, batch_image_label)
+                section += 1
 
 from sklearn.metrics import roc_auc_score
 
@@ -161,23 +173,23 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model = Sequential()
 
             # Base Conv layer
-            model.add(ConvLSTM2D(64, kernel_size=3, strides=2,
+            model.add(ConvLSTM2D(32, kernel_size=3, strides=2,
                                  padding='same',
                                  input_shape=(100, 75, 75, 1), activation='relu', recurrent_activation='hard_sigmoid', return_sequences=True))
             model.add(
-                ConvLSTM2D(128, kernel_size=3, strides=2,
+                ConvLSTM2D(64, kernel_size=3, strides=2,
                            padding='same', activation='relu', recurrent_activation='hard_sigmoid', return_sequences=True))
             model.add(
-                ConvLSTM2D(256, kernel_size=3, strides=2,
+                ConvLSTM2D(128, kernel_size=3, strides=2,
                            padding='same', recurrent_activation='hard_sigmoid', activation='relu'))
             model.add(Dropout(0.5))
 
             model.add(Flatten())
 
             for i in range(1):
-                model.add(Dense(512, activation='relu'))
-                model.add(Dropout(1/4))
                 model.add(Dense(256, activation='relu'))
+                model.add(Dropout(1/4))
+                model.add(Dense(128, activation='relu'))
                 model.add(Dropout(1/4))
 
             # Final Dense layer
@@ -187,12 +199,13 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             model.summary()
             # Makes it only use
             model.fit_generator(generator=batchYielder(path_to_training_data=path_mc_images, path_to_proton_data=path_proton_images, type_training="Seperation", batch_size=64, percent_training=0.6),
-                                steps_per_epoch=np.floor(items/64)
+                                steps_per_epoch=int(np.floor(0.6*length_items/64))
                                 , epochs=400,
-                                verbose=2, validation_data=(y, y_label),
-                                callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
-            predictions = model.predict(y, batch_size=64)
-            print(roc_auc_score(y_label, predictions))
+                                verbose=2, validation_data=validationGenerator(0.2), validation_steps=int(np.floor(0.2*length_items/64)),
+                                callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint],
+                                use_multiprocessing=True, workers=10)
+            predictions = model.predict_generator(validationGenerator(0.2, predicting=True), steps=int(np.floor(0.2*length_items/64)))
+            print(roc_auc_score(predicting_labels, predictions))
             K.clear_session()
             tf.reset_default_graph()
 

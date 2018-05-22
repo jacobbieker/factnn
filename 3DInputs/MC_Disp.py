@@ -245,7 +245,7 @@ with h5py.File(path_mc_images, 'r') as f:
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, optimizer):
     #try:
-    model_base = ""# base_dir +"/" # + "/Models/FinalSourceXY/test/test/"
+    model_base = "/run/media/jacob/WDRed8Tb1/Models/3DDisp/" # + "/Models/FinalSourceXY/test/test/"
     model_name = "MC_3DDisp" + "_drop_" + str(dropout_layer)
     if not os.path.isfile(model_base + model_name + ".csv"):
         csv_logger = keras.callbacks.CSVLogger(model_base + model_name + ".csv")
