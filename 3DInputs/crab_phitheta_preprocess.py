@@ -28,7 +28,7 @@ path_raw_mc_gamma_folder = base_dir + "/ihp-pc41.ethz.ch/public/phs/obs/Crab/"
 #path_store_mapping_dict = sys.argv[2]
 path_store_mapping_dict = thesis_base + "/jan/07_make_FACT/rebinned_mapping_dict_4_flipped.p"
 #path_mc_images = sys.argv[3]
-path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_Timing_Images.h5"
+path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_Crab1314_TimingAll_Images.h5"
 path_to_diffuse = "/run/media/jacob/WDRed8Tb1/dl2_theta/crab_precuts.hdf5"
 #path_mc_diffuse_images = "/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Phi_Images.h5"
 path_store_runlist = "Crab1314_std_analysis.p"
@@ -37,7 +37,7 @@ print("Read file")
 diffuse_df = read_h5py(path_to_diffuse, key="events", columns=["event_num", "run_id", "night",
                                                                "az_source_calc", "zd_source_calc", "source_position",
                                                                "unix_time_utc", "az_tracking", "zd_tracking"])
-diffuse_df = diffuse_df[0:50000]
+diffuse_df = diffuse_df#[0:50000]
 
 def getMetadata(path_folder):
     '''
@@ -73,8 +73,7 @@ def getMetadata(path_folder):
 
 def reformat(dataset):
     #Reformat to fit into tensorflow
-    dataset = np.swapaxes(dataset, 0, 2)
-    print(dataset)
+    dataset = np.swapaxes(dataset, 1, 3)
     dataset = np.array(dataset).reshape((-1, 100, 75, 75, 1)).astype(np.float32)
     return dataset
 
@@ -121,6 +120,9 @@ def batchYielder(paths):
                                 input_matrix[coords[0]][coords[1]][value-30] += element[1]*1
 
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x, source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1])
+                if len(data) != 0 and len(data) % 75 == 0:
+                    yield data
+                    data = []
             yield data
         except Exception as e:
             print(e)

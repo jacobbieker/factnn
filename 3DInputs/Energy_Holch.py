@@ -12,11 +12,10 @@ import os
 import keras
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Conv1D, ELU, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
+from keras.layers import Dense, Dropout, Activation, Conv1D, ConvLSTM2D, ELU, Flatten, Reshape, BatchNormalization, Conv2D, MaxPooling2D
 from fact.coordinates.utils import horizontal_to_camera
 import pandas as pd
 from sklearn.metrics import roc_auc_score, r2_score
-from .baseStuff import batchYielder
 
 architecture = 'manjaro'
 
@@ -125,30 +124,78 @@ epoch = 500
 def euclidean_distance(x1, y1, x2, y2):
     return np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
-path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_diffuse_BothSource_Images.h5"
-path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_diffuse_DELTA5000_Images.h5"
-path_mc_images = "/run/media/jacob/SSD/Rebinned_5_MC_Gamma_BothSource_Images.h5"
+path_mc_images = "/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_TimInfo_Images.h5"
 #path_mrk501 = "/run/media/jacob/WDRed8Tb1/dl2_theta/Mrk501_precuts.hdf5"
 
 #mrk501 = read_h5py(path_mrk501, key="events", columns=["event_num", "night", "run_id", "source_x_prediction", "source_y_prediction"])
 #mc_image = read_h5py_chunked(path_mc_images, key='events', columns=['Image', 'Event', 'Night', 'Run'])
 
+with h5py.File(path_mc_images, 'r') as f2:
+    length_items = len(f2['Image'])
+    length_training = 0.6*length_items
 
-import matplotlib.pyplot as plt
-with h5py.File(path_mc_images, 'r') as f:
-    # Get some truth data for now, just use Crab images
-    items = len(f["Image"])
-    validation_test = 0.2 * items
-    images = f['Image'][-validation_test:]
-    batch_val_label = f['Energy'][-validation_test:]
-    batch_images = images
-    y = batch_images
-    y_label = batch_val_label
-    print(y.shape)
 
-    print("Finished getting data")
+def batchYielder(path_to_training_data, type_training, percent_training, num_events_per_epoch=1000, path_to_proton_data=None, time_slice=100, batch_size=64):
+    with h5py.File(path_to_training_data, 'r') as f:
+        items = list(f.items())[1][1].shape[0]
+        items = int(items*percent_training)
+        length_dataset = len(f['Image'])
+        section = 0
+        times_train_in_items = int(np.floor(items / num_events_per_epoch))
+        image = f['Image']
+        if type_training == 'Energy':
+            energy = f['Energy']
+            while True:
+                # Now create the batches from labels and other things
+                batch_num = 0
+                section = section % times_train_in_items
+                offset = int(section * num_events_per_epoch)
+                while batch_size * (batch_num + 1) < items:
+                    batch_images = image[offset + int(batch_num*batch_size):offset + int((batch_num+1)*batch_size)]
+                    batch_images = batch_images[:,:time_slice,::]
+                    batch_image_label = energy[offset + int(batch_num*batch_size):offset + int((batch_num+1)*batch_size)]
+                    batch_num += 1
+                    yield (batch_images, batch_image_label)
+                section += 1
 
-from sklearn.metrics import roc_auc_score
+# Need validation generator
+def validationGenerator(validation_percentage, time_slice=100, batch_size=64, predicting=False):
+    global predicting_labels
+    with h5py.File(path_mc_images, 'r') as f:
+            # Get some truth data for now, just use Crab images
+            items = len(f["Image"])
+            validation_test = validation_percentage * items
+            num_batch_in_validate = int(validation_test / batch_size)
+            section = 0
+            images = f['Image']
+            energy = f['Energy']
+            while True:
+                batch_num = 0
+                section = section % num_batch_in_validate
+                offset = int(section * num_batch_in_validate)
+                while batch_size * (batch_num + 1) < items:
+                    batch_images = images[int(length_training+ (offset + int((batch_num)*batch_size))):int(length_training + (offset + int((batch_num+1)*batch_size)))]
+                    # Now slice it to only take the first 40 frames of the trigger from Jan's analysis
+                    batch_images = batch_images[:,:time_slice,::]
+                    labels = energy[int(length_training+ (offset + int((batch_num)*batch_size))):int(length_training + (offset + int((batch_num+1)*batch_size)))]
+                    batch_image_label = labels
+                    batch_num += 1
+                    yield (batch_images, batch_image_label)
+                section += 1
+
+from sklearn.metrics import r2_score
+
+time_slice = 40
+model = keras.models.load_model("/run/media/jacob/WDRed8Tb1/Models/3DEnergy/_MC_Seperation3D_p_(3, 3)_drop_0.1_numDense_5_conv_2_pool_0_denseN_174_convN_69.h5")
+
+predictions = model.predict_generator(validationGenerator(0.4, time_slice=time_slice, predicting=True, batch_size=1), steps=int(np.floor(0.4*length_items/1)))
+predictions = predictions
+print(predictions.shape)
+with h5py.File("/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_TimInfo_Images.h5") as f:
+    predicting_labels = f['Energy'][length_training:-1]
+print(predicting_labels.shape)
+print(r2_score(predicting_labels, predictions))
+exit()
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch):
     #try:
@@ -174,36 +221,34 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         model = Sequential()
 
         # Base Conv layer
-        model.add(Conv2D(128, kernel_size=(3,3,3), strides=(1, 1, 1),
-                         padding='same',
-                         input_shape=(75, 75, 100)))
-        #model.add(LeakyReLU())
-        model.add(Activation('relu'))
+        model.add(ConvLSTM2D(32, kernel_size=3, strides=2,
+                             padding='same',
+                             input_shape=(time_slice, 75, 75, 1), activation='relu', dropout=0.3, recurrent_dropout=0.4, recurrent_activation='hard_sigmoid', return_sequences=True))
+        model.add(
+            ConvLSTM2D(32, kernel_size=3, strides=2,
+                       padding='same', activation='relu', dropout=0.3, recurrent_dropout=0.4, recurrent_activation='hard_sigmoid'))
 
-        model.add(keras.layers.MaxPooling3D(pool_size=(2, 2, 2), padding='same'))
-        model.add(Dropout(dropout_layer))
+        #model.add(Dropout(dropout_layer))
 
         model.add(
-            Conv2D(128, (3,3,3), strides=(1, 1, 1),
+            Conv2D(64, (3,3), strides=(1, 1),
                    padding='same'))
         model.add(Activation('relu'))
-        model.add(keras.layers.MaxPooling3D(pool_size=(2, 2, 2), padding='same'))
         model.add(Dropout(dropout_layer))
         model.add(
-            Conv2D(256, (3,3,3), strides=(1, 1, 1),
+            Conv2D(128, (3,3), strides=(1, 1),
                    padding='same'))
         model.add(Activation('relu'))
-        model.add(keras.layers.MaxPooling3D(pool_size=(2, 2, 2), padding='same'))
         model.add(Dropout(dropout_layer))
 
         model.add(Flatten())
 
         for i in range(1):
-            model.add(Dense(512, activation='relu'))
-            model.add(Dropout(dropout_layer/2))
             model.add(Dense(256, activation='relu'))
             model.add(Dropout(dropout_layer/2))
             model.add(Dense(128, activation='relu'))
+            model.add(Dropout(dropout_layer/2))
+            model.add(Dense(64, activation='relu'))
             model.add(Dropout(dropout_layer/2))
 
         # Final Dense layer
@@ -212,14 +257,16 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
                       metrics=['mae'])
         model.summary()
         # Makes it only use
-        model.fit_generator(generator=batchYielder(path_to_training_data=path_mc_images, type_training="Energy", percent_training=0.6),
-                            steps_per_epoch=np.floor(items/64)
+        model.fit_generator(generator=batchYielder(path_to_training_data=path_mc_images, time_slice=time_slice,  type_training="Energy", batch_size=batch_size, percent_training=0.6),
+                            steps_per_epoch=int(np.floor(0.2*length_items/batch_size))
                             , epochs=400,
-                            verbose=2, validation_data=(y, y_label),
-                            callbacks=[early_stop, csv_logger, reduceLR, model_checkpoint])
-        predictions = model.predict(y, batch_size=64)
+                            verbose=1, validation_data=validationGenerator(0.2, time_slice=time_slice, batch_size=batch_size), validation_steps=int(np.floor(0.2*length_items/batch_size)),
+                            callbacks=[early_stop, reduceLR, model_checkpoint],
+                            )
+        predictions = model.predict_generator(validationGenerator(0.2, time_slice=time_slice, predicting=True, batch_size=batch_size), steps=int(np.floor(0.2*length_items/batch_size)))
         #test_pred = model.predict(test_dataset, batch_size=64)
-        print(r2_score(y_label, predictions))
+        print(r2_score(predicting_labels, predictions))
+        exit()
         #print(roc_auc_score(test_labels, test_pred))
         K.clear_session()
         tf.reset_default_graph()
@@ -239,7 +286,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
 
 for i in range(num_runs):
     dropout_layer = np.round(np.random.uniform(0.0, 1.0), 2)
-    batch_size = np.random.randint(batch_sizes[0], batch_sizes[1])
+    batch_size = 32#np.random.randint(batch_sizes[0], batch_sizes[1])
     num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
     num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
     patch_size = patch_sizes[np.random.randint(0, 3)]
