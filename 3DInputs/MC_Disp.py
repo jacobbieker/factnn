@@ -208,17 +208,11 @@ def validationGenerator(validation_percentage, time_slice=100, batch_size=64):
                 yield (batch_images, batch_image_label)
             section += 1
 
-
-model = keras.models.load_model("/run/media/jacob/WDRed8Tb1/Models/3DDisp/_MC_Disp3DSpatial_p_(5, 5)_drop_0.6_numDense_4_conv_4_pool_0_denseN_106_convN_89.h5")
-
-predictions = model.predict_generator(validationGenerator(0.4, time_slice=time_slice, batch_size=1), steps=int(np.floor(0.4*length_items/1)))
-predictions = predictions
-print(predictions.shape)
 with h5py.File(path_mc_images) as f:
-    source_y = f['Source_X'][length_training:-1]
-    source_x = f['Source_Y'][length_training:-1]
-    cog_x = f['COG_X'][length_training:-1]
-    cog_y = f['COG_Y'][length_training:-1]
+    source_y = f['Source_X'][int(length_training):-1]
+    source_x = f['Source_Y'][int(length_training):-1]
+    cog_x = f['COG_X'][int(length_training):-1]
+    cog_y = f['COG_Y'][int(length_training):-1]
     batch_image_label = euclidean_distance(
         source_x, source_y,
         cog_x, cog_y
@@ -226,6 +220,13 @@ with h5py.File(path_mc_images) as f:
     predicting_labels = batch_image_label
 
 print(predicting_labels.shape)
+
+model = keras.models.load_model("/run/media/jacob/WDRed8Tb1/Models/3DDisp/_MC_Disp3DSpatial_p_(5, 5)_drop_0.6_numDense_4_conv_4_pool_0_denseN_106_convN_89.h5")
+
+predictions = model.predict_generator(validationGenerator(0.4, time_slice=time_slice, batch_size=1), steps=int(np.floor(0.4*length_items/1)))
+predictions = predictions.reshape((-1,))
+print(predictions.shape)
+
 print(r2_score(predicting_labels, predictions))
 exit()
 
