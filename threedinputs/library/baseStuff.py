@@ -10,8 +10,37 @@ from sklearn.utils import shuffle
 def euclidean_distance(x1, y1, x2, y2):
     return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
+def image_augmenter(images):
+    """
+    Augment images by rotating and flipping input images randomly
+    Should only be used for separation and energy tasks, as it does not change the labels attached
+    :param images:
+    :return: Numpy array of randomly flipped and rotated 3D images, in same order
+    """
+    new_images = []
+    for image in images:
+        vert_val = np.random.rand()
+        if vert_val < 0.5:
+            # Flip the image vertically
+            image = np.flip(image, 1)
+        horz_val = np.random.rand()
+        if horz_val < 0.5:
+            # flip horizontally
+            image = np.flip(image, 2)
+        rot_val = np.random.rand()
+        if rot_val < 0.3:
+            # Rotate 90 degrees
+            image = np.rot90(image, 1, axes=(1,2))
+        elif rot_val > 0.7:
+            # Rotate 270 degrees
+            image = np.rot90(image, 3, axes=(1,2))
 
-def trainingYielder(path_to_training_data, type_training, length_training, time_slice=30, total_slices=25,
+        new_images.append(image)
+    images = np.asarray(new_images)
+    return images
+
+
+def training_generator(path_to_training_data, type_training, length_training, time_slice=30, total_slices=25,
                     path_to_proton_data=None, batch_size=64):
     with h5py.File(path_to_training_data, 'r') as f:
         items = length_training
@@ -31,6 +60,7 @@ def trainingYielder(path_to_training_data, type_training, length_training, time_
                          int((batch_num + 1) * batch_size))]
 
                     batch_num += 1
+                    batch_images = image_augmenter(batch_images)
                     batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
                     yield (batch_images, batch_image_label)
                 section += 1
@@ -92,12 +122,13 @@ def trainingYielder(path_to_training_data, type_training, length_training, time_
                             batch_images = np.concatenate([batch_images, proton_images], axis=0)
 
                             batch_num += 1
+                            batch_images = image_augmenter(batch_images)
                             batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
                             yield (batch_images, batch_image_label)
                         section += 1
 
 
-def validationYielder(path_to_training_data, type_training, length_validation, length_training, time_slice=30,
+def validation_generator(path_to_training_data, type_training, length_validation, length_training, time_slice=30,
                       total_slices=25, path_to_proton_data=None, batch_size=64):
     with h5py.File(path_to_training_data, 'r') as f:
         items = length_validation
@@ -181,7 +212,7 @@ def validationYielder(path_to_training_data, type_training, length_validation, l
                         section += 1
 
 
-def testingYielder(path_to_training_data, type_training, length_validate, length_testing, time_slice=30,
+def testing_generator(path_to_training_data, type_training, length_validate, length_testing, time_slice=30,
                    total_slices=25, path_to_proton_data=None, batch_size=64):
     with h5py.File(path_to_training_data, 'r') as f:
         items = length_testing
@@ -267,11 +298,19 @@ def testingYielder(path_to_training_data, type_training, length_validate, length
 def trainAndTestModel(model, batch_size, num_epochs, type_model,
                       time_slice, total_slices, model_name, path_mc_images, path_proton_images=None,
                       training_fraction=0.6, validation_fraction=0.2, tensorboard=False):
-    with h5py.File(path_mc_images, 'r') as f2:
-        length_items = len(f2['Image'])
-        length_training = training_fraction * length_items
-        length_validate = (training_fraction + validation_fraction) * length_items
-        only_length_validate = validation_fraction * length_items
+    if path_proton_images is None:
+        with h5py.File(path_mc_images, 'r') as f2:
+            length_items = len(f2['Image'])
+            length_training = training_fraction * length_items
+            length_validate = (training_fraction + validation_fraction) * length_items
+            only_length_validate = validation_fraction * length_items
+    else:
+        with h5py.File(path_proton_images, 'r') as f2:
+            length_items = len(f2['Image'])
+            length_training = training_fraction * length_items
+            length_validate = (training_fraction + validation_fraction) * length_items
+            only_length_validate = validation_fraction * length_items
+
 
     model_checkpoint = keras.callbacks.ModelCheckpoint(model_name + ".h5",
                                                        monitor='val_loss',
@@ -294,56 +333,56 @@ def trainAndTestModel(model, batch_size, num_epochs, type_model,
     # Makes it only use
     if tensorboard:
         if path_proton_images is not None:
-            model.fit_generator(generator=trainingYielder(path_to_training_data=path_mc_images, total_slices=total_slices,
+            model.fit_generator(generator=training_generator(path_to_training_data=path_mc_images, total_slices=total_slices,
                                                           time_slice=time_slice, type_training=type_model,
                                                           batch_size=batch_size, path_to_proton_data=path_proton_images, length_training=length_training),
                                 steps_per_epoch=int(np.floor(training_fraction * length_items / batch_size))
                                 , epochs=num_epochs,
-                                verbose=1, validation_data=validationYielder(validation_fraction, time_slice=time_slice,
+                                verbose=1, validation_data=validation_generator(validation_fraction, time_slice=time_slice,
                                                                              total_slices=total_slices,
                                                                              batch_size=batch_size, path_to_proton_data=path_proton_images, type_training=type_model,
                                                                              length_training=length_training,
                                                                              length_validation=only_length_validate),
-                                callbacks=[early_stop, model_checkpoint, tb],
+                                callbacks=[early_stop, model_checkpoint, tb], validation_steps=int(np.floor(only_length_validate/batch_size))
                                 )
         else:
-            model.fit_generator(generator=trainingYielder(path_to_training_data=path_mc_images, total_slices=total_slices,
+            model.fit_generator(generator=training_generator(path_to_training_data=path_mc_images, total_slices=total_slices,
                                                           time_slice=time_slice, path_to_proton_data=path_proton_images, type_training=type_model,
                                                           batch_size=batch_size, length_training=length_training),
                                 steps_per_epoch=int(np.floor(training_fraction * length_items / batch_size))
                                 , epochs=num_epochs,
-                                verbose=1, validation_data=validationYielder(validation_fraction, time_slice=time_slice,
+                                verbose=1, validation_data=validation_generator(validation_fraction, time_slice=time_slice,
                                                                              total_slices=total_slices, path_to_proton_data=path_proton_images,
                                                                              batch_size=batch_size, type_training=type_model,
                                                                              length_training=length_training,
                                                                              length_validation=only_length_validate),
-                                callbacks=[early_stop, model_checkpoint, tb],
+                                callbacks=[early_stop, model_checkpoint, tb], validation_steps=int(np.floor(only_length_validate/batch_size))
                                 )
     else:
         if path_proton_images is not None:
-            model.fit_generator(generator=trainingYielder(path_to_training_data=path_mc_images, total_slices=total_slices,
+            model.fit_generator(generator=training_generator(path_to_training_data=path_mc_images, total_slices=total_slices,
                                                           time_slice=time_slice, type_training=type_model,
                                                           batch_size=batch_size, path_to_proton_data=path_proton_images, length_training=length_training),
                                 steps_per_epoch=int(np.floor(training_fraction * length_items / batch_size))
                                 , epochs=num_epochs,
-                                verbose=1, validation_data=validationYielder(validation_fraction, time_slice=time_slice,
+                                verbose=1, validation_data=validation_generator(validation_fraction, time_slice=time_slice,
                                                                              total_slices=total_slices,
                                                                              batch_size=batch_size, path_to_proton_data=path_proton_images, type_training=type_model,
                                                                              length_training=length_training,
                                                                              length_validation=only_length_validate),
-                                callbacks=[early_stop, model_checkpoint],
+                                callbacks=[early_stop, model_checkpoint], validation_steps=int(np.floor(only_length_validate/batch_size))
                                 )
         else:
-            model.fit_generator(generator=trainingYielder(path_to_training_data=path_mc_images, total_slices=total_slices,
+            model.fit_generator(generator=training_generator(path_to_training_data=path_mc_images, total_slices=total_slices,
                                                           time_slice=time_slice, path_to_proton_data=path_proton_images, type_training=type_model,
                                                           batch_size=batch_size, length_training=length_training),
                                 steps_per_epoch=int(np.floor(training_fraction * length_items / batch_size))
                                 , epochs=num_epochs,
-                                verbose=1, validation_data=validationYielder(validation_fraction, time_slice=time_slice,
+                                verbose=1, validation_data=validation_generator(validation_fraction, time_slice=time_slice,
                                                                              total_slices=total_slices, path_to_proton_data=path_proton_images,
                                                                              batch_size=batch_size, type_training=type_model,
                                                                              length_training=length_training,
                                                                              length_validation=only_length_validate),
-                                callbacks=[early_stop, model_checkpoint],
+                                callbacks=[early_stop, model_checkpoint], validation_steps=int(np.floor(only_length_validate/batch_size))
                                 )
     return model_name + ".h5"
