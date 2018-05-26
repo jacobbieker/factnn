@@ -10,26 +10,24 @@ def euclidean_distance(x1, y1, x2, y2):
 
 
 def trainingYielder(path_to_training_data, type_training, length_training, time_slice=30, total_slices=25,
-                    num_events_per_epoch=1000, path_to_proton_data=None, batch_size=64):
+                    path_to_proton_data=None, batch_size=64):
     with h5py.File(path_to_training_data, 'r') as f:
         items = length_training
         section = 0
-        offset = int(section * num_events_per_epoch)
-        times_train_in_items = int(np.floor(items / num_events_per_epoch))
+        times_train_in_items = int(np.floor(items / batch_size))
         image = f['Image']
         if type_training == 'Energy':
             energy = f['Energy']
             while True:
                 batch_num = 0
                 section = section % times_train_in_items
-                offset = int(section * times_train_in_items)
                 while batch_size * (batch_num + 1) < items:
-                    batch_images = image[int(offset + int((batch_num) * batch_size)):int(
-                        offset + int((batch_num + 1) * batch_size))]
+                    batch_images = image[int(int((batch_num) * batch_size)):int(
+                         int((batch_num + 1) * batch_size))]
                     # Now slice it to only take the first 40 frames of the trigger from Jan's analysis
                     batch_images = batch_images[:, time_slice - total_slices:time_slice, ::]
-                    batch_image_label = energy[int(offset + int((batch_num) * batch_size)):int(
-                        offset + int((batch_num + 1) * batch_size))]
+                    batch_image_label = energy[int( int((batch_num) * batch_size)):int(
+                         int((batch_num + 1) * batch_size))]
                     batch_num += 1
                     yield (batch_images, batch_image_label)
                 section += 1
@@ -41,20 +39,19 @@ def trainingYielder(path_to_training_data, type_training, length_training, time_
             while True:
                 batch_num = 0
                 section = section % times_train_in_items
-                offset = int(section * times_train_in_items)
                 while batch_size * (batch_num + 1) < items:
-                    batch_images = image[int(offset + int((batch_num) * batch_size)):int(
-                        offset + int((batch_num + 1) * batch_size))]
+                    batch_images = image[int(int((batch_num) * batch_size)):int(
+                         int((batch_num + 1) * batch_size))]
                     # Now slice it to only take the first 40 frames of the trigger from Jan's analysis
                     batch_images = batch_images[:, time_slice - total_slices:time_slice, ::]
-                    source_x_tmp = source_x[int(offset + int((batch_num) * batch_size)):int(
-                        offset + int((batch_num + 1) * batch_size))]
-                    source_y_tmp = source_y[int(offset + int((batch_num) * batch_size)):int(
-                        offset + int((batch_num + 1) * batch_size))]
-                    cog_x_tmp = cog_x[int(offset + int((batch_num) * batch_size)):int(
-                        offset + int((batch_num + 1) * batch_size))]
-                    cog_y_tmp = cog_y[int(offset + int((batch_num) * batch_size)):int(
-                        offset + int((batch_num + 1) * batch_size))]
+                    source_x_tmp = source_x[int( int((batch_num) * batch_size)):int(
+                        int((batch_num + 1) * batch_size))]
+                    source_y_tmp = source_y[int( int((batch_num) * batch_size)):int(
+                         int((batch_num + 1) * batch_size))]
+                    cog_x_tmp = cog_x[int( int((batch_num) * batch_size)):int(
+                         int((batch_num + 1) * batch_size))]
+                    cog_y_tmp = cog_y[int( int((batch_num) * batch_size)):int(
+                         int((batch_num + 1) * batch_size))]
                     batch_image_label = euclidean_distance(
                         source_x_tmp, source_y_tmp,
                         cog_x_tmp, cog_y_tmp
@@ -83,10 +80,10 @@ def trainingYielder(path_to_training_data, type_training, length_training, time_
                         section = section % times_train_in_items
 
                         while batch_size * (batch_num + 1) < items:
-                            batch_images = image[int(offset + batch_num * batch_size):int(
-                                offset + (batch_num + 1) * batch_size)]
-                            proton_images = proton_data[int(offset + batch_num * batch_size):int(
-                                offset + (batch_num + 1) * batch_size)]
+                            batch_images = image[int( batch_num * batch_size):int(
+                                 (batch_num + 1) * batch_size)]
+                            proton_images = proton_data[int( batch_num * batch_size):int(
+                                 (batch_num + 1) * batch_size)]
                             labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
                             batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
                             batch_images = np.concatenate([batch_images, proton_images], axis=0)
@@ -97,13 +94,11 @@ def trainingYielder(path_to_training_data, type_training, length_training, time_
 
 
 def validationYielder(path_to_training_data, type_training, length_validation, length_training, time_slice=30,
-                      total_slices=25,
-                      num_events_per_epoch=1000, path_to_proton_data=None, batch_size=64):
+                      total_slices=25, path_to_proton_data=None, batch_size=64):
     with h5py.File(path_to_training_data, 'r') as f:
         items = length_validation
         section = 0
-        offset = int(section * num_events_per_epoch)
-        times_train_in_items = int(np.floor(items / num_events_per_epoch))
+        times_train_in_items = int(np.floor(items / batch_size))
         num_batch_in_validate = int(length_validation / batch_size)
         image = f['Image']
         if type_training == 'Energy':
@@ -111,14 +106,13 @@ def validationYielder(path_to_training_data, type_training, length_validation, l
             while True:
                 batch_num = 0
                 section = section % num_batch_in_validate
-                offset = int(section * num_batch_in_validate)
                 while batch_size * (batch_num + 1) < items:
-                    batch_images = image[int(length_training + offset + int((batch_num) * batch_size)):int(
-                        length_training + offset + int((batch_num + 1) * batch_size))]
+                    batch_images = image[int(length_training + int((batch_num) * batch_size)):int(
+                        length_training  + int((batch_num + 1) * batch_size))]
                     # Now slice it to only take the first 40 frames of the trigger from Jan's analysis
                     batch_images = batch_images[:, time_slice - total_slices:time_slice, ::]
-                    batch_image_label = energy[int(length_training + offset + int((batch_num) * batch_size)):int(
-                        length_training + offset + int((batch_num + 1) * batch_size))]
+                    batch_image_label = energy[int(length_training + int((batch_num) * batch_size)):int(
+                        length_training + int((batch_num + 1) * batch_size))]
                     batch_num += 1
                     yield (batch_images, batch_image_label)
                 section += 1
@@ -130,20 +124,19 @@ def validationYielder(path_to_training_data, type_training, length_validation, l
             while True:
                 batch_num = 0
                 section = section % num_batch_in_validate
-                offset = int(section * num_batch_in_validate)
                 while batch_size * (batch_num + 1) < items:
-                    batch_images = image[int(length_training + offset + int((batch_num) * batch_size)):int(
-                        length_training + offset + int((batch_num + 1) * batch_size))]
+                    batch_images = image[int(length_training + int((batch_num) * batch_size)):int(
+                        length_training  + int((batch_num + 1) * batch_size))]
                     # Now slice it to only take the first 40 frames of the trigger from Jan's analysis
                     batch_images = batch_images[:, time_slice - total_slices:time_slice, ::]
-                    source_x_tmp = source_x[int(length_training + offset + int((batch_num) * batch_size)):int(
-                        length_training + offset + int((batch_num + 1) * batch_size))]
-                    source_y_tmp = source_y[int(length_training + offset + int((batch_num) * batch_size)):int(
-                        length_training + offset + int((batch_num + 1) * batch_size))]
-                    cog_x_tmp = cog_x[int(length_training + offset + int((batch_num) * batch_size)):int(
-                        length_training + offset + int((batch_num + 1) * batch_size))]
-                    cog_y_tmp = cog_y[int(length_training + offset + int((batch_num) * batch_size)):int(
-                        length_training + offset + int((batch_num + 1) * batch_size))]
+                    source_x_tmp = source_x[int(length_training + int((batch_num) * batch_size)):int(
+                        length_training + int((batch_num + 1) * batch_size))]
+                    source_y_tmp = source_y[int(length_training + int((batch_num) * batch_size)):int(
+                        length_training  + int((batch_num + 1) * batch_size))]
+                    cog_x_tmp = cog_x[int(length_training + int((batch_num) * batch_size)):int(
+                        length_training + int((batch_num + 1) * batch_size))]
+                    cog_y_tmp = cog_y[int(length_training + int((batch_num) * batch_size)):int(
+                        length_training + int((batch_num + 1) * batch_size))]
                     batch_image_label = euclidean_distance(
                         source_x_tmp, source_y_tmp,
                         cog_x_tmp, cog_y_tmp
@@ -172,10 +165,10 @@ def validationYielder(path_to_training_data, type_training, length_validation, l
                         section = section % times_train_in_items
 
                         while batch_size * (batch_num + 1) < items:
-                            batch_images = image[int(length_training + offset + batch_num * batch_size):int(
-                                length_training + offset + (batch_num + 1) * batch_size)]
-                            proton_images = proton_data[int(length_training + offset + batch_num * batch_size):int(
-                                length_training + offset + (batch_num + 1) * batch_size)]
+                            batch_images = image[int(length_training + batch_num * batch_size):int(
+                                length_training + (batch_num + 1) * batch_size)]
+                            proton_images = proton_data[int(length_training + batch_num * batch_size):int(
+                                length_training + (batch_num + 1) * batch_size)]
                             labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
                             batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
                             batch_images = np.concatenate([batch_images, proton_images], axis=0)
@@ -186,13 +179,11 @@ def validationYielder(path_to_training_data, type_training, length_validation, l
 
 
 def testingYielder(path_to_training_data, type_training, length_validate, length_testing, time_slice=30,
-                   total_slices=25,
-                   num_events_per_epoch=1000, path_to_proton_data=None, batch_size=64):
+                   total_slices=25, path_to_proton_data=None, batch_size=64):
     with h5py.File(path_to_training_data, 'r') as f:
         items = length_testing
         section = 0
-        offset = int(section * num_events_per_epoch)
-        times_train_in_items = int(np.floor(items / num_events_per_epoch))
+        times_train_in_items = int(np.floor(items / batch_size))
         num_batch_in_validate = int(length_testing / batch_size)
         image = f['Image']
         if type_training == 'Energy':
@@ -200,14 +191,13 @@ def testingYielder(path_to_training_data, type_training, length_validate, length
             while True:
                 batch_num = 0
                 section = section % num_batch_in_validate
-                offset = int(section * num_batch_in_validate)
                 while batch_size * (batch_num + 1) < items:
-                    batch_images = image[int(length_validate + offset + int((batch_num) * batch_size)):int(
-                        length_validate + offset + int((batch_num + 1) * batch_size))]
+                    batch_images = image[int(length_validate + int((batch_num) * batch_size)):int(
+                        length_validate + int((batch_num + 1) * batch_size))]
                     # Now slice it to only take the first 40 frames of the trigger from Jan's analysis
                     batch_images = batch_images[:, time_slice - total_slices:time_slice, ::]
-                    batch_image_label = energy[int(length_validate + offset + int((batch_num) * batch_size)):int(
-                        length_validate + offset + int((batch_num + 1) * batch_size))]
+                    batch_image_label = energy[int(length_validate + int((batch_num) * batch_size)):int(
+                        length_validate + int((batch_num + 1) * batch_size))]
                     batch_num += 1
                     yield (batch_images, batch_image_label)
                 section += 1
@@ -219,20 +209,19 @@ def testingYielder(path_to_training_data, type_training, length_validate, length
             while True:
                 batch_num = 0
                 section = section % num_batch_in_validate
-                offset = int(section * num_batch_in_validate)
                 while batch_size * (batch_num + 1) < items:
-                    batch_images = image[int(length_validate + offset + int((batch_num) * batch_size)):int(
-                        length_validate + offset + int((batch_num + 1) * batch_size))]
+                    batch_images = image[int(length_validate + int((batch_num) * batch_size)):int(
+                        length_validate + int((batch_num + 1) * batch_size))]
                     # Now slice it to only take the first 40 frames of the trigger from Jan's analysis
                     batch_images = batch_images[:, time_slice - total_slices:time_slice, ::]
-                    source_x_tmp = source_x[int(length_validate + offset + int((batch_num) * batch_size)):int(
-                        length_validate + offset + int((batch_num + 1) * batch_size))]
-                    source_y_tmp = source_y[int(length_validate + offset + int((batch_num) * batch_size)):int(
-                        length_validate + offset + int((batch_num + 1) * batch_size))]
-                    cog_x_tmp = cog_x[int(length_validate + offset + int((batch_num) * batch_size)):int(
-                        length_validate + offset + int((batch_num + 1) * batch_size))]
-                    cog_y_tmp = cog_y[int(length_validate + offset + int((batch_num) * batch_size)):int(
-                        length_validate + offset + int((batch_num + 1) * batch_size))]
+                    source_x_tmp = source_x[int(length_validate + int((batch_num) * batch_size)):int(
+                        length_validate + int((batch_num + 1) * batch_size))]
+                    source_y_tmp = source_y[int(length_validate + int((batch_num) * batch_size)):int(
+                        length_validate + int((batch_num + 1) * batch_size))]
+                    cog_x_tmp = cog_x[int(length_validate + int((batch_num) * batch_size)):int(
+                        length_validate + int((batch_num + 1) * batch_size))]
+                    cog_y_tmp = cog_y[int(length_validate + int((batch_num) * batch_size)):int(
+                        length_validate + int((batch_num + 1) * batch_size))]
                     batch_image_label = euclidean_distance(
                         source_x_tmp, source_y_tmp,
                         cog_x_tmp, cog_y_tmp
@@ -261,10 +250,10 @@ def testingYielder(path_to_training_data, type_training, length_validate, length
                         section = section % times_train_in_items
 
                         while batch_size * (batch_num + 1) < items:
-                            batch_images = image[int(length_validate + offset + batch_num * batch_size):int(
-                                length_validate + offset + (batch_num + 1) * batch_size)]
-                            proton_images = proton_data[int(length_validate + offset + batch_num * batch_size):int(
-                                length_validate + offset + (batch_num + 1) * batch_size)]
+                            batch_images = image[int(length_validate + batch_num * batch_size):int(
+                                length_validate + (batch_num + 1) * batch_size)]
+                            proton_images = proton_data[int(length_validate + batch_num * batch_size):int(
+                                length_validate + (batch_num + 1) * batch_size)]
                             labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
                             batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
                             batch_images = np.concatenate([batch_images, proton_images], axis=0)
