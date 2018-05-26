@@ -15,6 +15,9 @@ import tensorflow as tf
 from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Conv3D, LeakyReLU, Reshape, BatchNormalization, Conv2D, MaxPooling2D, ConvLSTM2D
 import fact.plotting as factplot
 
+time_slice = 40
+total_slices = 25
+
 def euclidean_distance(x1, y1, x2, y2):
     return np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
@@ -86,8 +89,8 @@ def batchYielder(path_to_training_data, type_training, percent_training, num_eve
                         batch_image_label = np.asarray(temp_sign)
                     elif type_training == "Separation":
                         proton_images = proton_data[offset + int(batch_num*batch_size):offset + int((batch_num+1)*batch_size)]
-                        batch_images = batch_images[:,time_slice-25:time_slice,::]
-                        proton_images = proton_images[:,time_slice-25:time_slice,::]
+                        batch_images = batch_images[:,time_slice-total_slices:time_slice,::]
+                        proton_images = proton_images[:,time_slice-total_slices:time_slice,::]
                         labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
                         batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
                         batch_images = np.concatenate([batch_images, proton_images], axis=0)
@@ -140,8 +143,8 @@ def validationGenerator(validation_percentage, time_slice=100, batch_size=64, pr
                     batch_images = images[(offset + int((batch_num)*batch_size)):(offset + int((batch_num+1)*batch_size))]
                     proton_images = images_false[(offset + int((batch_num)*batch_size)):(offset + int((batch_num+1)*batch_size))]
                     # Now slice it to only take the first 40 frames of the trigger from Jan's analysis
-                    batch_images = batch_images[:,time_slice-25:time_slice,::]
-                    proton_images = proton_images[:,time_slice-25:time_slice,::]
+                    batch_images = batch_images[:,time_slice-total_slices:time_slice,::]
+                    proton_images = proton_images[:,time_slice-total_slices:time_slice,::]
                     labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
                     batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
                     batch_images = np.concatenate([batch_images, proton_images], axis=0)
@@ -155,7 +158,7 @@ def validationGenerator(validation_percentage, time_slice=100, batch_size=64, pr
                 section += 1
 
 from sklearn.metrics import roc_auc_score
-time_slice = 40
+
 
 def predictGenerator(validation_percentage, time_slice=100, batch_size=64, predicting=False):
     with h5py.File(path_mc_images, 'r') as f:
@@ -175,8 +178,8 @@ def predictGenerator(validation_percentage, time_slice=100, batch_size=64, predi
                     batch_images = images[int(length_training+ (offset + int((batch_num)*batch_size))):int(length_training + (offset + int((batch_num+1)*batch_size)))]
                     proton_images = images_false[int(length_training + (offset + int((batch_num)*batch_size))):int(length_training+(offset + int((batch_num+1)*batch_size)))]
                     # Now slice it to only take the first 40 frames of the trigger from Jan's analysis
-                    batch_images = batch_images[:,time_slice-25:time_slice,::]
-                    proton_images = proton_images[:,time_slice-25:time_slice,::]
+                    batch_images = batch_images[:,time_slice-total_slices:time_slice,::]
+                    proton_images = proton_images[:,time_slice-total_slices:time_slice,::]
                     labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
                     batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
                     batch_images = np.concatenate([batch_images, proton_images], axis=0)
@@ -184,24 +187,7 @@ def predictGenerator(validation_percentage, time_slice=100, batch_size=64, predi
                     yield (batch_images, batch_image_label)
                 section += 1
 
-model = keras.models.load_model("/run/media/jacob/WDRed8Tb1/Models/3DSep/_MC_Seperation2DSpatial_p_(5, 5)_drop_0.64_numDense_3_conv_3_pool_1_denseN_219_convN_94.h5")
 
-for i in range(int(np.floor(0.4*length_items/4))):
-    labels = np.array([True] * (4) + [False] * 4)
-    batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
-    if i == 0:
-        all_labels = batch_image_label
-    else:
-        all_labels = np.concatenate([all_labels, batch_image_label])
-
-print(all_labels)
-print(all_labels.shape)
-all_labels = all_labels[:,1].reshape((-1,))
-
-predictions = model.predict_generator(predictGenerator(0.4, time_slice=time_slice, predicting=True, batch_size=4), steps=int(np.floor(0.4*length_items/4)))
-predictions = predictions[:,1].reshape((-1,))
-print(roc_auc_score(all_labels, predictions))
-exit()
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch,
                  predicting_labels=predicting_labels):
     #try:
@@ -222,40 +208,44 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
                                                    patience=120,
                                                    verbose=0, mode='auto')
-        tb = keras.callbacks.TensorBoard(log_dir='/run/media/jacob/WDRed8Tb1/TensorBoardLogs/', histogram_freq=1, batch_size=8, write_graph=True,
+        tb = keras.callbacks.TensorBoard(log_dir='/run/media/jacob/WDRed8Tb1/TensorBoardLogs3DSpatial/', histogram_freq=1, batch_size=32, write_graph=True,
                                          write_grads=True,
-                                         write_images=True,
+                                         write_images=False,
                                          embeddings_freq=0,
                                          embeddings_layer_names=None,
                                          embeddings_metadata=None)
 
         # Make the model
         model = Sequential()
-        total_slices = 25
         regularize = keras.regularizers.l1(0.04)
         # Base Conv layer
-        model.add(ConvLSTM2D(8, kernel_size=3, strides=2,
+        model.add(ConvLSTM2D(32, kernel_size=3, strides=1,
                              padding='same',
-                             input_shape=(total_slices, 75, 75, 1), activation='elu', dropout=0.3, recurrent_dropout=0.3, recurrent_activation='elu', return_sequences=True))
+                             input_shape=(total_slices, 75, 75, 1), activation='relu', dropout=0.3, recurrent_dropout=0.3, recurrent_activation='hard_sigmoid'))
+        model.add(MaxPooling2D())
         model.add(
-            Conv3D(32, kernel_size=(5,3,3), strides=2,
-                       padding='same', activation='elu'))
-        model.add(Dropout(0.5))
-        model.add(
-            Conv3D(32, kernel_size=(5,3,3), strides=2,
-                       padding='same', activation='elu'))
-        model.add(Dropout(0.5))
-        model.add(BatchNormalization())
-        model.add(ConvLSTM2D(8, kernel_size=5, strides=3,
-                             padding='same', activation='elu', dropout=0.3, recurrent_dropout=0.3, recurrent_activation='elu'))
+            Conv2D(64, kernel_size=3, strides=1,
+                       padding='same', activation='relu'))
+        model.add(MaxPooling2D())
+        #model.add(Dropout(0.3))
+        #model.add(ConvLSTM2D(32, kernel_size=5, strides=2,
+        #                     padding='same', activation='relu', dropout=0.3, recurrent_dropout=0.3, recurrent_activation='hard_sigmoid'))
+        #model.add(
+        #    Conv3D(128, kernel_size=(5,3,3), strides=2,
+        #               padding='same', activation='relu'))
+        #model.add(Dropout(0.3))
+        #model.add(BatchNormalization())
+
         model.add(Dropout(0.5))
         model.add(Flatten())
 
         for i in range(1):
-            model.add(Dense(128, activation='relu'))
-            model.add(Dropout(5/4))
+            model.add(BatchNormalization())
             model.add(Dense(64, activation='relu'))
-            model.add(Dropout(5/4))
+            model.add(Dropout(1/4))
+            #model.add(BatchNormalization())
+            model.add(Dense(32, activation='relu'))
+            model.add(Dropout(1/4))
 
         # Final Dense layer
         model.add(Dense(2, activation='softmax'))
@@ -264,7 +254,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         model.summary()
         # Makes it only use
         model.fit_generator(generator=batchYielder(path_to_training_data=path_mc_images, time_slice=time_slice, path_to_proton_data=path_proton_images, type_training="Separation", batch_size=batch_size, percent_training=0.6),
-                            steps_per_epoch=int(np.floor(0.01*length_items/batch_size))
+                            steps_per_epoch=int(np.floor(0.1*length_items/batch_size))
                             , epochs=1600,
                             verbose=1, validation_data=validationGenerator(0.2, time_slice=time_slice, batch_size=batch_size),
                             callbacks=[early_stop, reduceLR, model_checkpoint, tb],
@@ -297,7 +287,7 @@ num_runs = 500
 
 for i in range(num_runs):
     dropout_layer = np.round(np.random.uniform(0.2, 1.0), 2)
-    batch_size = 4#np.random.randint(batch_sizes[0], batch_sizes[1])
+    batch_size = 16#np.random.randint(batch_sizes[0], batch_sizes[1])
     num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
     num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
     patch_size = patch_sizes[np.random.randint(0, 2)]

@@ -38,7 +38,7 @@ diffuse_df = read_h5py(path_to_diffuse, key="events", columns=["event_num", "run
                                                                "az_source_calc", "zd_source_calc", "source_position",
                                                                "unix_time_utc", "az_tracking", "zd_tracking"])
 diffuse_df = diffuse_df#[0:50000]
-
+print(diffuse_df.shape)
 def getMetadata(path_folder):
     '''
     Gathers the file paths of the training data
@@ -67,7 +67,7 @@ def getMetadata(path_folder):
     else:
         with open(path_store_runlist, "rb") as path_store:
             latest_paths = pickle.load(path_store)
-    #print(latest_paths)
+    print(len(latest_paths))
     return latest_paths
 
 
@@ -89,6 +89,7 @@ def batchYielder(paths):
 
     # Load mapping-dict to switch from hexagonal to matrix
     id_position = pickle.load(open(path_store_mapping_dict, "rb"))
+    print(len(paths))
 
     for index, file in enumerate(paths):
         print(file)

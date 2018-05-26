@@ -176,7 +176,7 @@ def validationGenerator(validation_percentage, time_slice=100, batch_size=64, pr
                 while batch_size * (batch_num + 1) < items:
                     batch_images = images[int(length_training+ (offset + int((batch_num)*batch_size))):int(length_training + (offset + int((batch_num+1)*batch_size)))]
                     # Now slice it to only take the first 40 frames of the trigger from Jan's analysis
-                    batch_images = batch_images[:,:time_slice,::]
+                    batch_images = batch_images[:,time_slice-25:time_slice,::]
                     labels = energy[int(length_training+ (offset + int((batch_num)*batch_size))):int(length_training + (offset + int((batch_num+1)*batch_size)))]
                     batch_image_label = labels
                     batch_num += 1
@@ -186,13 +186,13 @@ def validationGenerator(validation_percentage, time_slice=100, batch_size=64, pr
 from sklearn.metrics import r2_score
 
 time_slice = 40
-model = keras.models.load_model("/run/media/jacob/WDRed8Tb1/Models/3DEnergy/_MC_Seperation3D_p_(3, 3)_drop_0.1_numDense_5_conv_2_pool_0_denseN_174_convN_69.h5")
+model = keras.models.load_model("/run/media/jacob/WDRed8Tb1/Models/3DDisp/_MC_Disp3DSpatial_p_(5, 5)_drop_0.21_numDense_0_conv_2_pool_0_denseN_211_convN_124.h5")
 
 predictions = model.predict_generator(validationGenerator(0.4, time_slice=time_slice, predicting=True, batch_size=1), steps=int(np.floor(0.4*length_items/1)))
 predictions = predictions
 print(predictions.shape)
 with h5py.File("/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_TimInfo_Images.h5") as f:
-    predicting_labels = f['Energy'][length_training:-1]
+    predicting_labels = f['Energy'][int(length_training):-1]
 print(predicting_labels.shape)
 print(r2_score(predicting_labels, predictions))
 exit()
@@ -224,9 +224,9 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         model.add(ConvLSTM2D(32, kernel_size=3, strides=2,
                              padding='same',
                              input_shape=(time_slice, 75, 75, 1), activation='relu', dropout=0.3, recurrent_dropout=0.4, recurrent_activation='hard_sigmoid', return_sequences=True))
-        model.add(
-            ConvLSTM2D(32, kernel_size=3, strides=2,
-                       padding='same', activation='relu', dropout=0.3, recurrent_dropout=0.4, recurrent_activation='hard_sigmoid'))
+        #model.add(
+        #    ConvLSTM2D(32, kernel_size=3, strides=2,
+        #               padding='same', activation='relu', dropout=0.3, recurrent_dropout=0.4, recurrent_activation='hard_sigmoid'))
 
         #model.add(Dropout(dropout_layer))
 
@@ -234,13 +234,14 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
             Conv2D(64, (3,3), strides=(1, 1),
                    padding='same'))
         model.add(Activation('relu'))
+        model.add(MaxPooling2D())
         model.add(Dropout(dropout_layer))
         model.add(
             Conv2D(128, (3,3), strides=(1, 1),
                    padding='same'))
         model.add(Activation('relu'))
         model.add(Dropout(dropout_layer))
-
+        model.add(MaxPooling2D())
         model.add(Flatten())
 
         for i in range(1):
