@@ -62,7 +62,7 @@ for i in range(30):
     strides = np.random.randint(1,4)
     model = create_model(patch_size, dropout_layer, lstm_dropout, time_slices=time_slices, strides=strides)
     model_name = "/run/media/jacob/WDRed8Tb1/Models/3DSep/" + "Drop_" + str(dropout_layer) + "LSTM_" + str(lstm_dropout) + \
-                 "Patch_" + str(patch_size) + "Time_" + str(time_slices) + "Strides_" + str(strides)
+                 "Patch_" + str(patch_size) + "Time_" + str(time_slices) + "EndTime_" + str(end_slice) + "Strides_" + str(strides)
     trainAndTestModel(model, batch_size=batch_size, num_epochs=400, type_model="Separation", time_slice=end_slice, total_slices=time_slices,
                       model_name=model_name, path_mc_images="/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_TimInfo_Images.h5",
                       path_proton_images="/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_Timing_Images.h5")
