@@ -1,7 +1,7 @@
 import os
 # to force on CPU
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import pickle
 from keras import backend as K
 import h5py
@@ -151,8 +151,8 @@ def batchYielder(path_to_training_data, type_training, percent_training, num_eve
                 section = section % times_train_in_items
                 offset = int(section * num_events_per_epoch)
                 while batch_size * (batch_num + 1) < items:
-                    batch_images = image[offset + int(batch_num*batch_size):offset + int((batch_num+1)*batch_size)]
-                    batch_images = batch_images[:,:time_slice,::]
+                    batch_images = image[offset + int(batch_num*batch_size):offset + int((batch_num+1)*batch_size),time_slice-35:time_slice,::]
+                    #batch_images = batch_images[:,time_slice-35:time_slice,::]
                     batch_image_label = energy[offset + int(batch_num*batch_size):offset + int((batch_num+1)*batch_size)]
                     batch_num += 1
                     yield (batch_images, batch_image_label)
@@ -174,9 +174,9 @@ def validationGenerator(validation_percentage, time_slice=100, batch_size=64, pr
                 section = section % num_batch_in_validate
                 offset = int(section * num_batch_in_validate)
                 while batch_size * (batch_num + 1) < items:
-                    batch_images = images[int(length_training+ (offset + int((batch_num)*batch_size))):int(length_training + (offset + int((batch_num+1)*batch_size)))]
+                    batch_images = images[int(length_training+ (offset + int((batch_num)*batch_size))):int(length_training + (offset + int((batch_num+1)*batch_size))),time_slice-35:time_slice,::]
                     # Now slice it to only take the first 40 frames of the trigger from Jan's analysis
-                    batch_images = batch_images[:,time_slice-25:time_slice,::]
+                    #batch_images = batch_images[:,time_slice-35:time_slice,::]
                     labels = energy[int(length_training+ (offset + int((batch_num)*batch_size))):int(length_training + (offset + int((batch_num+1)*batch_size)))]
                     batch_image_label = labels
                     batch_num += 1
@@ -186,16 +186,6 @@ def validationGenerator(validation_percentage, time_slice=100, batch_size=64, pr
 from sklearn.metrics import r2_score
 
 time_slice = 40
-model = keras.models.load_model("/run/media/jacob/WDRed8Tb1/Models/3DDisp/_MC_Disp3DSpatial_p_(5, 5)_drop_0.21_numDense_0_conv_2_pool_0_denseN_211_convN_124.h5")
-
-predictions = model.predict_generator(validationGenerator(0.4, time_slice=time_slice, predicting=True, batch_size=1), steps=int(np.floor(0.4*length_items/1)))
-predictions = predictions
-print(predictions.shape)
-with h5py.File("/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_TimInfo_Images.h5") as f:
-    predicting_labels = f['Energy'][int(length_training):-1]
-print(predicting_labels.shape)
-print(r2_score(predicting_labels, predictions))
-exit()
 
 def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num_pooling_layer, dense_neuron, conv_neurons, frac_per_epoch):
     #try:
@@ -223,7 +213,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         # Base Conv layer
         model.add(ConvLSTM2D(32, kernel_size=3, strides=2,
                              padding='same',
-                             input_shape=(time_slice, 75, 75, 1), activation='relu', dropout=0.3, recurrent_dropout=0.4, recurrent_activation='hard_sigmoid', return_sequences=True))
+                             input_shape=(35, 75, 75, 1), activation='relu', dropout=0.3, recurrent_dropout=0.4, recurrent_activation='hard_sigmoid'))
         #model.add(
         #    ConvLSTM2D(32, kernel_size=3, strides=2,
         #               padding='same', activation='relu', dropout=0.3, recurrent_dropout=0.4, recurrent_activation='hard_sigmoid'))
@@ -260,7 +250,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         # Makes it only use
         model.fit_generator(generator=batchYielder(path_to_training_data=path_mc_images, time_slice=time_slice,  type_training="Energy", batch_size=batch_size, percent_training=0.6),
                             steps_per_epoch=int(np.floor(0.2*length_items/batch_size))
-                            , epochs=400,
+                            , epochs=1600,
                             verbose=1, validation_data=validationGenerator(0.2, time_slice=time_slice, batch_size=batch_size), validation_steps=int(np.floor(0.2*length_items/batch_size)),
                             callbacks=[early_stop, reduceLR, model_checkpoint],
                             )

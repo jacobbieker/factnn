@@ -15,7 +15,7 @@ import tensorflow as tf
 from keras.layers import Dense, Dropout, Activation, Conv1D, Flatten, Conv3D, LeakyReLU, Reshape, BatchNormalization, Conv2D, MaxPooling2D, ConvLSTM2D
 import fact.plotting as factplot
 
-time_slice = 40
+time_slice = 30
 total_slices = 25
 
 def euclidean_distance(x1, y1, x2, y2):
@@ -240,7 +240,7 @@ def create_model(batch_size, patch_size, dropout_layer, num_dense, num_conv, num
         model.add(Flatten())
 
         for i in range(1):
-            model.add(BatchNormalization())
+            #model.add(BatchNormalization())
             model.add(Dense(64, activation='relu'))
             model.add(Dropout(1/4))
             #model.add(BatchNormalization())
@@ -287,7 +287,7 @@ num_runs = 500
 
 for i in range(num_runs):
     dropout_layer = np.round(np.random.uniform(0.2, 1.0), 2)
-    batch_size = 16#np.random.randint(batch_sizes[0], batch_sizes[1])
+    batch_size = 8#np.random.randint(batch_sizes[0], batch_sizes[1])
     num_conv = np.random.randint(num_conv_layers[0], num_conv_layers[1])
     num_dense = np.random.randint(num_dense_layers[0], num_dense_layers[1])
     patch_size = patch_sizes[np.random.randint(0, 2)]
