@@ -37,7 +37,7 @@ def create_model(patch_size, dropout_layer, lstm_dropout, time_slices, strides):
 for i in range(30):
     dropout_layer = np.round(np.random.uniform(0.0, 0.5), 2)
     lstm_dropout = np.round(np.random.uniform(0.0, 0.5), 2)
-    batch_size = 16
+    batch_size = 32
     patch_size = np.random.randint(0, 8)
     time_slices = np.random.randint(5,100)
     end_slice = np.random.randint(time_slices, 100)

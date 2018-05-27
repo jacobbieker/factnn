@@ -14,8 +14,8 @@ def euclidean_distance(x1, y1, x2, y2):
 def image_augmenter(images):
     """
     Augment images by rotating and flipping input images randomly
-    Should only be used for separation and energy tasks, as it does not change the labels attached
-    :param images:
+    Does this on the 2nd and 3rd axis of each 4D image stack
+    :param images: Numpy list of images in (batch_size, timeslice, x, y, channels) format
     :return: Numpy array of randomly flipped and rotated 3D images, in same order
     """
     new_images = []
@@ -119,14 +119,15 @@ def training_generator(path_to_training_data, type_training, length_training, ti
                         while batch_size * (batch_num + 1) < items:
                             batch_images = image[int(batch_num * batch_size):int(
                                 (batch_num + 1) * batch_size), time_slice - total_slices:time_slice, ::]
+                            batch_images = image_augmenter(batch_images)
                             proton_images = proton_data[int(batch_num * batch_size):int(
                                 (batch_num + 1) * batch_size), time_slice - total_slices:time_slice, ::]
+                            proton_images = image_augmenter(proton_images)
                             labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
                             batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
                             batch_images = np.concatenate([batch_images, proton_images], axis=0)
 
                             batch_num += 1
-                            batch_images = image_augmenter(batch_images)
                             batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
                             yield (batch_images, batch_image_label)
                         section += 1
@@ -167,7 +168,6 @@ def validation_generator(path_to_training_data, type_training, length_validation
                     batch_images = image[int(length_training + int((batch_num) * batch_size)):int(
                         length_training + int((batch_num + 1) * batch_size)), time_slice - total_slices:time_slice, ::]
                     # Now slice it to only take the first 40 frames of the trigger from Jan's analysis
-                    batch_images = batch_images[:, time_slice - total_slices:time_slice, ::]
                     source_x_tmp = source_x[int(length_training + int((batch_num) * batch_size)):int(
                         length_training + int((batch_num + 1) * batch_size))]
                     source_y_tmp = source_y[int(length_training + int((batch_num) * batch_size)):int(
