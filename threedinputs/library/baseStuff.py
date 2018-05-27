@@ -5,6 +5,8 @@ import keras.backend as K
 from sklearn.metrics import r2_score, roc_auc_score
 from numpy.random import RandomState
 from sklearn.utils import shuffle
+from .plotting import plot_probabilities, plot_roc, plot_disp_confusion, plot_energy_confusion
+import matplotlib.pyplot as plt
 
 
 def euclidean_distance(x1, y1, x2, y2):
@@ -306,9 +308,9 @@ def testing_generator(path_to_training_data, type_training, length_validate, len
                         section += 1
 
 
-def trainAndTestModel(model, batch_size, num_epochs, type_model,
-                      time_slice, total_slices, model_name, path_mc_images, path_proton_images=None,
-                      training_fraction=0.6, validation_fraction=0.2, tensorboard=False):
+def trainModel(model, batch_size, num_epochs, type_model,
+               time_slice, total_slices, model_name, path_mc_images, path_proton_images=None,
+               training_fraction=0.6, validation_fraction=0.2, tensorboard=False):
     if path_proton_images is None:
         with h5py.File(path_mc_images, 'r') as f2:
             length_items = len(f2['Image'])
@@ -377,7 +379,7 @@ def trainAndTestModel(model, batch_size, num_epochs, type_model,
                                                      length_validation=only_length_validate),
                 callbacks=[early_stop, model_checkpoint, tb],
                 validation_steps=int(np.floor(only_length_validate / batch_size))
-                )
+            )
     else:
         if path_proton_images is not None:
             model.fit_generator(
@@ -396,7 +398,7 @@ def trainAndTestModel(model, batch_size, num_epochs, type_model,
                                                      length_validation=only_length_validate),
                 callbacks=[early_stop, model_checkpoint],
                 validation_steps=int(np.floor(only_length_validate / batch_size))
-                )
+            )
         else:
             model.fit_generator(
                 generator=training_generator(path_to_training_data=path_mc_images, total_slices=total_slices,
@@ -412,5 +414,78 @@ def trainAndTestModel(model, batch_size, num_epochs, type_model,
                                                      length_validation=only_length_validate),
                 callbacks=[early_stop, model_checkpoint],
                 validation_steps=int(np.floor(only_length_validate / batch_size))
-                )
+            )
     return model_name + ".h5"
+
+
+def testAndPlotModel(model, batch_size, time_slice, total_slices, type_model, path_mc_images,
+                     path_proton_images=None,
+                     training_fraction=0.6, validation_fraction=0.2, testing_fraction=0.2):
+    """
+    Given a model, and the same inputs as trainModel, test the model and create relevant plots
+    :param model: Keras model to test
+    :param batch_size:
+    :param num_epochs:
+    :param type_model:
+    :param path_mc_images:
+    :param path_proton_images:
+    :param training_fraction:
+    :param validation_fraction:
+    :param testing_fraction:
+    :return:
+    """
+    if path_proton_images is None:
+        with h5py.File(path_mc_images, 'r') as f2:
+            length_items = len(f2['Image'])
+            length_training = training_fraction * length_items
+            length_validate = (training_fraction + validation_fraction) * length_items
+            testing_length = testing_fraction * length_items
+    else:
+        with h5py.File(path_proton_images, 'r') as f2:
+            length_items = len(f2['Image'])
+            length_training = training_fraction * length_items
+            length_validate = (training_fraction + validation_fraction) * length_items
+            testing_length = testing_fraction * length_items
+
+    if path_proton_images is None:
+        # Get the labels by predicting on batches
+        generator = testing_generator(path_to_training_data=path_mc_images, time_slice=time_slice,
+                                      total_slices=total_slices,
+                                      batch_size=batch_size, path_to_proton_data=path_proton_images,
+                                      type_training=type_model,
+                                      length_validate=length_validate,
+                                      length_testing=testing_length)
+        steps = int(np.floor(testing_length / batch_size))
+
+        truth = []
+        predictions = []
+        for i in range(steps):
+            # Get each batch and test it
+            test_images, test_labels = next(generator)
+            test_predictions = model.predict_on_batch(test_images)
+            predictions.append(test_predictions)
+            truth.append(test_labels)
+
+        predictions = np.asarray(predictions).reshape(-1, )
+        truth = np.asarray(truth).reshape(-1, )
+
+        # Now all the labels and predictions made, plot them based on the model type
+        if type_model == "Separation":
+            fig1 = plt.figure()
+            ax = fig1.add_subplot(1, 1, 1)
+            plot_roc(truth, predictions, ax=ax)
+            fig1.show()
+        elif type_model == "Energy":
+            score = r2_score(truth, predictions)
+            fig1 = plt.figure()
+            ax = fig1.add_subplot(1, 1, 1)
+            ax.set_title("R^2: {:0.4f}".format(score) + ' Reconstructed vs. True Energy (log color scale)')
+            plot_energy_confusion(predictions, truth, ax=ax)
+            fig1.show()
+        elif type_model == "Disp":
+            score = r2_score(truth, predictions)
+            fig1 = plt.figure()
+            ax = fig1.add_subplot(1, 1, 1)
+            ax.set_title("R^2: {:0.4f}".format(score) + ' Reconstructed vs. True Disp')
+            plot_disp_confusion(predictions, truth, ax=ax, log_z=False, log_xy=False)
+            fig1.show()

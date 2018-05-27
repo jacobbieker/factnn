@@ -4,20 +4,17 @@ from matplotlib.colors import LogNorm
 import numpy as np
 
 
-def plot_energy_confusion(performace_df, label, log_xy=True, log_z=True, ax=None):
+def plot_energy_confusion(prediction, truth, log_xy=True, log_z=True, ax=None):
     ax = ax or plt.gca()
 
-    # label = performace_df.label.copy()
-    prediction = performace_df.copy()
-
     if log_xy is False:
-        label = np.log10(label)
+        truth = np.log10(truth)
         prediction = np.log10(prediction)
 
-    min_label = np.min(label)
+    min_label = np.min(truth)
     min_pred = np.min(prediction)
     max_pred = np.max(prediction)
-    max_label = np.max(label)
+    max_label = np.max(truth)
 
     if min_label < min_pred:
         min_ax = min_label
@@ -38,7 +35,7 @@ def plot_energy_confusion(performace_df, label, log_xy=True, log_z=True, ax=None
     print([min_label, max_label])
 
     counts, x_edges, y_edges, img = ax.hist2d(
-        label,
+        truth,
         prediction,
         bins=[100, 100],
         range=[limits, limits],
@@ -57,20 +54,17 @@ def plot_energy_confusion(performace_df, label, log_xy=True, log_z=True, ax=None
     return ax
 
 
-def plot_disp_confusion(performace_df, label, log_xy=True, log_z=True, ax=None):
+def plot_disp_confusion(prediction, truth, log_xy=True, log_z=True, ax=None):
     ax = ax or plt.gca()
 
-    # label = performace_df.label.copy()
-    prediction = performace_df.copy()
-
     if log_xy is False:
-        label = np.log10(label)
+        truth = np.log10(truth)
         prediction = np.log10(prediction)
 
-    min_label = np.min(label)
+    min_label = np.min(truth)
     min_pred = np.min(prediction)
     max_pred = np.max(prediction)
-    max_label = np.max(label)
+    max_label = np.max(truth)
 
     if min_label < min_pred:
         min_ax = min_label
@@ -91,7 +85,7 @@ def plot_disp_confusion(performace_df, label, log_xy=True, log_z=True, ax=None):
     print([min_label, max_label])
 
     counts, x_edges, y_edges, img = ax.hist2d(
-        label,
+        truth,
         prediction,
         bins=[100, 100],
         range=[limits, limits],
@@ -110,7 +104,7 @@ def plot_disp_confusion(performace_df, label, log_xy=True, log_z=True, ax=None):
     return ax
 
 
-def plot_roc(performace_df, model, ax=None):
+def plot_roc(truth, predictions, ax=None):
     ax = ax or plt.gca()
 
     ax.axvline(0, color='lightgray')
@@ -118,10 +112,10 @@ def plot_roc(performace_df, model, ax=None):
     ax.axhline(0, color='lightgray')
     ax.axhline(1, color='lightgray')
 
-    mean_fpr, mean_tpr, _ = roc_curve(performace_df, model)
+    mean_fpr, mean_tpr, _ = roc_curve(truth, predictions)
 
     ax.set_title('Area Under Curve: {:.4f}'.format(
-        roc_auc_score(performace_df, model)
+        roc_auc_score(truth, predictions)
     ))
 
     ax.plot(mean_fpr, mean_tpr, label='ROC curve')

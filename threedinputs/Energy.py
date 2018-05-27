@@ -5,7 +5,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten, ConvLSTM2D, Conv2D, MaxPooling2D
 import numpy as np
-from threedinputs.library.baseStuff import trainAndTestModel
+from threedinputs.library.baseStuff import trainModel
 
 
 def create_model(patch_size, dropout_layer, lstm_dropout, time_slices, strides):
@@ -65,5 +65,5 @@ for i in range(30):
     model = create_model(patch_size, dropout_layer, lstm_dropout, time_slices=time_slices, strides=strides)
     model_name = "/run/media/jacob/WDRed8Tb1/Models/3DEnergy/" + "Drop_" + str(dropout_layer) + "LSTM_" + str(lstm_dropout) +\
                  "Patch_" + str(patch_size) + "Time_" + str(time_slices) + "EndTime_" + str(end_slice) + "Strides_" + str(strides)
-    trainAndTestModel(model, batch_size=batch_size, num_epochs=400, type_model="Energy", time_slice=end_slice, total_slices=time_slices,
-                      model_name=model_name, path_mc_images="/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_TimInfo_Images.h5")
+    trainModel(model, batch_size=batch_size, num_epochs=400, type_model="Energy", time_slice=end_slice, total_slices=time_slices,
+               model_name=model_name, path_mc_images="/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_TimInfo_Images.h5")
