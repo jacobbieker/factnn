@@ -35,13 +35,13 @@ def create_model(patch_size, dropout_layer, lstm_dropout, time_slices, strides):
 # Now do MC go through of parameters
 
 for i in range(30):
-    dropout_layer = np.round(np.random.uniform(0.0, 1.0), 2)
-    lstm_dropout = np.round(np.random.uniform(0.0, 1.0), 2)
+    dropout_layer = np.round(np.random.uniform(0.0, 0.5), 2)
+    lstm_dropout = np.round(np.random.uniform(0.0, 0.5), 2)
     batch_size = 16
     patch_size = np.random.randint(0, 8)
     time_slices = np.random.randint(5,100)
     end_slice = np.random.randint(time_slices, 100)
-    strides = np.random.randint(1,5)
+    strides = np.random.randint(2,5)
     model = create_model(patch_size, dropout_layer, lstm_dropout, time_slices=time_slices, strides=strides)
     model_name = "/run/media/jacob/WDRed8Tb1/Models/3DDisp/" + "Drop_" + str(dropout_layer) + "LSTM_" + str(lstm_dropout) + \
                  "Patch_" + str(patch_size) + "Time_" + str(time_slices) + "EndTime_" + str(end_slice) + "Strides_" + str(strides)
