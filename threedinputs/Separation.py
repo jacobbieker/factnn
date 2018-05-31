@@ -1,13 +1,13 @@
 # to force on CPU
 import os
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten, ConvLSTM2D, Conv2D, MaxPooling2D
+from keras.layers import Dense, Dropout, Activation, Flatten, ConvLSTM2D, Conv2D, MaxPooling2D, LSTM, Reshape
 import keras.backend as K
 import tensorflow as tf
 import numpy as np
-from threedinputs.library.baseStuff import trainModel
+from threedinputs.library.baseStuff import trainModel, testAndPlotModel
 
 
 def create_model(patch_size, dropout_layer, lstm_dropout, time_slices, strides):
@@ -15,16 +15,16 @@ def create_model(patch_size, dropout_layer, lstm_dropout, time_slices, strides):
     # Make the model
     model = Sequential()
     # Base Conv layer
-    model.add(ConvLSTM2D(64, kernel_size=patch_size, strides=strides,
+    model.add(ConvLSTM2D(32, kernel_size=patch_size, strides=strides,
                          padding='same',
                          input_shape=(time_slices, 75, 75, 1), activation='relu', dropout=dropout_layer/2, recurrent_dropout=lstm_dropout/2, recurrent_activation='hard_sigmoid', return_sequences=True))
-    model.add(ConvLSTM2D(128, kernel_size=patch_size, strides=strides,
+    model.add(ConvLSTM2D(64, kernel_size=patch_size, strides=strides,
                          padding='same', activation='relu', dropout=dropout_layer/2, recurrent_dropout=lstm_dropout/2, recurrent_activation='hard_sigmoid'))
     #model.add(MaxPooling2D())
-    #model.add(
-    #    Conv2D(64, kernel_size=patch_size, strides=strides,
-    #           padding='same', activation='relu'))
-    #model.add(MaxPooling2D())
+    model.add(
+        Conv2D(64, kernel_size=patch_size, strides=strides,
+               padding='same', activation='relu'))
+    model.add(MaxPooling2D())
     #model.add(
     #    Conv2D(128, kernel_size=patch_size, strides=strides,
     #           padding='same', activation='relu'))
@@ -63,8 +63,8 @@ for i in range(30):
         lstm_dropout = np.round(np.random.uniform(0.0, 0.6), 2)
         batch_size = 16
         patch_size = np.random.randint(0, 6)
-        time_slices = 50#np.random.randint(5,100)
-        end_slice = 51#np.random.randint(time_slices, 100)
+        time_slices = np.random.randint(5,100)
+        end_slice = np.random.randint(time_slices, 100)
         strides = np.random.randint(2,5)
         model = create_model(patch_size, dropout_layer, lstm_dropout, time_slices=time_slices, strides=strides)
         model_name = "/run/media/jacob/WDRed8Tb1/Models/3DSep/" + "Drop_" + str(dropout_layer) + "LSTM_" + str(lstm_dropout) + \
@@ -72,6 +72,9 @@ for i in range(30):
         trainModel(model, batch_size=batch_size, num_epochs=400, type_model="Separation", time_slice=end_slice, total_slices=time_slices,
                    model_name=model_name, path_mc_images="/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_TimInfo_Images.h5",
                    path_proton_images="/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_Timing_Images.h5")
+        testAndPlotModel(model, batch_size=batch_size, type_model="Separation", time_slice=end_slice, total_slices=time_slices,
+                         path_mc_images="/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_TimInfo_Images.h5",
+                         path_proton_images="/run/media/jacob/WDRed8Tb1/Rebinned_5_MC_Proton_Timing_Images.h5")
     except Exception as e:
         print(e)
         pass

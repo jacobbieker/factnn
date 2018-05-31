@@ -94,7 +94,7 @@ def training_generator(path_to_training_data, type_training, length_training, ti
                     batch_num += 1
                     # Can rotate, etc. the image because not finding the source x,y, but the distance, and that would
                     # be the same if the whole thing was rotated
-                    batch_images = image_augmenter(batch_images)
+                    #batch_images = image_augmenter(batch_images)
                     batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
                     yield (batch_images, batch_image_label)
                 section += 1
@@ -183,7 +183,7 @@ def validation_generator(path_to_training_data, type_training, length_validation
                         cog_x_tmp, cog_y_tmp
                     )
                     batch_num += 1
-                    batch_images = image_augmenter(batch_images)
+                    #batch_images = image_augmenter(batch_images)
                     yield (batch_images, batch_image_label)
                 section += 1
 

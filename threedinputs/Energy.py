@@ -1,7 +1,7 @@
 # to force on CPU
 import os
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten, ConvLSTM2D, Conv2D, MaxPooling2D
 import numpy as np
@@ -57,10 +57,10 @@ def create_model(patch_size, dropout_layer, lstm_dropout, time_slices, strides):
 for i in range(30):
     dropout_layer = np.round(np.random.uniform(0.0, 1.0), 2)
     lstm_dropout = np.round(np.random.uniform(0.0, 1.0), 2)
-    batch_size = 32
+    batch_size = 16
     patch_size = np.random.randint(0, 6)
     time_slices = np.random.randint(5,100)
-    end_slice = np.random.randint(time_slices, 100)
+    end_slice = np.random.randint(time_slices+1, 100)
     strides = np.random.randint(1,4)
     model = create_model(patch_size, dropout_layer, lstm_dropout, time_slices=time_slices, strides=strides)
     model_name = "/run/media/jacob/WDRed8Tb1/Models/3DEnergy/" + "Drop_" + str(dropout_layer) + "LSTM_" + str(lstm_dropout) +\
