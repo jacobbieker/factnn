@@ -43,6 +43,51 @@ def image_augmenter(images):
     return images
 
 
+def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, training_data, labels=None, proton_data=None, type_training=None):
+    '''
+    Gets a random part of the HDF5 database within start and stop endpoints
+    This is to help with shuffling data, as currently all the ones come and go in the same
+    order
+    Does not guarantee that a given event will be used though, unlike before
+    Recommended to alternate this with the current one to make sure network has full coverage
+
+    :param labels:
+    :param type_training:
+    :param proton_data:
+    :param training_data:
+    :param start:
+    :param stop:
+    :param size:
+    :param time_slice:
+    :param total_slices:
+    :return:
+    '''
+
+    # Get all possible starting positions given the end point and number of events
+
+    last_possible_start = stop - size
+
+    # Get random starting position
+    start_pos = np.random.randint(start, last_possible_start)
+
+    batch_images = training_data[start_pos:int(start_pos + size), time_slice - total_slices:time_slice, ::]
+    batch_images = image_augmenter(batch_images)
+    if type_training == "Separation":
+        proton_images = proton_data[start_pos:int(start_pos + size), time_slice - total_slices:time_slice, ::]
+        proton_images = image_augmenter(proton_images)
+        labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
+        batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
+        batch_images = np.concatenate([batch_images, proton_images], axis=0)
+
+        batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
+        return batch_images, batch_image_label
+    else:
+        labels = labels[start_pos:int(start_pos + size)]
+        batch_image_label = labels
+        batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
+        return batch_images, batch_image_label
+
+
 def training_generator(path_to_training_data, type_training, length_training, time_slice=30, total_slices=25,
                        path_to_proton_data=None, batch_size=64):
     with h5py.File(path_to_training_data, 'r') as f:
@@ -66,6 +111,13 @@ def training_generator(path_to_training_data, type_training, length_training, ti
                     batch_images = image_augmenter(batch_images)
                     batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
                     yield (batch_images, batch_image_label)
+
+                    while batch_num < 9*items:
+                        batch_images, batch_image_label = get_random_hdf5_chunk(0, items, size=batch_size, time_slice=time_slice, total_slices=total_slices,
+                                                                                training_data=image, labels=energy, proton_data=None,
+                                                                                type_training=type_training)
+                        batch_num += 1
+                        yield (batch_images, batch_image_label)
                 section += 1
         elif type_training == "Disp":
             source_y = f['Source_X']
@@ -74,7 +126,6 @@ def training_generator(path_to_training_data, type_training, length_training, ti
             cog_y = f['COG_Y']
             while True:
                 batch_num = 0
-                section = section % times_train_in_items
                 while batch_size * (batch_num + 1) < items:
                     batch_images = image[int(int((batch_num) * batch_size)):int(
                         int((batch_num + 1) * batch_size)), time_slice - total_slices:time_slice, ::]
@@ -94,10 +145,9 @@ def training_generator(path_to_training_data, type_training, length_training, ti
                     batch_num += 1
                     # Can rotate, etc. the image because not finding the source x,y, but the distance, and that would
                     # be the same if the whole thing was rotated
-                    #batch_images = image_augmenter(batch_images)
+                    # batch_images = image_augmenter(batch_images)
                     batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
                     yield (batch_images, batch_image_label)
-                section += 1
 
         elif type_training == "Sign":
             source_y = f['Source_X']
@@ -116,7 +166,6 @@ def training_generator(path_to_training_data, type_training, length_training, ti
                     while True:
                         # Now create the batches from labels and other things
                         batch_num = 0
-                        section = section % times_train_in_items
 
                         while batch_size * (batch_num + 1) < items:
                             batch_images = image[int(batch_num * batch_size):int(
@@ -132,7 +181,13 @@ def training_generator(path_to_training_data, type_training, length_training, ti
                             batch_num += 1
                             batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
                             yield (batch_images, batch_image_label)
-                        section += 1
+
+                        while batch_num < 9*items:
+                            batch_images, batch_image_label = get_random_hdf5_chunk(0, items, size=batch_size, time_slice=time_slice, total_slices=total_slices,
+                                                  training_data=image, labels=None, proton_data=proton_data,
+                                                  type_training=type_training)
+                            batch_num += 1
+                            yield (batch_images, batch_image_label)
 
 
 def validation_generator(path_to_training_data, type_training, length_validation, length_training, time_slice=30,
@@ -183,7 +238,7 @@ def validation_generator(path_to_training_data, type_training, length_validation
                         cog_x_tmp, cog_y_tmp
                     )
                     batch_num += 1
-                    #batch_images = image_augmenter(batch_images)
+                    # batch_images = image_augmenter(batch_images)
                     yield (batch_images, batch_image_label)
                 section += 1
 
@@ -488,4 +543,5 @@ def testAndPlotModel(model, batch_size, time_slice, total_slices, type_model, pa
             ax = fig1.add_subplot(1, 1, 1)
             ax.set_title("R^2: {:0.4f}".format(score) + ' Reconstructed vs. True Disp')
             plot_disp_confusion(predictions, truth, ax=ax, log_z=False, log_xy=False)
+            fig1.savefig(fname="R^2_{:0.4f}".format(score) + "_Disp.pdf")
             fig1.show()

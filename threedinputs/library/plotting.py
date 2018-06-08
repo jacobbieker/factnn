@@ -57,7 +57,7 @@ def plot_energy_confusion(prediction, truth, log_xy=True, log_z=True, ax=None):
 def plot_disp_confusion(prediction, truth, log_xy=True, log_z=True, ax=None):
     ax = ax or plt.gca()
 
-    if log_xy is False:
+    if log_xy is True:
         truth = np.log10(truth)
         prediction = np.log10(prediction)
 

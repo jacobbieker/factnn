@@ -1,9 +1,9 @@
 # to force on CPU
 import os
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten, ConvLSTM2D, Conv2D, MaxPooling2D, LSTM, Reshape
+from keras.layers import Dense, Dropout, Activation, Flatten, ConvLSTM2D, Conv2D, Conv3D, MaxPooling3D, MaxPooling2D, LSTM, Reshape
 import keras.backend as K
 import tensorflow as tf
 import numpy as np
@@ -19,12 +19,16 @@ def create_model(patch_size, dropout_layer, lstm_dropout, time_slices, strides):
                          padding='same',
                          input_shape=(time_slices, 75, 75, 1), activation='relu', dropout=dropout_layer/2, recurrent_dropout=lstm_dropout/2, recurrent_activation='hard_sigmoid', return_sequences=True))
     model.add(ConvLSTM2D(64, kernel_size=patch_size, strides=strides,
-                         padding='same', activation='relu', dropout=dropout_layer/2, recurrent_dropout=lstm_dropout/2, recurrent_activation='hard_sigmoid'))
+                         padding='same', activation='relu', dropout=dropout_layer/2, recurrent_dropout=lstm_dropout/2, recurrent_activation='hard_sigmoid', return_sequences=True))
     #model.add(MaxPooling2D())
     model.add(
-        Conv2D(64, kernel_size=patch_size, strides=strides,
+        Conv3D(64, kernel_size=patch_size, strides=strides,
                padding='same', activation='relu'))
-    model.add(MaxPooling2D())
+    model.add(MaxPooling3D())
+    model.add(
+        Conv3D(64, kernel_size=patch_size, strides=strides,
+               padding='same', activation='relu'))
+    model.add(MaxPooling3D())
     #model.add(
     #    Conv2D(128, kernel_size=patch_size, strides=strides,
     #           padding='same', activation='relu'))
@@ -61,11 +65,11 @@ for i in range(30):
     try:
         dropout_layer = np.round(np.random.uniform(0.0, 0.6), 2)
         lstm_dropout = np.round(np.random.uniform(0.0, 0.6), 2)
-        batch_size = 16
-        patch_size = np.random.randint(0, 6)
-        time_slices = np.random.randint(5,100)
-        end_slice = np.random.randint(time_slices, 100)
-        strides = np.random.randint(2,5)
+        batch_size = 8
+        patch_size = np.random.randint(3, 6)
+        time_slices = 25#np.random.randint(5,100)
+        end_slice = 30#np.random.randint(time_slices, 100)
+        strides = np.random.randint(1,3)
         model = create_model(patch_size, dropout_layer, lstm_dropout, time_slices=time_slices, strides=strides)
         model_name = "/run/media/jacob/WDRed8Tb1/Models/3DSep/" + "Drop_" + str(dropout_layer) + "LSTM_" + str(lstm_dropout) + \
                      "Patch_" + str(patch_size) + "Time_" + str(time_slices) + "EndTime_" + str(end_slice) + "Strides_" + str(strides)
