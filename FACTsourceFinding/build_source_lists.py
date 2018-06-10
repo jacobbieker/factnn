@@ -14,7 +14,7 @@ from fact.credentials import get_credentials
 import os
 import datetime
 
-os.environ["FACT_PASSWORD"] = "***REMOVED***"
+os.environ["FACT_PASSWORD"] = PASSWORD
 
 #connect_database()
 #print("Successfully Connected")

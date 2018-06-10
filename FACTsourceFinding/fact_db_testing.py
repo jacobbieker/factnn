@@ -3,7 +3,7 @@ from fact.credentials import get_credentials
 import os
 from fact.io import to_h5py
 
-os.environ["FACT_PASSWORD"] = "***REMOVED***"
+os.environ["FACT_PASSWORD"] = PASSWORD
 
 connect_database()
 
