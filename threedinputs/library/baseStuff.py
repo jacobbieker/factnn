@@ -43,7 +43,8 @@ def image_augmenter(images):
     return images
 
 
-def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, training_data, labels=None, proton_data=None, type_training=None):
+def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, training_data, labels=None, proton_data=None,
+                          type_training=None):
     '''
     Gets a random part of the HDF5 database within start and stop endpoints
     This is to help with shuffling data, as currently all the ones come and go in the same
@@ -88,6 +89,50 @@ def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, training_
         return batch_images, batch_image_label
 
 
+def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, training_data, labels=None,
+                               proton_data=None, type_training=None):
+    '''
+    Gets a random part of the HDF5 database within start and stop endpoints
+    This is to help with shuffling data, as currently all the ones come and go in the same
+    order
+    Does not guarantee that a given event will be used though, unlike before
+    Recommended to alternate this with the current one to make sure network has full coverage
+    This variant obtians a list of random points, so it will be lower than the other options, but should be better for
+    training
+
+    :param labels:
+    :param type_training:
+    :param proton_data:
+    :param training_data:
+    :param start:
+    :param stop:
+    :param size:
+    :param time_slice:
+    :param total_slices:
+    :return:
+    '''
+
+    # Get random positions within the start and stop sizes
+    positions = np.random.randint(start, stop, size=size)
+
+    batch_images = training_data[positions, time_slice - total_slices:time_slice, ::]
+    batch_images = image_augmenter(batch_images)
+    if type_training == "Separation":
+        proton_images = proton_data[positions, time_slice - total_slices:time_slice, ::]
+        proton_images = image_augmenter(proton_images)
+        labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
+        batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
+        batch_images = np.concatenate([batch_images, proton_images], axis=0)
+
+        batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
+        return batch_images, batch_image_label
+    else:
+        labels = labels[positions]
+        batch_image_label = labels
+        batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
+        return batch_images, batch_image_label
+
+
 def training_generator(path_to_training_data, type_training, length_training, time_slice=30, total_slices=25,
                        path_to_proton_data=None, batch_size=64):
     with h5py.File(path_to_training_data, 'r') as f:
@@ -112,42 +157,66 @@ def training_generator(path_to_training_data, type_training, length_training, ti
                     batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
                     yield (batch_images, batch_image_label)
 
-                    while batch_num < 9*items:
-                        batch_images, batch_image_label = get_random_hdf5_chunk(0, items, size=batch_size, time_slice=time_slice, total_slices=total_slices,
-                                                                                training_data=image, labels=energy, proton_data=None,
+                    while batch_num < 9 * items:
+                        batch_images, batch_image_label = get_random_hdf5_chunk(0, items, size=batch_size,
+                                                                                time_slice=time_slice,
+                                                                                total_slices=total_slices,
+                                                                                training_data=image, labels=energy,
+                                                                                proton_data=None,
+                                                                                type_training=type_training)
+                        batch_num += 1
+                        yield (batch_images, batch_image_label)
+                    while batch_num < 18 * items:
+                        batch_images, batch_image_label = get_completely_random_hdf5(0, items, size=batch_size,
+                                                                                time_slice=time_slice,
+                                                                                total_slices=total_slices,
+                                                                                training_data=image, labels=energy,
+                                                                                proton_data=None,
                                                                                 type_training=type_training)
                         batch_num += 1
                         yield (batch_images, batch_image_label)
                 section += 1
         elif type_training == "Disp":
-            source_y = f['Source_X']
-            source_x = f['Source_Y']
-            cog_x = f['COG_X']
-            cog_y = f['COG_Y']
+            source_y = f['Source_X'].values
+            source_x = f['Source_Y'].values
+            cog_x = f['COG_X'].values
+            cog_y = f['COG_Y'].values
+            disps = euclidean_distance(
+                source_x, source_y,
+                cog_x, cog_y
+            )
             while True:
                 batch_num = 0
                 while batch_size * (batch_num + 1) < items:
                     batch_images = image[int(int((batch_num) * batch_size)):int(
                         int((batch_num + 1) * batch_size)), time_slice - total_slices:time_slice, ::]
                     # Now slice it to only take the first 40 frames of the trigger from Jan's analysis
-                    source_x_tmp = source_x[int(int((batch_num) * batch_size)):int(
+                    batch_image_label = disps[int(int((batch_num) * batch_size)):int(
                         int((batch_num + 1) * batch_size))]
-                    source_y_tmp = source_y[int(int((batch_num) * batch_size)):int(
-                        int((batch_num + 1) * batch_size))]
-                    cog_x_tmp = cog_x[int(int((batch_num) * batch_size)):int(
-                        int((batch_num + 1) * batch_size))]
-                    cog_y_tmp = cog_y[int(int((batch_num) * batch_size)):int(
-                        int((batch_num + 1) * batch_size))]
-                    batch_image_label = euclidean_distance(
-                        source_x_tmp, source_y_tmp,
-                        cog_x_tmp, cog_y_tmp
-                    )
                     batch_num += 1
                     # Can rotate, etc. the image because not finding the source x,y, but the distance, and that would
                     # be the same if the whole thing was rotated
                     # batch_images = image_augmenter(batch_images)
                     batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
                     yield (batch_images, batch_image_label)
+                while batch_num < 9 * items:
+                    batch_images, batch_image_label = get_random_hdf5_chunk(0, items, size=batch_size,
+                                                                            time_slice=time_slice,
+                                                                            total_slices=total_slices,
+                                                                            training_data=image, labels=disps,
+                                                                            proton_data=None,
+                                                                            type_training=type_training)
+                    batch_num += 1
+                    yield (batch_images, batch_image_label)
+                    while batch_num < 18 * items:
+                        batch_images, batch_image_label = get_completely_random_hdf5(0, items, size=batch_size,
+                                                                                     time_slice=time_slice,
+                                                                                     total_slices=total_slices,
+                                                                                     training_data=image, labels=disps,
+                                                                                     proton_data=None,
+                                                                                     type_training=type_training)
+                        batch_num += 1
+                        yield (batch_images, batch_image_label)
 
         elif type_training == "Sign":
             source_y = f['Source_X']
@@ -182,10 +251,22 @@ def training_generator(path_to_training_data, type_training, length_training, ti
                             batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
                             yield (batch_images, batch_image_label)
 
-                        while batch_num < 9*items:
-                            batch_images, batch_image_label = get_random_hdf5_chunk(0, items, size=batch_size, time_slice=time_slice, total_slices=total_slices,
-                                                  training_data=image, labels=None, proton_data=proton_data,
-                                                  type_training=type_training)
+                        while batch_num < 9 * items:
+                            batch_images, batch_image_label = get_random_hdf5_chunk(0, items, size=batch_size,
+                                                                                    time_slice=time_slice,
+                                                                                    total_slices=total_slices,
+                                                                                    training_data=image, labels=None,
+                                                                                    proton_data=proton_data,
+                                                                                    type_training=type_training)
+                            batch_num += 1
+                            yield (batch_images, batch_image_label)
+                        while batch_num < 18 * items:
+                            batch_images, batch_image_label = get_completely_random_hdf5(0, items, size=batch_size,
+                                                                                         time_slice=time_slice,
+                                                                                         total_slices=total_slices,
+                                                                                         training_data=image, labels=None,
+                                                                                         proton_data=proton_data,
+                                                                                         type_training=type_training)
                             batch_num += 1
                             yield (batch_images, batch_image_label)
 

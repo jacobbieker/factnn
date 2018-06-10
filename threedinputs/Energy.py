@@ -60,7 +60,7 @@ for i in range(30):
         model = create_model(patch_size, dropout_layer, lstm_dropout, time_slices=time_slices, strides=strides)
         model_name = "/run/media/jacob/WDRed8Tb1/Models/3DEnergy/" + "Drop_" + str(dropout_layer) + "LSTM_" + str(lstm_dropout) +\
                      "Patch_" + str(patch_size) + "Time_" + str(time_slices) + "EndTime_" + str(end_slice) + "Strides_" + str(strides)
-        trainModel(model, batch_size=batch_size, num_epochs=400, type_model="Energy", time_slice=end_slice, total_slices=time_slices,
+        trainModel(model, batch_size=batch_size, num_epochs=400, training_fraction=0.001, validation_fraction=0.001, type_model="Energy", time_slice=end_slice, total_slices=time_slices,
                    model_name=model_name, path_mc_images="/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_TimInfo_Images.h5")
         testAndPlotModel(model, batch_size=batch_size, type_model="Energy", time_slice=end_slice, total_slices=time_slices,
                          path_mc_images="/run/media/jacob/WDRed8Tb2/Rebinned_5_MC_Gamma_TimInfo_Images.h5",)
