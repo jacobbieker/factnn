@@ -4,7 +4,7 @@
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D
 import numpy as np
-from io import trainModel, testAndPlotModel
+from baseModel import trainModel, testAndPlotModel
 import keras.backend as K
 import tensorflow as tf
 

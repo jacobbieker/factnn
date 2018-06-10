@@ -7,7 +7,7 @@ from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling
 import keras.backend as K
 import tensorflow as tf
 import numpy as np
-from io import trainModel, testAndPlotModel
+from baseModel.modelTrain import trainModel, testAndPlotModel
 
 
 def create_model(patch_size, dropout_layer, lstm_dropout, time_slices, strides):

@@ -168,11 +168,11 @@ def training_generator(path_to_training_data, type_training, length_training, ti
                         yield (batch_images, batch_image_label)
                     while batch_num < 18 * items:
                         batch_images, batch_image_label = get_completely_random_hdf5(0, items, size=batch_size,
-                                                                                time_slice=time_slice,
-                                                                                total_slices=total_slices,
-                                                                                training_data=image, labels=energy,
-                                                                                proton_data=None,
-                                                                                type_training=type_training)
+                                                                                     time_slice=time_slice,
+                                                                                     total_slices=total_slices,
+                                                                                     training_data=image, labels=energy,
+                                                                                     proton_data=None,
+                                                                                     type_training=type_training)
                         batch_num += 1
                         yield (batch_images, batch_image_label)
                 section += 1
@@ -570,6 +570,7 @@ def testAndPlotModel(model, batch_size, time_slice, total_slices, type_model, pa
     :param testing_fraction:
     :return:
     """
+    print(path_proton_images)
     if path_proton_images is None:
         with h5py.File(path_mc_images, 'r') as f2:
             length_items = len(f2['Image'])
@@ -583,46 +584,44 @@ def testAndPlotModel(model, batch_size, time_slice, total_slices, type_model, pa
             length_validate = (training_fraction + validation_fraction) * length_items
             testing_length = testing_fraction * length_items
 
-    if path_proton_images is None:
-        # Get the labels by predicting on batches
-        generator = testing_generator(path_to_training_data=path_mc_images, time_slice=time_slice,
-                                      total_slices=total_slices,
-                                      batch_size=batch_size, path_to_proton_data=path_proton_images,
-                                      type_training=type_model,
-                                      length_validate=length_validate,
-                                      length_testing=testing_length)
-        steps = int(np.floor(testing_length / batch_size))
+    generator = testing_generator(path_to_training_data=path_mc_images, time_slice=time_slice,
+                                  total_slices=total_slices,
+                                  batch_size=batch_size, path_to_proton_data=path_proton_images,
+                                  type_training=type_model,
+                                  length_validate=length_validate,
+                                  length_testing=testing_length)
+    steps = int(np.floor(testing_length / batch_size))
+    print(steps)
+    truth = []
+    predictions = []
+    for i in range(steps):
+        # Get each batch and test it
+        test_images, test_labels = next(generator)
+        test_predictions = model.predict_on_batch(test_images)
+        predictions.append(test_predictions)
+        truth.append(test_labels)
 
-        truth = []
-        predictions = []
-        for i in range(steps):
-            # Get each batch and test it
-            test_images, test_labels = next(generator)
-            test_predictions = model.predict_on_batch(test_images)
-            predictions.append(test_predictions)
-            truth.append(test_labels)
+    predictions = np.asarray(predictions).reshape(-1, )
+    truth = np.asarray(truth).reshape(-1, )
 
-        predictions = np.asarray(predictions).reshape(-1, )
-        truth = np.asarray(truth).reshape(-1, )
-
-        # Now all the labels and predictions made, plot them based on the model type
-        if type_model == "Separation":
-            fig1 = plt.figure()
-            ax = fig1.add_subplot(1, 1, 1)
-            plot_roc(truth, predictions, ax=ax)
-            fig1.show()
-        elif type_model == "Energy":
-            score = r2_score(truth, predictions)
-            fig1 = plt.figure()
-            ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title("R^2: {:0.4f}".format(score) + ' Reconstructed vs. True Energy (log color scale)')
-            plot_energy_confusion(predictions, truth, ax=ax)
-            fig1.show()
-        elif type_model == "Disp":
-            score = r2_score(truth, predictions)
-            fig1 = plt.figure()
-            ax = fig1.add_subplot(1, 1, 1)
-            ax.set_title("R^2: {:0.4f}".format(score) + ' Reconstructed vs. True Disp')
-            plot_disp_confusion(predictions, truth, ax=ax, log_z=False, log_xy=False)
-            fig1.savefig(fname="R^2_{:0.4f}".format(score) + "_Disp.pdf")
-            fig1.show()
+    # Now all the labels and predictions made, plot them based on the model type
+    if type_model == "Separation":
+        fig1 = plt.figure()
+        ax = fig1.add_subplot(1, 1, 1)
+        plot_roc(truth, predictions, ax=ax)
+        fig1.show()
+    elif type_model == "Energy":
+        score = r2_score(truth, predictions)
+        fig1 = plt.figure()
+        ax = fig1.add_subplot(1, 1, 1)
+        ax.set_title("R^2: {:0.4f}".format(score) + ' Reconstructed vs. True Energy (log color scale)')
+        plot_energy_confusion(predictions, truth, ax=ax)
+        fig1.show()
+    elif type_model == "Disp":
+        score = r2_score(truth, predictions)
+        fig1 = plt.figure()
+        ax = fig1.add_subplot(1, 1, 1)
+        ax.set_title("R^2: {:0.4f}".format(score) + ' Reconstructed vs. True Disp')
+        plot_disp_confusion(predictions, truth, ax=ax, log_z=False, log_xy=False)
+        fig1.savefig(fname="R^2_{:0.4f}".format(score) + "_Disp.pdf")
+        fig1.show()
