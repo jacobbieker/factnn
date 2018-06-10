@@ -3,11 +3,11 @@ import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten, ConvLSTM2D, Conv2D, Conv3D, MaxPooling3D, MaxPooling2D, LSTM, Reshape
+from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D
 import keras.backend as K
 import tensorflow as tf
 import numpy as np
-from threedinputs.library.baseStuff import trainModel, testAndPlotModel
+from io import trainModel, testAndPlotModel
 
 
 def create_model(patch_size, dropout_layer, lstm_dropout, time_slices, strides):

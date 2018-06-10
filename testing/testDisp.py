@@ -1,12 +1,8 @@
 # to force on CPU
-import os
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
-from keras.models import Sequential
 import keras
-from keras.layers import Dense, Dropout, Activation, Flatten, ConvLSTM2D, Conv2D, MaxPooling2D
-import numpy as np
-from threedinputs.library.baseStuff import trainModel, testAndPlotModel
+from io import testAndPlotModel
 import keras.backend as K
 import tensorflow as tf
 
