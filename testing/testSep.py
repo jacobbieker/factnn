@@ -3,7 +3,7 @@ import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import keras
-from baseModel.modelTrain import testAndPlotModel
+from threedinputs.library.baseStuff import trainModel, testAndPlotModel
 import keras.backend as K
 import tensorflow as tf
 
