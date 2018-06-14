@@ -3,7 +3,7 @@
 Keras == 2.1.6
 PyYAML == 3.12
 Shapely == 1.6.4.post1
-astropy == 3.0.2
+astropy==3.0.3
 fact_plots == 0.3.0
 h5py==2.8.0
 matplotlib == 2.2.2
