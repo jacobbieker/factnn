@@ -1,11 +1,9 @@
 import numpy as np
 import h5py
 import keras
-import keras.backend as K
-from sklearn.metrics import r2_score, roc_auc_score
-from numpy.random import RandomState
+from sklearn.metrics import r2_score
 from sklearn.utils import shuffle
-from .plotting import plot_probabilities, plot_roc, plot_disp_confusion, plot_energy_confusion
+from factnn.plotting.plotting import plot_roc, plot_disp_confusion, plot_energy_confusion
 import matplotlib.pyplot as plt
 
 
