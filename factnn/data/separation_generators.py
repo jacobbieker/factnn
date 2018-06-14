@@ -1,9 +1,5 @@
 from factnn.data.base_generator import BaseGenerator
-import numpy as np
 import h5py
-
-from factnn.data.augment import get_random_hdf5_chunk, get_random_from_list
-
 
 class SeparationGenerator(BaseGenerator):
 

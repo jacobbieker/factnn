@@ -1,14 +1,4 @@
-import numpy as np
-import h5py
-import keras
-from sklearn.metrics import r2_score
-from sklearn.utils import shuffle
-from factnn.plotting.plotting import plot_roc, plot_disp_confusion, plot_energy_confusion
-import matplotlib.pyplot as plt
-
 from factnn.data.augment import image_augmenter, get_completely_random_hdf5, get_random_hdf5_chunk, get_random_from_list
-
-
 
 class BaseGenerator(object):
     def __init__(self, config):

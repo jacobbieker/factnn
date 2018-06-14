@@ -1,7 +1,6 @@
 from factnn.data.base_generator import BaseGenerator
 import h5py
 import numpy as np
-from factnn.data.augment import get_random_hdf5_chunk, get_random_from_list
 
 
 def euclidean_distance(x1, y1, x2, y2):
