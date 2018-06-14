@@ -6,7 +6,8 @@ from sklearn.utils import shuffle
 from factnn.plotting.plotting import plot_roc, plot_disp_confusion, plot_energy_confusion
 import matplotlib.pyplot as plt
 
-from factnn.data.augment import image_augmenter, get_completely_random_hdf5, get_random_hdf5_chunk
+from factnn.data.augment import image_augmenter, get_completely_random_hdf5, get_random_hdf5_chunk, get_random_from_list
+
 
 
 class BaseGenerator(object):
@@ -29,6 +30,7 @@ class BaseGenerator(object):
         self.input_data = None
         self.second_input_data = None
         self.labels = None
+        self.type_gen = None
         # Items is either an int, the number of samples to use, or an array of indicies for the generator
         # If items is an array, then chunked must be False, and cannot be from_directory
         self.items = config['samples']
@@ -69,7 +71,78 @@ class BaseGenerator(object):
         Get the next batch of values here, should loop forever
         :return:
         '''
-        return NotImplemented
+        if not self.from_directory:
+            if self.chunked:
+                if self.mode == "train":
+                    while True:
+                        batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
+                                                                                time_slice=self.end_slice,
+                                                                                total_slices=self.number_slices,
+                                                                                training_data=self.input_data,
+                                                                                labels=self.labels,
+                                                                                proton_data=self.second_input_data,
+                                                                                type_training=self.type_gen,
+                                                                                augment=self.augment)
+                        yield (batch_images, batch_image_label)
+                elif self.mode == "validate":
+                    while True:
+                        batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
+                                                                                time_slice=self.end_slice,
+                                                                                total_slices=self.number_slices,
+                                                                                training_data=self.input_data,
+                                                                                labels=self.labels,
+                                                                                proton_data=self.second_input_data,
+                                                                                type_training=self.type_gen,
+                                                                                augment=self.augment)
+                        yield (batch_images, batch_image_label)
+
+                elif self.mode == "test":
+                    while True:
+                        batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
+                                                                                time_slice=self.end_slice,
+                                                                                total_slices=self.number_slices,
+                                                                                training_data=self.input_data,
+                                                                                labels=self.labels,
+                                                                                proton_data=self.second_input_data,
+                                                                                type_training=self.type_gen,
+                                                                                augment=self.augment)
+                        yield (batch_images, batch_image_label)
+            else:
+                # not chunked
+                if self.mode == "train":
+                    while True:
+                        batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
+                                                                               time_slice=self.end_slice,
+                                                                               total_slices=self.number_slices,
+                                                                               training_data=self.input_data,
+                                                                               labels=self.labels,
+                                                                               proton_data=self.second_input_data,
+                                                                               type_training=self.type_gen,
+                                                                               augment=self.augment)
+                        yield (batch_images, batch_image_label)
+                elif self.mode == "validate":
+                    while True:
+                        batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
+                                                                               time_slice=self.end_slice,
+                                                                               total_slices=self.number_slices,
+                                                                               training_data=self.input_data,
+                                                                               labels=self.labels,
+                                                                               proton_data=self.second_input_data,
+                                                                               type_training=self.type_gen,
+                                                                               augment=self.augment)
+                        yield (batch_images, batch_image_label)
+
+                elif self.mode == "test":
+                    while True:
+                        batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
+                                                                               time_slice=self.end_slice,
+                                                                               total_slices=self.number_slices,
+                                                                               training_data=self.input_data,
+                                                                               labels=self.labels,
+                                                                               proton_data=self.second_input_data,
+                                                                               type_training=self.type_gen,
+                                                                               augment=self.augment)
+                        yield (batch_images, batch_image_label)
 
     def __str__(self):
         return NotImplemented
