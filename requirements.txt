@@ -13,4 +13,4 @@ pip install git+https://github.com/fact-project/photon_stream
 pyfact == 0.19.1
 scikit_learn == 0.19.1
 scipy == 1.1.0
-tensorflow == 1.6.0
+tensorflow==1.8.0
