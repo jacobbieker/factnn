@@ -5,32 +5,20 @@ This project focuses on using convolutional neural networks to perform analysis 
 
 # Organization
 
-The final architectures that were used in the thesis are under the thesisFinal directory. 
-
-Architectures that used the 2D image of each event are under flatModels/ and miscFailed/. Both those directories
-include architectures that did not do well, or at all on the data.
-
-Architectures that incorporate the time information are under timeModels/ and are generally the best performing architectures.
-
-The preprocessing scripts for the FACT data are under preprocess/. This includes the rebinning and conversion to HDF5 files.
-
-io/ contains the loading scripts for the timeModels and plotting scripts as well.
-
-helpScripts/ includes the bash scripts that were used in this process to download data and run multiple jobs on Oregon's Talapas
-supercomputer.
-
-featureModels/ includes architectures that train on the parameterized images, the same as the random forest method.
-
-testin/ includes the testing of some models.
-
+misc/ contains a (semi) organized collection of my attempts at using neural networks for air shower analysis. The misc/thesisFinal include the architectures that
+were used for the actual thesis. The factnn/ is where all new development is happening, including making model creation more modular, easier generation of datasets,
+and adding support for streaming in photon stream format files for both training and prediction. 
 
 # Results
 
 The quick results of this thesis were that convolutional neural networks did not beat the random forest method for 
-separating gamma events from hadron events. 
+separating gamma events from hadron events. After the conclusion of the thesis, I made networks that also took the time information, changing
+the input from 2D image to a 3D cube. That improved the AUC of the separation up to .91, an improvement over the (as of this writing) 0.88 of the
+current random forest method.
 
 For estimating the energy of the initial particle, convolutional networks did almost as well, except for a much higher spread
-at very high energies.
+at very high energies. 
 
-Finally, for detecting the source position, neural networks did just as well or better than the current random forest method.
+Finally, for detecting the source position, neural networks did just as well or better than the current random forest method. The network including
+time information achieved an R^2 = 0.77, while that one working with the 2D images had an R^2 = 0.60.
 
