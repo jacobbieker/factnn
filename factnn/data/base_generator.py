@@ -26,12 +26,18 @@ class BaseGenerator(object):
         self.number_slices = config['number_slices']
         self.train_fraction = config['train_fraction']
         self.validate_fraction = config['validate_fraction']
-        self.test_fraction = config['test_fraction']
         self.input_data = None
         self.second_input_data = None
         self.labels = None
-        self.items = config['number_samples']
+        # Items is either an int, the number of samples to use, or an array of indicies for the generator
+        # If items is an array, then chunked must be False, and cannot be from_directory
+        self.items = config['samples']
         self.mode = config['mode']
+
+        if config['chunked']:
+            self.chunked = config['chunked']
+        else:
+            self.chunked = False
 
         if config['verbose']:
             self.verbose = config['verbose']
