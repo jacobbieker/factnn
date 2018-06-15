@@ -1,4 +1,6 @@
 import h5py
+import keras
+import numpy as np
 
 def print_structure(weight_file_path):
     """
@@ -107,6 +109,19 @@ class BaseModel(object):
         self.auc = None
         self.r2 = None
         self.model = None
+        self.train_generator = None
+        self.validate_generator = None
+        self.test_generator = None
+
+        if config['epochs']:
+            self.epochs = config['epochs']
+        else:
+            self.epochs = 500
+
+        if config['patience']:
+            self.patience = config['patience']
+        else:
+            self.patience = 10
 
         if config['learning_rate']:
             self.learning_rate = config['learning_rate']
@@ -144,14 +159,55 @@ class BaseModel(object):
         Apply model to given data set
         :return:
         '''
-        return NotImplemented
+        if isinstance(self.test_generator.items, int):
+            num_events = int(self.test_generator.items*self.test_generator.test_fraction)
+        else:
+            num_events = int(len(self.test_generator.items)*self.train_generator.test_fraction)
+        steps = int(np.floor(num_events / self.test_generator.batch_size))
+        truth = []
+        predictions = []
+        for i in range(steps):
+            # Get each batch and test it
+            test_images, test_labels = next(self.test_generator)
+            test_predictions = self.model.predict_on_batch(test_images)
+            predictions.append(test_predictions)
+            truth.append(test_labels)
+
+        predictions = np.asarray(predictions).reshape(-1, )
+        truth = np.asarray(truth).reshape(-1, )
+
+        return (predictions, truth)
 
     def train(self):
         '''
         Train model
         :return:
         '''
-        return NotImplemented
+        model_checkpoint = keras.callbacks.ModelCheckpoint(self.name,
+                                                           monitor='val_loss',
+                                                           verbose=0,
+                                                           save_best_only=True,
+                                                           save_weights_only=False,
+                                                           mode='auto', period=1)
+        early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
+                                                   patience=self.patience,
+                                                   verbose=0, mode='auto')
+        if isinstance(self.train_generator.items, int):
+            num_events = int(self.train_generator.items*self.train_generator.train_fraction)
+            val_num = int(self.train_generator.items*self.train_generator.validate_fraction)
+        else:
+            num_events = int(len(self.train_generator.items)*self.train_generator.train_fraction)
+            val_num = int(len(self.train_generator.items)*self.train_generator.validate_fraction)
+
+        self.model.fit_generator(
+            generator=self.train_generator,
+            steps_per_epoch=int(np.floor(num_events / self.train_generator.batch_size)),
+            epochs=self.epochs,
+            verbose=1,
+            validation_data=self.validate_generator,
+            callbacks=[early_stop, model_checkpoint],
+            validation_steps=int(np.floor(val_num / self.validate_generator.batch_size))
+        )
 
     def save(self):
         """
