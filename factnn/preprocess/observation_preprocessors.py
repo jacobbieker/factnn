@@ -42,7 +42,7 @@ class ObservationPreprocessor(BasePreprocessor):
                         event_num = event.observation_info.event
                         night = event.observation_info.night
                         run = event.observation_info.run
-                        input_matrix = np.zeros([75, 75, 100])
+                        input_matrix = np.zeros([self.shape[1],self.shape[2],self.shape[3]])
                         chid_to_pixel = self.rebinning[0]
                         pixel_index_to_grid = self.rebinning[1]
                         for index in range(1440):
