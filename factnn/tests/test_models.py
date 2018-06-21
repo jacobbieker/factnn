@@ -145,3 +145,7 @@ class TestDispModels(unittest.TestCase):
 
         self.assertEqual(len(layers), 7)
         self.assertEqual(test_model.input_shape, [100, 75, 75, 1])
+
+
+if __name__ == '__main__':
+    unittest.main()

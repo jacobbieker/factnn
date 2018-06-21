@@ -74,3 +74,7 @@ class TestObservationPreprocessor(unittest.TestCase):
 
     def test_create_dataset(self):
         return NotImplemented
+
+
+if __name__ == '__main__':
+    unittest.main()

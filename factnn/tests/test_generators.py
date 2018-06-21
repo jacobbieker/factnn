@@ -197,3 +197,6 @@ class TestSignGenerator(unittest.TestCase):
         self.configuration['augment'] = True
         return NotImplemented
 
+
+if __name__ == '__main__':
+    unittest.main()
