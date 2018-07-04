@@ -1,6 +1,7 @@
 import numpy as np
 from fact.instrument import get_pixel_coords
-
+import pickle
+import os
 
 class BasePreprocessor(object):
 
@@ -17,7 +18,10 @@ class BasePreprocessor(object):
             self.dl2_file = None
 
         if config['rebin_size']:
-            self.rebinning = self.generate_rebinning(config['rebin_size'])
+            if config['rebin_size'] <= 10:
+                self.rebinning = pickle.load(os.path.join("factnn","resources","rebinning_" + config['rebin_size'] + ".p"))
+            else:
+                self.rebinning = self.generate_rebinning(config['rebin_size'])
         else:
             self.rebinning = self.generate_rebinning(5)
         self.shape = config['shape']
