@@ -9,7 +9,7 @@ h5py==2.8.0
 matplotlib == 2.2.2
 numpy==1.14.5
 pandas==0.23.1
-pip install git+https://github.com/fact-project/photon_stream
+pip install git+https://github.com/fact-project/photon_stream.git
 pyfact==0.20.1
 scikit_learn == 0.19.1
 scipy == 1.1.0

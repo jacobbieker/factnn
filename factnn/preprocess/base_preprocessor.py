@@ -19,7 +19,10 @@ class BasePreprocessor(object):
 
         if config['rebin_size']:
             if config['rebin_size'] <= 10:
-                self.rebinning = pickle.load(os.path.join("factnn","resources","rebinning_" + config['rebin_size'] + ".p"))
+                try:
+                    self.rebinning = pickle.load(os.path.join("factnn","resources","rebinning_" + config['rebin_size'] + ".p"))
+                except:
+                    self.rebinning = self.generate_rebinning(config['rebin_size'])
             else:
                 self.rebinning = self.generate_rebinning(config['rebin_size'])
         else:
@@ -31,7 +34,7 @@ class BasePreprocessor(object):
         else:
             self.output_file = None
 
-    def init(self):
+    def init(self):/home/jacob
         return NotImplemented
 
     def generate_rebinning(self, size):
