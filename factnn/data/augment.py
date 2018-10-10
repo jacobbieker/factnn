@@ -3,6 +3,7 @@ from sklearn.utils import shuffle
 from factnn.preprocess.observation_preprocessors import ObservationPreprocessor
 from factnn.preprocess.simulation_preprocessors import GammaPreprocessor, ProtonPreprocessor
 
+
 def image_augmenter(images):
     """
     Augment images by rotating and flipping input images randomly
@@ -71,8 +72,8 @@ def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, training_
     :param start:
     :param stop:
     :param size:
-    :param time_slice:
-    :param total_slices:
+    :param time_slice: Last index in the time slices
+    :param total_slices: Total slices to use starting from time_slice and going earlier
     :return:
     '''
 
@@ -133,7 +134,7 @@ def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, trai
 
     batch_images = training_data[positions, time_slice - total_slices:time_slice, ::]
     return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
-                proton_data=proton_data, type_training=type_training, augment=augment, swap=swap)
+                       proton_data=proton_data, type_training=type_training, augment=augment, swap=swap)
 
 
 def get_random_from_list(indicies, size, time_slice, total_slices, training_data, labels=None,
@@ -144,7 +145,7 @@ def get_random_from_list(indicies, size, time_slice, total_slices, training_data
     order
     Does not guarantee that a given event will be used though, unlike before
     Recommended to alternate this with the current one to make sure network has full coverage
-    This variant obtians a list of random points, so it will be lower than the other options, but should be better for
+    This variant obtains a list of random points, so it will be lower than the other options, but should be better for
     training
 
     :param labels:
@@ -164,11 +165,11 @@ def get_random_from_list(indicies, size, time_slice, total_slices, training_data
 
     batch_images = training_data[positions, time_slice - total_slices:time_slice, ::]
     return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
-                proton_data=proton_data, type_training=type_training, augment=augment, swap=swap)
+                       proton_data=proton_data, type_training=type_training, augment=augment, swap=swap)
 
 
-def get_random_from_paths(paths, size, time_slice, total_slices, training_data, labels=None,
-                              proton_data=None, type_training=None, augment=True, swap=True):
+def get_random_from_paths(paths, size, time_slice, total_slices, labels=None,
+                          proton_data=None, type_training=None, augment=True, swap=True):
     '''
     Gets a random part of the HDF5 database within start and stop endpoints
     This is to help with shuffling data, as currently all the ones come and go in the same
@@ -194,6 +195,8 @@ def get_random_from_paths(paths, size, time_slice, total_slices, training_data, 
     used_paths = np.random.choice(paths, size=size, replace=False)
 
     # Need to use preprocessors streaming to generate the data
+    # TODO Add streaming preprocessors to generate data and create training_data for use
+    # As not using data in HDF5, have to generate that first
 
     batch_images = training_data[used_paths, time_slice - total_slices:time_slice, ::]
     common_step(batch_images, positions, time_slice, total_slices, labels=labels,

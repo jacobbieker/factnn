@@ -139,7 +139,7 @@ class GammaPreprocessor(BasePreprocessor):
                         sky_source_zd = df_event['zd_source_calc'].values[0]
                         zd_deg1 = df_event['az_tracking'].values[0]
                         az_deg1 = df_event['zd_tracking'].values[0]
-                        input_matrix = np.zeros([75,75,100])
+                        input_matrix = np.zeros([self.shape[1],self.shape[2],self.shape[3]])
                         chid_to_pixel = self.rebinning[0]
                         pixel_index_to_grid = self.rebinning[1]
                         for index in range(1440):

@@ -34,7 +34,7 @@ class BasePreprocessor(object):
         else:
             self.output_file = None
 
-    def init(self):/home/jacob
+    def init(self):
         return NotImplemented
 
     def generate_rebinning(self, size):
