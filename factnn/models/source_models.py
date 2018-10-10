@@ -1,10 +1,5 @@
-import os
+from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D, BatchNormalization
-import keras
-import keras.backend as K
-import tensorflow as tf
-import numpy as np
 
 from factnn.models.base_model import BaseModel
 

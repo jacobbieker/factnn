@@ -2,6 +2,7 @@ import h5py
 import keras
 import numpy as np
 
+
 def print_structure(weight_file_path):
     """
     Prints out the structure of HDF5 file.
@@ -17,7 +18,7 @@ def print_structure(weight_file_path):
         for key, value in f.attrs.items():
             print("  {}: {}".format(key, value))
 
-        if len(f.items())==0:
+        if len(f.items()) == 0:
             return
 
         for layer, g in f.items():
@@ -34,6 +35,7 @@ def print_structure(weight_file_path):
                     print("      {}/{}: {}".format(p_name, k_name, param.get(k_name)[:]))
     finally:
         f.close()
+
 
 class BaseModel(object):
 
@@ -139,7 +141,6 @@ class BaseModel(object):
 
         self.init()
 
-
     def init(self):
         '''
         Model specific inits are here, such as r2 or auc default values
@@ -160,9 +161,9 @@ class BaseModel(object):
         :return:
         '''
         if isinstance(self.test_generator.items, int):
-            num_events = int(self.test_generator.items*self.test_generator.test_fraction)
+            num_events = int(self.test_generator.items * self.test_generator.test_fraction)
         else:
-            num_events = int(len(self.test_generator.items)*self.train_generator.test_fraction)
+            num_events = int(len(self.test_generator.items) * self.train_generator.test_fraction)
         steps = int(np.floor(num_events / self.test_generator.batch_size))
         truth = []
         predictions = []
@@ -193,11 +194,11 @@ class BaseModel(object):
                                                    patience=self.patience,
                                                    verbose=0, mode='auto')
         if isinstance(self.train_generator.items, int):
-            num_events = int(self.train_generator.items*self.train_generator.train_fraction)
-            val_num = int(self.train_generator.items*self.train_generator.validate_fraction)
+            num_events = int(self.train_generator.items * self.train_generator.train_fraction)
+            val_num = int(self.train_generator.items * self.train_generator.validate_fraction)
         else:
-            num_events = int(len(self.train_generator.items)*self.train_generator.train_fraction)
-            val_num = int(len(self.train_generator.items)*self.train_generator.validate_fraction)
+            num_events = int(len(self.train_generator.items) * self.train_generator.train_fraction)
+            val_num = int(len(self.train_generator.items) * self.train_generator.validate_fraction)
 
         self.model.fit_generator(
             generator=self.train_generator,
@@ -221,4 +222,3 @@ class BaseModel(object):
 
     def __repr__(self):
         return NotImplemented
-
