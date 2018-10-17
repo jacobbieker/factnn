@@ -168,7 +168,7 @@ def get_random_from_list(indicies, size, time_slice, total_slices, training_data
                        proton_data=proton_data, type_training=type_training, augment=augment, swap=swap)
 
 
-def get_random_from_paths(paths, size, time_slice, total_slices, labels=None,
+def get_random_from_paths(paths, size, time_slice, total_slices, preprocessor, labels=None,
                           proton_data=None, type_training=None, augment=True, swap=True):
     '''
     Gets a random part of the HDF5 database within start and stop endpoints
@@ -179,6 +179,7 @@ def get_random_from_paths(paths, size, time_slice, total_slices, labels=None,
     This variant obtians a list of random points, so it will be lower than the other options, but should be better for
         training
 
+    :param generator:
     :param labels:
     :param type_training:
     :param proton_data:
@@ -197,7 +198,15 @@ def get_random_from_paths(paths, size, time_slice, total_slices, labels=None,
     # Need to use preprocessors streaming to generate the data
     # TODO Add streaming preprocessors to generate data and create training_data for use
     # As not using data in HDF5, have to generate that first
+    # TODO Have to replace the training data with created data, so need to add generator
 
-    batch_images = training_data[used_paths, time_slice - total_slices:time_slice, ::]
-    common_step(batch_images, positions, time_slice, total_slices, labels=labels,
-                proton_data=proton_data, type_training=type_training, augment=augment, swap=swap)
+    # Uses the generator to generate data from random paths
+    preprocessor.paths = used_paths
+
+
+    #batch_images = training_data[used_paths, time_slice - total_slices:time_slice, ::]
+    #common_step(batch_images, positions, time_slice, total_slices, labels=labels,
+    #            proton_data=proton_data, type_training=type_training, augment=augment, swap=swap)
+
+    # TODO Actually do this, for now
+    return NotImplementedError
