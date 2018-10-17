@@ -3,6 +3,7 @@ from fact.instrument import get_pixel_coords
 import pickle
 import os
 
+
 class BasePreprocessor(object):
 
     def __init__(self, config):
@@ -20,7 +21,8 @@ class BasePreprocessor(object):
         if config['rebin_size']:
             if config['rebin_size'] <= 10:
                 try:
-                    self.rebinning = pickle.load(os.path.join("factnn","resources","rebinning_" + config['rebin_size'] + ".p"))
+                    self.rebinning = pickle.load(
+                        os.path.join("factnn", "resources", "rebinning_" + config['rebin_size'] + ".p"))
                 except:
                     self.rebinning = self.generate_rebinning(config['rebin_size'])
             else:
@@ -117,7 +119,6 @@ class BasePreprocessor(object):
 
         hex_to_grid = [chid_to_pixel, pixel_index_to_grid]
         return hex_to_grid
-
 
     def batch_processor(self):
         return NotImplemented
