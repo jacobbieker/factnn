@@ -8,7 +8,7 @@ class BaseGenerator(object):
         :param config: Dictionary of values for the given model
         '''
 
-        if config['seed']:
+        if 'seed' in config:
             self.seed = config['seed']
 
         self.batch_size = config['batch_size']

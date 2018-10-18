@@ -45,60 +45,60 @@ class BaseModel(object):
         :param config: Dictionary of values for the given model
         '''
 
-        if config['conv_dropout']:
+        if 'conv_dropout' in config:
             self.conv_dropout = config['conv_dropout']
         else:
             self.conv_dropout = 0.0
 
-        if config['lstm_dropout']:
+        if 'lstm_dropout' in config:
             self.lstm_dropout = config['lstm_dropout']
         else:
             self.lstm_dropout = 0.0
 
-        if config['fc_dropout']:
+        if 'fc_dropout' in config:
             self.fc_dropout = config['fc_dropout']
         else:
             self.fc_dropout = 0.0
 
-        if config['num_conv3d']:
+        if 'num_conv3d' in config:
             self.num_conv3d = config['num_conv3d']
         else:
             self.num_conv3d = 0
 
-        if config['kernel_conv3d']:
+        if 'kernel_conv3d' in config:
             self.kernel_conv3d = config['kernel_conv3d']
         else:
             self.kernel_conv3d = 1
 
-        if config['strides_conv3d']:
+        if 'strides_conv3d' in config:
             self.strides_conv3d = config['strides_conv3d']
         else:
             self.strides_conv3d = 1
 
-        if config['num_lstm']:
+        if 'num_lstm' in config:
             self.num_lstm = config['num_lstm']
         else:
             self.num_lstm = 0
 
-        if config['kernel_lstm']:
+        if 'kernel_lstm' in config:
             self.kernel_lstm = config['kernel_lstm']
         else:
             self.kernel_lstm = 1
 
-        if config['strides_lstm']:
+        if 'strides_lstm' in config:
             self.strides_lstm = config['strides_lstm']
         else:
             self.strides_lstm = 1
 
-        if config['num_fc']:
+        if 'num_fc' in config:
             self.num_fc = config['num_fc']
         else:
             self.num_fc = 0
 
-        if config['seed']:
+        if 'seed' in config:
             self.seed = config['seed']
 
-        if config['pooling']:
+        if 'pooling' in config:
             self.pooling = config['pooling']
 
         self.neurons = config['neurons']
@@ -115,26 +115,26 @@ class BaseModel(object):
         self.validate_generator = None
         self.test_generator = None
 
-        if config['epochs']:
+        if 'epochs' in config:
             self.epochs = config['epochs']
         else:
             self.epochs = 500
 
-        if config['patience']:
+        if 'patience' in config:
             self.patience = config['patience']
         else:
             self.patience = 10
 
-        if config['learning_rate']:
+        if 'learning_rate' in config:
             self.learning_rate = config['learning_rate']
 
-        if config['verbose']:
+        if 'verbose' in config:
             self.verbose = config['verbose']
 
-        if config['augment']:
+        if 'augment' in config:
             self.augment = config['augment']
 
-        if config['name']:
+        if 'name' in config:
             self.name = config['name']
         else:
             self.name = None
