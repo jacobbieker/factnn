@@ -39,7 +39,7 @@ def common_step(batch_images, positions, time_slice, total_slices, labels=None, 
     if augment:
         batch_images = image_augmenter(batch_images)
     if type_training == "Separation":
-        proton_images = proton_data[positions, time_slice - total_slices:time_slice, ::]
+        proton_images = proton_data[positions, time_slice:time_slice + total_slices, ::]
         if augment:
             proton_images = image_augmenter(proton_images)
         labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
@@ -84,11 +84,11 @@ def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, training_
     # Get random starting position
     start_pos = np.random.randint(start, last_possible_start)
 
-    batch_images = training_data[start_pos:int(start_pos + size), time_slice - total_slices:time_slice, ::]
+    batch_images = training_data[start_pos:int(start_pos + size), time_slice:time_slice + total_slices, ::]
     if augment:
         batch_images = image_augmenter(batch_images)
     if type_training == "Separation":
-        proton_images = proton_data[start_pos:int(start_pos + size), time_slice - total_slices:time_slice, ::]
+        proton_images = proton_data[start_pos:int(start_pos + size), time_slice:time_slice+total_slices, ::]
         if augment:
             proton_images = image_augmenter(proton_images)
         labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
@@ -132,7 +132,7 @@ def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, trai
     # Get random positions within the start and stop sizes
     positions = np.random.randint(start, stop, size=size)
 
-    batch_images = training_data[positions, time_slice - total_slices:time_slice, ::]
+    batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
     return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
                        proton_data=proton_data, type_training=type_training, augment=augment, swap=swap)
 
@@ -163,7 +163,7 @@ def get_random_from_list(indicies, size, time_slice, total_slices, training_data
     # Get random positions within the start and stop sizes
     positions = np.random.choice(indicies, size=size, replace=False)
 
-    batch_images = training_data[positions, time_slice - total_slices:time_slice, ::]
+    batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
     return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
                        proton_data=proton_data, type_training=type_training, augment=augment, swap=swap)
 

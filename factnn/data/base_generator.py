@@ -14,7 +14,7 @@ class BaseGenerator(object):
         self.batch_size = config['batch_size']
         self.input = config['input']
         self.second_input = config['second_input']
-        self.end_slice = config['end_slice']
+        self.start_slice = config['start_slice']
         self.number_slices = config['number_slices']
         self.train_fraction = config['train_fraction']
         self.validate_fraction = config['validate_fraction']
@@ -27,20 +27,20 @@ class BaseGenerator(object):
         self.items = config['samples']
         self.mode = config['mode']
 
-        if config['chunked']:
+        if 'chunked' in config:
             self.chunked = config['chunked']
         else:
             self.chunked = False
 
-        if config['verbose']:
+        if 'verbose' in config:
             self.verbose = config['verbose']
         else:
             self.verbose = False
 
-        if config['augment']:
+        if 'augment' in config:
             self.augment = config['augment']
 
-        if config['from_directory']:
+        if 'from_directory' in config:
             self.from_directory = config['from_directory']
         else:
             self.from_directory = False
@@ -67,7 +67,7 @@ class BaseGenerator(object):
                 if self.mode == "train":
                     while True:
                         batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
-                                                                                time_slice=self.end_slice,
+                                                                                time_slice=self.start_slice,
                                                                                 total_slices=self.number_slices,
                                                                                 training_data=self.input_data,
                                                                                 labels=self.labels,
@@ -78,7 +78,7 @@ class BaseGenerator(object):
                 elif self.mode == "validate":
                     while True:
                         batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
-                                                                                time_slice=self.end_slice,
+                                                                                time_slice=self.start_slice,
                                                                                 total_slices=self.number_slices,
                                                                                 training_data=self.input_data,
                                                                                 labels=self.labels,
@@ -90,7 +90,7 @@ class BaseGenerator(object):
                 elif self.mode == "test":
                     while True:
                         batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
-                                                                                time_slice=self.end_slice,
+                                                                                time_slice=self.start_slice,
                                                                                 total_slices=self.number_slices,
                                                                                 training_data=self.input_data,
                                                                                 labels=self.labels,
@@ -103,7 +103,7 @@ class BaseGenerator(object):
                 if self.mode == "train":
                     while True:
                         batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
-                                                                               time_slice=self.end_slice,
+                                                                               time_slice=self.start_slice,
                                                                                total_slices=self.number_slices,
                                                                                training_data=self.input_data,
                                                                                labels=self.labels,
@@ -114,7 +114,7 @@ class BaseGenerator(object):
                 elif self.mode == "validate":
                     while True:
                         batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
-                                                                               time_slice=self.end_slice,
+                                                                               time_slice=self.start_slice,
                                                                                total_slices=self.number_slices,
                                                                                training_data=self.input_data,
                                                                                labels=self.labels,
@@ -126,7 +126,7 @@ class BaseGenerator(object):
                 elif self.mode == "test":
                     while True:
                         batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
-                                                                               time_slice=self.end_slice,
+                                                                               time_slice=self.start_slice,
                                                                                total_slices=self.number_slices,
                                                                                training_data=self.input_data,
                                                                                labels=self.labels,
