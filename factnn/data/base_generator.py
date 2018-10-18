@@ -1,6 +1,8 @@
 from factnn.data.augment import image_augmenter, get_completely_random_hdf5, get_random_hdf5_chunk, get_random_from_list
 
 
+# TODO Add k-fold cross-validation generation
+
 class BaseGenerator(object):
     def __init__(self, config):
         '''

@@ -8,7 +8,9 @@ from factnn.preprocess.base_preprocessor import BasePreprocessor
 class ProtonPreprocessor(BasePreprocessor):
 
     def batch_processor(self):
+        print("Number of files: " + str(len(self.paths)))
         for index, file in enumerate(self.paths):
+            print("Index: " + str(index))
             mc_truth = file.split(".phs")[0] + ".ch.gz"
             print(mc_truth)
             try:

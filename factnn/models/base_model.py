@@ -103,7 +103,7 @@ class BaseModel(object):
 
         self.neurons = config['neurons']
         self.shape = config['shape']
-        self.end_slice = config['end_slice']
+        self.start_slice = config['start_slice']
         self.number_slices = config['number_slices']
         self.batch_normalization = config['batch_normalization']
         self.activation = config['activation']
