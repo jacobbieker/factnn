@@ -9,7 +9,7 @@ class BasePreprocessor(object):
 
     def __init__(self, config):
         self.directories = config['directories']
-        if config['paths']:
+        if 'paths' in config:
             self.paths = config['paths']
         else:
             # Get paths from the directories
@@ -20,12 +20,12 @@ class BasePreprocessor(object):
                         if file.endswith("phs.jsonl.gz"):
                             self.paths.append(os.path.join(root, file))
 
-        if config['dl2_file']:
+        if 'dl2_file' in config:
             self.dl2_file = config['dl2_file']
         else:
             self.dl2_file = None
 
-        if config['rebin_size']:
+        if 'rebin_size' in config:
             if config['rebin_size'] <= 10:
                 try:
                     self.rebinning = pickle.load(
@@ -38,14 +38,14 @@ class BasePreprocessor(object):
             self.rebinning = self.generate_rebinning(5)
 
         # Shape can be determined by the rebinning for the middle events, so can get automated and not given
-        if config['shape']:
+        if 'shape' in config:
             self.shape = config['shape']
         else:
             # Get it from the rebinning
             self.shape = [-1, int(np.ceil(np.abs(186 * 2) / config['rebin_size'])), int(np.ceil(np.abs(186 * 2) / config['rebin_size'])), 100]
 
         self.dataset = None
-        if config['output_file']:
+        if 'output_file' in config:
             self.output_file = config['output_file']
         else:
             self.output_file = None
