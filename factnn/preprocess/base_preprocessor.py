@@ -2,6 +2,7 @@ import numpy as np
 from fact.instrument import get_pixel_coords
 import pickle
 import os
+import glob
 
 
 class BasePreprocessor(object):
@@ -11,7 +12,13 @@ class BasePreprocessor(object):
         if config['paths']:
             self.paths = config['paths']
         else:
-            self.paths = None
+            # Get paths from the directories
+            self.paths = []
+            for directory in self.directories:
+                for root, dirs, files in os.walk(self.directories):
+                    for file in files:
+                        if file.endswith("phs.jsonl.gz"):
+                            self.paths.append(os.path.join(root, file))
 
         if config['dl2_file']:
             self.dl2_file = config['dl2_file']
@@ -29,7 +36,14 @@ class BasePreprocessor(object):
                 self.rebinning = self.generate_rebinning(config['rebin_size'])
         else:
             self.rebinning = self.generate_rebinning(5)
-        self.shape = config['shape']
+
+        # Shape can be determined by the rebinning for the middle events, so can get automated and not given
+        if config['shape']:
+            self.shape = config['shape']
+        else:
+            # Get it from the rebinning
+            self.shape = [-1, int(np.ceil(np.abs(186 * 2) / config['rebin_size'])), int(np.ceil(np.abs(186 * 2) / config['rebin_size'])), 100]
+
         self.dataset = None
         if config['output_file']:
             self.output_file = config['output_file']
