@@ -12,8 +12,10 @@ class ObservationPreprocessor(BasePreprocessor):
     def init(self):
         self.dl2_file = read_h5py(self.dl2_file, key="events", columns=["event_num", "run_id", "night",
                                                                         "source_position_az", "source_position_zd",
-                                                                        "source_position_x","source_position_y", "cog_x", "cog_y",
-                                                                        "timestamp", "pointing_position_az", "pointing_position_zd"])
+                                                                        "source_position_x", "source_position_y",
+                                                                        "cog_x", "cog_y",
+                                                                        "timestamp", "pointing_position_az",
+                                                                        "pointing_position_zd"])
 
     def batch_processor(self):
         self.init()
@@ -44,7 +46,7 @@ class ObservationPreprocessor(BasePreprocessor):
                         event_num = event.observation_info.event
                         night = event.observation_info.night
                         run = event.observation_info.run
-                        input_matrix = np.zeros([self.shape[1],self.shape[2],self.shape[3]])
+                        input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
                         chid_to_pixel = self.rebinning[0]
                         pixel_index_to_grid = self.rebinning[1]
                         for index in range(1440):
@@ -53,7 +55,6 @@ class ObservationPreprocessor(BasePreprocessor):
                                 for value in event_photons[index]:
                                     if self.end > value > self.start:
                                         input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
-
 
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x,
                                      source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1,
@@ -91,7 +92,7 @@ class ObservationPreprocessor(BasePreprocessor):
                         event_num = event.observation_info.event
                         night = event.observation_info.night
                         run = event.observation_info.run
-                        input_matrix = np.zeros([self.shape[1],self.shape[2],self.shape[3]])
+                        input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
                         chid_to_pixel = self.rebinning[0]
                         pixel_index_to_grid = self.rebinning[1]
                         for index in range(1440):
@@ -127,7 +128,7 @@ class ObservationPreprocessor(BasePreprocessor):
         run = np.array(run)
         cog_x = np.array(cog_x)
         cog_y = np.array(cog_y)
-        return pic, energy, zd_deg, az_deg, source_pos_x, source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1,\
+        return pic, energy, zd_deg, az_deg, source_pos_x, source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1, \
                event_num, night, run, cog_x, cog_y
 
     def create_dataset(self):
@@ -144,17 +145,18 @@ class ObservationPreprocessor(BasePreprocessor):
                                           dtype=pic.dtype)
             maxshape_run = (None,) + zd_deg.shape[1:]
             dset_time = hdf.create_dataset('Time', shape=energy.shape, maxshape=maxshape_run, chunks=energy.shape,
-                                          dtype=energy.dtype)
+                                           dtype=energy.dtype)
             dset_run = hdf.create_dataset('Run', shape=run.shape, maxshape=maxshape_run, chunks=energy.shape,
                                           dtype=run.dtype)
             dset_night = hdf.create_dataset('Night', shape=night.shape, maxshape=maxshape_run, chunks=night.shape,
-                                          dtype=night.dtype)
-            dset_eventnum = hdf.create_dataset('EventNum', shape=event_num.shape, maxshape=maxshape_run, chunks=event_num.shape,
-                                          dtype=event_num.dtype)
+                                            dtype=night.dtype)
+            dset_eventnum = hdf.create_dataset('EventNum', shape=event_num.shape, maxshape=maxshape_run,
+                                               chunks=event_num.shape,
+                                               dtype=event_num.dtype)
             dset_cogy = hdf.create_dataset('Cog_X', shape=cog_x.shape, maxshape=maxshape_run, chunks=cog_x.shape,
-                                            dtype=cog_x.dtype)
+                                           dtype=cog_x.dtype)
             dset_cogx = hdf.create_dataset('Cog_Y', shape=cog_x.shape, maxshape=maxshape_run, chunks=cog_x.shape,
-                                               dtype=cog_x.dtype)
+                                           dtype=cog_x.dtype)
             maxshape_event = (None,) + zd_deg.shape[1:]
             dset_zd_deg = hdf.create_dataset('Zd_deg', shape=zd_deg.shape, maxshape=maxshape_event, chunks=zd_deg.shape,
                                              dtype=zd_deg.dtype)
@@ -162,16 +164,20 @@ class ObservationPreprocessor(BasePreprocessor):
             dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg,
                                              chunks=az_deg.shape, dtype=az_deg.dtype)
             maxshape_phi = (None,) + zd_deg.shape[1:]
-            dset_phi = hdf.create_dataset('Source_X', shape=source_pos_x.shape, maxshape=maxshape_phi, chunks=source_pos_x.shape,
+            dset_phi = hdf.create_dataset('Source_X', shape=source_pos_x.shape, maxshape=maxshape_phi,
+                                          chunks=source_pos_x.shape,
                                           dtype=source_pos_x.dtype)
             maxshape_source_pos_y = (None,) + zd_deg.shape[1:]
-            dset_source_pos_y = hdf.create_dataset('Source_Y', shape=source_pos_x.shape, maxshape=maxshape_source_pos_y, chunks=source_pos_x.shape,
-                                            dtype=source_pos_x.dtype)
+            dset_source_pos_y = hdf.create_dataset('Source_Y', shape=source_pos_x.shape, maxshape=maxshape_source_pos_y,
+                                                   chunks=source_pos_x.shape,
+                                                   dtype=source_pos_x.dtype)
             maxshape_zd = (None,) + zd_deg.shape[1:]
-            dset_zd = hdf.create_dataset('Source_Zd', shape=zd_deg.shape, maxshape=maxshape_zd, chunks=sky_source_zd.shape,
+            dset_zd = hdf.create_dataset('Source_Zd', shape=zd_deg.shape, maxshape=maxshape_zd,
+                                         chunks=sky_source_zd.shape,
                                          dtype=sky_source_zd.dtype)
             maxshape_az = (None,) + zd_deg.shape[1:]
-            dset_az = hdf.create_dataset('Source_Az', shape=az_deg.shape, maxshape=maxshape_az, chunks=sky_source_zd.shape,
+            dset_az = hdf.create_dataset('Source_Az', shape=az_deg.shape, maxshape=maxshape_az,
+                                         chunks=sky_source_zd.shape,
                                          dtype=sky_source_zd.dtype)
             maxshape_event1 = (None,) + zd_deg.shape[1:]
             dset_zd_deg1 = hdf.create_dataset('Pointing_Zd', shape=zd_deg1.shape, maxshape=maxshape_event1,

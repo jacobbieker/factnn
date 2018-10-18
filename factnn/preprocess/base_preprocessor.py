@@ -2,8 +2,6 @@ import numpy as np
 from fact.instrument import get_pixel_coords
 import pickle
 import os
-import glob
-
 
 class BasePreprocessor(object):
 
@@ -15,7 +13,7 @@ class BasePreprocessor(object):
             # Get paths from the directories
             self.paths = []
             for directory in self.directories:
-                for root, dirs, files in os.walk(self.directories):
+                for root, dirs, files in os.walk(directory):
                     for file in files:
                         if file.endswith("phs.jsonl.gz"):
                             self.paths.append(os.path.join(root, file))
@@ -37,8 +35,6 @@ class BasePreprocessor(object):
         else:
             self.rebinning = self.generate_rebinning(5)
 
-        # Shape is used only to determine how much time information is kept, if negative, start from back, if positive from
-        # front, range gives that range of time slices
         if 'shape' in config:
             self.start = config['shape'][0]
             self.end = config['shape'][1]
