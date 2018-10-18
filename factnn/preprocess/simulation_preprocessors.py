@@ -33,8 +33,8 @@ class ProtonPreprocessor(BasePreprocessor):
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
                             for value in event_photons[index]:
-                                if value < self.shape[3]:
-                                    input_matrix[coords[0]][coords[1]][value] += element[1] * 1
+                                if self.end > value > self.start:
+                                    input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                 yield data
 
@@ -67,8 +67,8 @@ class ProtonPreprocessor(BasePreprocessor):
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
                             for value in event_photons[index]:
-                                if value < self.shape[3]:
-                                    input_matrix[coords[0]][coords[1]][value] += element[1] * 1
+                                if self.end > value > self.start:
+                                    input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                     yield data
 
@@ -169,8 +169,8 @@ class GammaPreprocessor(BasePreprocessor):
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
                             for value in event_photons[index]:
-                                if value < self.shape[3]:
-                                    input_matrix[coords[0]][coords[1]][value] += element[1] * 1
+                                if self.end > value > self.start:
+                                    input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                 yield data
 
@@ -203,8 +203,8 @@ class GammaPreprocessor(BasePreprocessor):
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
                             for value in event_photons[index]:
-                                if value < self.shape[3]:
-                                    input_matrix[coords[0]][coords[1]][value] += element[1] * 1
+                                if self.end > value > self.start:
+                                    input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                     yield data
 
@@ -317,8 +317,8 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                 # Now get the first 60 event photons
                                 coords = pixel_index_to_grid[element[0]]
                                 for value in event_photons[index]:
-                                    if value < self.shape[3]:
-                                        input_matrix[coords[0]][coords[1]][value] += element[1] * 1
+                                    if self.end > value > self.start:
+                                        input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
 
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), act_sky_source_zero, act_sky_source_one,
                                      cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
@@ -366,8 +366,8 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                 # Now get the first 60 event photons
                                 coords = pixel_index_to_grid[element[0]]
                                 for value in event_photons[index]:
-                                    if value < self.shape[3]:
-                                        input_matrix[coords[0]][coords[1]][value] += element[1] * 1
+                                    if self.end > value > self.start:
+                                        input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
 
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), act_sky_source_zero, act_sky_source_one,
                                      cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,

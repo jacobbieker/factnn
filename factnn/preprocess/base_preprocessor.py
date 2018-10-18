@@ -37,12 +37,17 @@ class BasePreprocessor(object):
         else:
             self.rebinning = self.generate_rebinning(5)
 
-        # Shape can be determined by the rebinning for the middle events, so can get automated and not given
+        # Shape is used only to determine how much time information is kept, if negative, start from back, if positive from
+        # front, range gives that range of time slices
         if 'shape' in config:
-            self.shape = config['shape']
+            self.start = config['shape'][0]
+            self.end = config['shape'][1]
         else:
             # Get it from the rebinning
-            self.shape = [-1, int(np.ceil(np.abs(186 * 2) / config['rebin_size'])), int(np.ceil(np.abs(186 * 2) / config['rebin_size'])), 100]
+            self.end = 100
+            self.start = 0
+
+        self.shape = [-1, int(np.ceil(np.abs(186 * 2) / config['rebin_size'])), int(np.ceil(np.abs(186 * 2) / config['rebin_size'])), self.end - self.start]
 
         self.dataset = None
         if 'output_file' in config:

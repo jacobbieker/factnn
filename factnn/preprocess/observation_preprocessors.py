@@ -51,8 +51,9 @@ class ObservationPreprocessor(BasePreprocessor):
                             for element in chid_to_pixel[index]:
                                 coords = pixel_index_to_grid[element[0]]
                                 for value in event_photons[index]:
-                                    if value < self.shape[3]:
-                                        input_matrix[coords[0]][coords[1]][value] += element[1] * 1
+                                    if self.end > value > self.start:
+                                        input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
+
 
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x,
                                      source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1,
@@ -97,8 +98,8 @@ class ObservationPreprocessor(BasePreprocessor):
                             for element in chid_to_pixel[index]:
                                 coords = pixel_index_to_grid[element[0]]
                                 for value in event_photons[index]:
-                                    if value < self.shape[3]:
-                                        input_matrix[coords[0]][coords[1]][value] += element[1] * 1
+                                    if self.end > value > self.start:
+                                        input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
 
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x,
                                      source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1,
