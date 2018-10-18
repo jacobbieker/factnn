@@ -29,14 +29,14 @@ class ProtonPreprocessor(BasePreprocessor):
                     az_deg = event.az
                     act_phi = event.simulation_truth.air_shower.phi
                     act_theta = event.simulation_truth.air_shower.theta
-                    input_matrix = np.zeros([self.shape[1],self.shape[2],self.shape[3]])
+                    input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
                     chid_to_pixel = self.rebinning[0]
                     pixel_index_to_grid = self.rebinning[1]
                     for index in range(1440):
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
                             for value in event_photons[index]:
-                                input_matrix[coords[0]][coords[1]][value-30] += element[1]*1
+                                input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                 yield data
 
@@ -62,14 +62,14 @@ class ProtonPreprocessor(BasePreprocessor):
                     az_deg = event.az
                     act_phi = event.simulation_truth.air_shower.phi
                     act_theta = event.simulation_truth.air_shower.theta
-                    input_matrix = np.zeros([self.shape[1],self.shape[2],self.shape[3]])
+                    input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
                     chid_to_pixel = self.rebinning[0]
                     pixel_index_to_grid = self.rebinning[1]
                     for index in range(1440):
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
                             for value in event_photons[index]:
-                                input_matrix[coords[0]][coords[1]][value-30] += element[1]*1
+                                input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                     yield data
 
@@ -95,17 +95,23 @@ class ProtonPreprocessor(BasePreprocessor):
 
         with h5py.File(self.output_file, 'w') as hdf:
             maxshape_pic = (None,) + pic.shape[1:]
-            dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
+            dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape,
+                                          dtype=pic.dtype)
             maxshape_run = (None,) + zd_deg.shape[1:]
-            dset_energy = hdf.create_dataset('Energy', shape=energy.shape, maxshape=maxshape_run, chunks=energy.shape, dtype=energy.dtype)
+            dset_energy = hdf.create_dataset('Energy', shape=energy.shape, maxshape=maxshape_run, chunks=energy.shape,
+                                             dtype=energy.dtype)
             maxshape_event = (None,) + zd_deg.shape[1:]
-            dset_zd_deg = hdf.create_dataset('Zd_deg', shape=zd_deg.shape, maxshape=maxshape_event, chunks=zd_deg.shape, dtype=zd_deg.dtype)
+            dset_zd_deg = hdf.create_dataset('Zd_deg', shape=zd_deg.shape, maxshape=maxshape_event, chunks=zd_deg.shape,
+                                             dtype=zd_deg.dtype)
             maxshape_az_deg = (None,) + zd_deg.shape[1:]
-            dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
+            dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg,
+                                             chunks=az_deg.shape, dtype=az_deg.dtype)
             maxshape_phia = (None,) + zd_deg.shape[1:]
-            dset_phia = hdf.create_dataset('Phi', shape=act_phi.shape, maxshape=maxshape_phia, chunks=act_phi.shape, dtype=act_phi.dtype)
+            dset_phia = hdf.create_dataset('Phi', shape=act_phi.shape, maxshape=maxshape_phia, chunks=act_phi.shape,
+                                           dtype=act_phi.dtype)
             maxshape_thetaa = (None,) + zd_deg.shape[1:]
-            dset_thetaa = hdf.create_dataset('Theta', shape=act_theta.shape, maxshape=maxshape_thetaa, chunks=act_theta.shape, dtype=act_theta.dtype)
+            dset_thetaa = hdf.create_dataset('Theta', shape=act_theta.shape, maxshape=maxshape_thetaa,
+                                             chunks=act_theta.shape, dtype=act_theta.dtype)
 
             dset_pic[:] = pic
             dset_energy[:] = energy
@@ -157,14 +163,14 @@ class GammaPreprocessor(BasePreprocessor):
                     az_deg = event.az
                     act_phi = event.simulation_truth.air_shower.phi
                     act_theta = event.simulation_truth.air_shower.theta
-                    input_matrix = np.zeros([self.shape[1],self.shape[2],self.shape[3]])
+                    input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
                     chid_to_pixel = self.rebinning[0]
                     pixel_index_to_grid = self.rebinning[1]
                     for index in range(1440):
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
                             for value in event_photons[index]:
-                                input_matrix[coords[0]][coords[1]][value-30] += element[1]*1
+                                input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                 yield data
 
@@ -190,14 +196,14 @@ class GammaPreprocessor(BasePreprocessor):
                     az_deg = event.az
                     act_phi = event.simulation_truth.air_shower.phi
                     act_theta = event.simulation_truth.air_shower.theta
-                    input_matrix = np.zeros([self.shape[1],self.shape[2],self.shape[3]])
+                    input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
                     chid_to_pixel = self.rebinning[0]
                     pixel_index_to_grid = self.rebinning[1]
                     for index in range(1440):
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
                             for value in event_photons[index]:
-                                input_matrix[coords[0]][coords[1]][value-30] += element[1]*1
+                                input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                     yield data
 
@@ -223,17 +229,23 @@ class GammaPreprocessor(BasePreprocessor):
 
         with h5py.File(self.output_file, 'w') as hdf:
             maxshape_pic = (None,) + pic.shape[1:]
-            dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape, dtype=pic.dtype)
+            dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape,
+                                          dtype=pic.dtype)
             maxshape_run = (None,) + zd_deg.shape[1:]
-            dset_energy = hdf.create_dataset('Energy', shape=energy.shape, maxshape=maxshape_run, chunks=energy.shape, dtype=energy.dtype)
+            dset_energy = hdf.create_dataset('Energy', shape=energy.shape, maxshape=maxshape_run, chunks=energy.shape,
+                                             dtype=energy.dtype)
             maxshape_event = (None,) + zd_deg.shape[1:]
-            dset_zd_deg = hdf.create_dataset('Zd_deg', shape=zd_deg.shape, maxshape=maxshape_event, chunks=zd_deg.shape, dtype=zd_deg.dtype)
+            dset_zd_deg = hdf.create_dataset('Zd_deg', shape=zd_deg.shape, maxshape=maxshape_event, chunks=zd_deg.shape,
+                                             dtype=zd_deg.dtype)
             maxshape_az_deg = (None,) + zd_deg.shape[1:]
-            dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg, chunks=az_deg.shape, dtype=az_deg.dtype)
+            dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg,
+                                             chunks=az_deg.shape, dtype=az_deg.dtype)
             maxshape_phia = (None,) + zd_deg.shape[1:]
-            dset_phia = hdf.create_dataset('Phi', shape=act_phi.shape, maxshape=maxshape_phia, chunks=act_phi.shape, dtype=act_phi.dtype)
+            dset_phia = hdf.create_dataset('Phi', shape=act_phi.shape, maxshape=maxshape_phia, chunks=act_phi.shape,
+                                           dtype=act_phi.dtype)
             maxshape_thetaa = (None,) + zd_deg.shape[1:]
-            dset_thetaa = hdf.create_dataset('Theta', shape=act_theta.shape, maxshape=maxshape_thetaa, chunks=act_theta.shape, dtype=act_theta.dtype)
+            dset_thetaa = hdf.create_dataset('Theta', shape=act_theta.shape, maxshape=maxshape_thetaa,
+                                             chunks=act_theta.shape, dtype=act_theta.dtype)
 
             dset_pic[:] = pic
             dset_energy[:] = energy
@@ -245,7 +257,7 @@ class GammaPreprocessor(BasePreprocessor):
             for batch in gen:
                 pic, energy, zd_deg, az_deg, phi, theta = self.format(batch)
 
-                shape = theta.shape[0]
+                shape = energy.shape[0]
 
                 dset_pic.resize(row_count + shape, axis=0)
                 dset_energy.resize(row_count + shape, axis=0)
@@ -261,18 +273,20 @@ class GammaPreprocessor(BasePreprocessor):
                 dset_phia[row_count:] = act_phi
                 dset_thetaa[row_count:] = act_theta
 
-                row_count += phi.shape[0]
+                row_count += energy.shape[0]
+
 
 class GammaDiffusePreprocessor(BasePreprocessor):
 
     def init(self):
-        self.dl2_file = read_h5py(self.dl2_file, key="events", columns=["event_num", "@source", "source_position", "cog_x", "cog_y", "delta",
-                                                                        "az_source_calc", "zd_source_calc",
-                                                                        "az_tracking", "zd_tracking",
-                                                                        "corsika_evt_header_total_energy", "corsika_evt_header_az"])
+        self.dl2_file = read_h5py(self.dl2_file, key="events",
+                                  columns=["event_num", "source_position_x", "source_position_y", "cog_x", "cog_y", "delta",
+                                           "source_position_az", "source_position_zd",
+                                           "aux_pointing_position_az", "aux_pointing_position_zd",
+                                           "corsika_event_header_total_energy", "corsika_event_header_az", "run_id"])
 
     def batch_processor(self):
-
+        self.init()
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
             print(mc_truth)
@@ -283,7 +297,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                 )
                 data = []
                 for event in sim_reader:
-                    df_event = self.dl2_file.loc[(np.isclose(self.dl2_file['corsika_evt_header_total_energy'],
+                    df_event = self.dl2_file.loc[(np.isclose(self.dl2_file['corsika_event_header_total_energy'],
                                                              event.simulation_truth.air_shower.energy)) &
                                                  (self.dl2_file['run_id'] == event.simulation_truth.run)]
                     if not df_event.empty:
@@ -291,18 +305,18 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                         # Each event is the same as each line below
                         cog_x = df_event['cog_x'].values[0]
                         cog_y = df_event['cog_y'].values[0]
-                        act_sky_source_zero = df_event['source_position_0'].values[0]
-                        act_sky_source_one = df_event['source_position_1'].values[0]
+                        act_sky_source_zero = df_event['source_position_x'].values[0]
+                        act_sky_source_one = df_event['source_position_y'].values[0]
                         event_photons = event.photon_stream.list_of_lists
                         zd_deg = event.zd
                         az_deg = event.az
                         delta = df_event['delta'].values[0]
                         energy = event.simulation_truth.air_shower.energy
-                        sky_source_zd = df_event['zd_source_calc'].values[0]
-                        sky_source_az = df_event['az_source_calc'].values[0]
-                        zd_deg1 = df_event['az_tracking'].values[0]
-                        az_deg1 = df_event['zd_tracking'].values[0]
-                        input_matrix = np.zeros([self.shape[1],self.shape[2],self.shape[3]])
+                        sky_source_zd = df_event['source_position_zd'].values[0]
+                        sky_source_az = df_event['source_position_az'].values[0]
+                        zd_deg1 = df_event['aux_pointing_position_az'].values[0]
+                        az_deg1 = df_event['aux_pointing_position_zd'].values[0]
+                        input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
                         chid_to_pixel = self.rebinning[0]
                         pixel_index_to_grid = self.rebinning[1]
                         for index in range(1440):
@@ -310,7 +324,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                 # Now get the first 60 event photons
                                 coords = pixel_index_to_grid[element[0]]
                                 for value in event_photons[index]:
-                                    input_matrix[coords[0]][coords[1]][value-30] += element[1]*1
+                                    input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
 
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), act_sky_source_zero, act_sky_source_one,
                                      cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
@@ -331,7 +345,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                 )
                 for event in sim_reader:
                     data = []
-                    df_event = self.dl2_file.loc[(np.isclose(self.dl2_file['corsika_evt_header_total_energy'],
+                    df_event = self.dl2_file.loc[(np.isclose(self.dl2_file['corsika_event_header_total_energy'],
                                                              event.simulation_truth.air_shower.energy)) &
                                                  (self.dl2_file['run_id'] == event.simulation_truth.run)]
                     if not df_event.empty:
@@ -339,18 +353,18 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                         # Each event is the same as each line below
                         cog_x = df_event['cog_x'].values[0]
                         cog_y = df_event['cog_y'].values[0]
-                        act_sky_source_zero = df_event['source_position_0'].values[0]
-                        act_sky_source_one = df_event['source_position_1'].values[0]
+                        act_sky_source_zero = df_event['source_position_x'].values[0]
+                        act_sky_source_one = df_event['source_position_y'].values[0]
                         event_photons = event.photon_stream.list_of_lists
                         zd_deg = event.zd
                         az_deg = event.az
                         delta = df_event['delta'].values[0]
                         energy = event.simulation_truth.air_shower.energy
-                        sky_source_zd = df_event['zd_source_calc'].values[0]
-                        sky_source_az = df_event['az_source_calc'].values[0]
-                        zd_deg1 = df_event['az_tracking'].values[0]
-                        az_deg1 = df_event['zd_tracking'].values[0]
-                        input_matrix = np.zeros([self.shape[1],self.shape[2],self.shape[3]])
+                        sky_source_zd = df_event['source_position_zd'].values[0]
+                        sky_source_az = df_event['source_position_zd'].values[0]
+                        zd_deg1 = df_event['aux_pointing_position_az'].values[0]
+                        az_deg1 = df_event['aux_pointing_position_zd'].values[0]
+                        input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
                         chid_to_pixel = self.rebinning[0]
                         pixel_index_to_grid = self.rebinning[1]
                         for index in range(1440):
@@ -358,7 +372,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                 # Now get the first 60 event photons
                                 coords = pixel_index_to_grid[element[0]]
                                 for value in event_photons[index]:
-                                    input_matrix[coords[0]][coords[1]][value-30] += element[1]*1
+                                    input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
 
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), act_sky_source_zero, act_sky_source_one,
                                      cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
@@ -369,7 +383,8 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                 print(str(e))
 
     def format(self, batch):
-        pic, act_sky_source_zero, act_sky_source_one, cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta, energy, zd_deg1, az_deg1 = zip(*batch)
+        pic, act_sky_source_zero, act_sky_source_one, cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta, energy, zd_deg1, az_deg1 = zip(
+            *batch)
         pic = self.reformat(np.array(pic))
         act_sky_source_zero = np.array(act_sky_source_zero)
         act_sky_source_one = np.array(act_sky_source_one)
@@ -397,19 +412,27 @@ class GammaDiffusePreprocessor(BasePreprocessor):
         with h5py.File(self.output_file, 'w') as hdf:
             maxshape = (None,) + pic.shape[1:]
             shape = energy.shape
-            dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape, chunks=pic.shape, dtype=pic.dtype)
-            dset_source_pos_x = hdf.create_dataset('Source_X', shape=energy.shape, maxshape=maxshape, chunks=shape, dtype=act_sky_source_zero.dtype)
-            dset_source_pos_y = hdf.create_dataset('Source_Y', shape=shape, maxshape=maxshape, chunks=shape, dtype=act_sky_source_one.dtype)
+            dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape, chunks=pic.shape,
+                                          dtype=pic.dtype)
+            maxshape = (None, ) + energy.shape[1:]
+            dset_source_pos_x = hdf.create_dataset('Source_X', shape=energy.shape, maxshape=maxshape, chunks=shape,
+                                                   dtype=act_sky_source_zero.dtype)
+            dset_source_pos_y = hdf.create_dataset('Source_Y', shape=shape, maxshape=maxshape, chunks=shape,
+                                                   dtype=act_sky_source_one.dtype)
             dset_zd_deg = hdf.create_dataset('Zd_deg', shape=shape, maxshape=maxshape, chunks=shape, dtype=zd_deg.dtype)
             dset_az_deg = hdf.create_dataset('Az_deg', shape=shape, maxshape=maxshape, chunks=shape, dtype=az_deg.dtype)
             dset_cog_x = hdf.create_dataset('COG_X', shape=shape, maxshape=maxshape, chunks=shape, dtype=cog_x.dtype)
             dset_cog_y = hdf.create_dataset('COG_Y', shape=shape, maxshape=maxshape, chunks=shape, dtype=cog_y.dtype)
             dset_delta = hdf.create_dataset('Delta', shape=shape, maxshape=maxshape, chunks=shape, dtype=delta.dtype)
-            dset_source_zd = hdf.create_dataset('Source_Zd', shape=shape, maxshape=maxshape, chunks=shape, dtype=sky_source_zd.dtype)
-            dset_source_az = hdf.create_dataset('Source_Zd', shape=shape, maxshape=maxshape, chunks=shape, dtype=sky_source_az.dtype)
+            dset_source_zd = hdf.create_dataset('Source_Zd', shape=shape, maxshape=maxshape, chunks=shape,
+                                                dtype=sky_source_zd.dtype)
+            dset_source_az = hdf.create_dataset('Source_Az', shape=shape, maxshape=maxshape, chunks=shape,
+                                                dtype=sky_source_az.dtype)
             dset_energy = hdf.create_dataset('Energy', shape=shape, maxshape=maxshape, chunks=shape, dtype=energy.dtype)
-            dset_zd_deg1 = hdf.create_dataset('Pointing_Zd', shape=shape, maxshape=maxshape, chunks=zd_deg1.shape, dtype=zd_deg1.dtype)
-            dset_az_deg1 = hdf.create_dataset('Pointing_Az', shape=shape, maxshape=maxshape, chunks=az_deg1.shape, dtype=az_deg1.dtype)
+            dset_zd_deg1 = hdf.create_dataset('Pointing_Zd', shape=shape, maxshape=maxshape, chunks=zd_deg1.shape,
+                                              dtype=zd_deg1.dtype)
+            dset_az_deg1 = hdf.create_dataset('Pointing_Az', shape=shape, maxshape=maxshape, chunks=az_deg1.shape,
+                                              dtype=az_deg1.dtype)
 
             dset_pic[:] = pic
             dset_source_pos_x[:] = act_sky_source_zero
@@ -426,7 +449,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
             dset_az_deg1[:] = az_deg1
 
             for batch in gen:
-                pic,  act_sky_source_zero, act_sky_source_one, cog_x, cog_y, zd_deg, az_deg, sky_source_zd, \
+                pic, act_sky_source_zero, act_sky_source_one, cog_x, cog_y, zd_deg, az_deg, sky_source_zd, \
                 sky_source_az, delta, energy, zd_deg1, az_deg1 = self.format(batch)
 
                 shape = energy.shape[0]
