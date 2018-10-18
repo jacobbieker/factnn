@@ -5,9 +5,6 @@ from fact.io import read_h5py
 from factnn.preprocess.base_preprocessor import BasePreprocessor
 
 
-# TODO Split GammaPreprocessor into GammaDiffusePreprocessor and GammaPreproccessor
-# TODO Refactor so names make sense for the Preprocessors
-
 class ProtonPreprocessor(BasePreprocessor):
 
     def batch_processor(self):
@@ -36,7 +33,8 @@ class ProtonPreprocessor(BasePreprocessor):
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
                             for value in event_photons[index]:
-                                input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
+                                if value < self.shape[3]:
+                                    input_matrix[coords[0]][coords[1]][value] += element[1] * 1
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                 yield data
 
@@ -69,7 +67,8 @@ class ProtonPreprocessor(BasePreprocessor):
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
                             for value in event_photons[index]:
-                                input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
+                                if value < self.shape[3]:
+                                    input_matrix[coords[0]][coords[1]][value] += element[1] * 1
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                     yield data
 
@@ -136,8 +135,8 @@ class ProtonPreprocessor(BasePreprocessor):
                 dset_energy[row_count:] = energy
                 dset_zd_deg[row_count:] = zd_deg
                 dset_az_deg[row_count:] = az_deg
-                dset_phia[row_count:] = act_phi
-                dset_thetaa[row_count:] = act_theta
+                dset_phia[row_count:] = phi
+                dset_thetaa[row_count:] = theta
 
                 row_count += phi.shape[0]
 
@@ -170,7 +169,8 @@ class GammaPreprocessor(BasePreprocessor):
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
                             for value in event_photons[index]:
-                                input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
+                                if value < self.shape[3]:
+                                    input_matrix[coords[0]][coords[1]][value] += element[1] * 1
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                 yield data
 
@@ -203,7 +203,8 @@ class GammaPreprocessor(BasePreprocessor):
                         for element in chid_to_pixel[index]:
                             coords = pixel_index_to_grid[element[0]]
                             for value in event_photons[index]:
-                                input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
+                                if value < self.shape[3]:
+                                    input_matrix[coords[0]][coords[1]][value] += element[1] * 1
                     data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                     yield data
 
@@ -231,21 +232,13 @@ class GammaPreprocessor(BasePreprocessor):
             maxshape_pic = (None,) + pic.shape[1:]
             dset_pic = hdf.create_dataset('Image', shape=pic.shape, maxshape=maxshape_pic, chunks=pic.shape,
                                           dtype=pic.dtype)
-            maxshape_run = (None,) + zd_deg.shape[1:]
-            dset_energy = hdf.create_dataset('Energy', shape=energy.shape, maxshape=maxshape_run, chunks=energy.shape,
-                                             dtype=energy.dtype)
-            maxshape_event = (None,) + zd_deg.shape[1:]
-            dset_zd_deg = hdf.create_dataset('Zd_deg', shape=zd_deg.shape, maxshape=maxshape_event, chunks=zd_deg.shape,
-                                             dtype=zd_deg.dtype)
-            maxshape_az_deg = (None,) + zd_deg.shape[1:]
-            dset_az_deg = hdf.create_dataset('Az_deg', shape=az_deg.shape, maxshape=maxshape_az_deg,
-                                             chunks=az_deg.shape, dtype=az_deg.dtype)
-            maxshape_phia = (None,) + zd_deg.shape[1:]
-            dset_phia = hdf.create_dataset('Phi', shape=act_phi.shape, maxshape=maxshape_phia, chunks=act_phi.shape,
-                                           dtype=act_phi.dtype)
-            maxshape_thetaa = (None,) + zd_deg.shape[1:]
-            dset_thetaa = hdf.create_dataset('Theta', shape=act_theta.shape, maxshape=maxshape_thetaa,
-                                             chunks=act_theta.shape, dtype=act_theta.dtype)
+            maxshape = (None,) + zd_deg.shape[1:]
+            shape = energy.shape
+            dset_energy = hdf.create_dataset('Energy', shape=shape, maxshape=maxshape, chunks=shape,dtype=energy.dtype)
+            dset_zd_deg = hdf.create_dataset('Zd_deg', shape=shape, maxshape=maxshape, chunks=shape,dtype=zd_deg.dtype)
+            dset_az_deg = hdf.create_dataset('Az_deg', shape=shape, maxshape=maxshape,chunks=shape, dtype=az_deg.dtype)
+            dset_phia = hdf.create_dataset('Phi', shape=shape, maxshape=maxshape, chunks=shape,dtype=act_phi.dtype)
+            dset_thetaa = hdf.create_dataset('Theta', shape=shape, maxshape=maxshape,chunks=shape, dtype=act_theta.dtype)
 
             dset_pic[:] = pic
             dset_energy[:] = energy
@@ -270,10 +263,10 @@ class GammaPreprocessor(BasePreprocessor):
                 dset_energy[row_count:] = energy
                 dset_zd_deg[row_count:] = zd_deg
                 dset_az_deg[row_count:] = az_deg
-                dset_phia[row_count:] = act_phi
-                dset_thetaa[row_count:] = act_theta
+                dset_phia[row_count:] = phi
+                dset_thetaa[row_count:] = theta
 
-                row_count += energy.shape[0]
+                row_count += shape
 
 
 class GammaDiffusePreprocessor(BasePreprocessor):
@@ -324,7 +317,8 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                 # Now get the first 60 event photons
                                 coords = pixel_index_to_grid[element[0]]
                                 for value in event_photons[index]:
-                                    input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
+                                    if value < self.shape[3]:
+                                        input_matrix[coords[0]][coords[1]][value] += element[1] * 1
 
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), act_sky_source_zero, act_sky_source_one,
                                      cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
@@ -372,7 +366,8 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                 # Now get the first 60 event photons
                                 coords = pixel_index_to_grid[element[0]]
                                 for value in event_photons[index]:
-                                    input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
+                                    if value < self.shape[3]:
+                                        input_matrix[coords[0]][coords[1]][value] += element[1] * 1
 
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), act_sky_source_zero, act_sky_source_one,
                                      cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,

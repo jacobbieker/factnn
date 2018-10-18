@@ -2,6 +2,7 @@ import numpy as np
 import h5py
 import photon_stream as ps
 from fact.io import read_h5py
+import datetime
 
 from factnn.preprocess.base_preprocessor import BasePreprocessor
 
@@ -10,11 +11,12 @@ class ObservationPreprocessor(BasePreprocessor):
 
     def init(self):
         self.dl2_file = read_h5py(self.dl2_file, key="events", columns=["event_num", "run_id", "night",
-                                                                        "az_source_calc", "zd_source_calc",
-                                                                        "source_position", "cog_x", "cog_y",
-                                                                        "unix_time_utc", "az_tracking", "zd_tracking"])
+                                                                        "source_position_az", "source_position_zd",
+                                                                        "source_position_x","source_position_y", "cog_x", "cog_y",
+                                                                        "timestamp", "pointing_position_az", "pointing_position_zd"])
 
     def batch_processor(self):
+        self.init()
         for index, file in enumerate(self.paths):
             print(file)
             try:
@@ -27,18 +29,18 @@ class ObservationPreprocessor(BasePreprocessor):
                     if not df_event.empty:
                         # In the event chosen from the file
                         # Each event is the same as each line below
-                        source_pos_x = df_event['source_position_1'].values[0]
-                        source_pos_y = df_event['source_position_0'].values[0]
-                        energy = df_event['unix_time_utc_0'].values[0] * 1e6 + df_event['unix_time_utc_1'].values[0]
+                        source_pos_x = df_event['source_position_x'].values[0]
+                        source_pos_y = df_event['source_position_y'].values[0]
+                        energy = df_event['timestamp'].values[0].astype(datetime.datetime)
                         event_photons = event.photon_stream.list_of_lists
                         zd_deg = event.zd
                         az_deg = event.az
                         cog_x = df_event['cog_x'].values[0]
                         cog_y = df_event['cog_y'].values[0]
-                        sky_source_az = df_event['az_source_calc'].values[0]
-                        sky_source_zd = df_event['zd_source_calc'].values[0]
-                        zd_deg1 = df_event['az_tracking'].values[0]
-                        az_deg1 = df_event['zd_tracking'].values[0]
+                        sky_source_az = df_event['source_position_az'].values[0]
+                        sky_source_zd = df_event['source_position_zd'].values[0]
+                        zd_deg1 = df_event['pointing_position_zd'].values[0]
+                        az_deg1 = df_event['pointing_position_az'].values[0]
                         event_num = event.observation_info.event
                         night = event.observation_info.night
                         run = event.observation_info.run
@@ -49,7 +51,8 @@ class ObservationPreprocessor(BasePreprocessor):
                             for element in chid_to_pixel[index]:
                                 coords = pixel_index_to_grid[element[0]]
                                 for value in event_photons[index]:
-                                    input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
+                                    if value < self.shape[3]:
+                                        input_matrix[coords[0]][coords[1]][value] += element[1] * 1
 
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x,
                                      source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1,
@@ -72,18 +75,18 @@ class ObservationPreprocessor(BasePreprocessor):
                     if not df_event.empty:
                         # In the event chosen from the file
                         # Each event is the same as each line below
-                        source_pos_x = df_event['source_position_1'].values[0]
-                        source_pos_y = df_event['source_position_0'].values[0]
-                        energy = df_event['unix_time_utc_0'].values[0] * 1e6 + df_event['unix_time_utc_1'].values[0]
+                        source_pos_x = df_event['source_position_x'].values[0]
+                        source_pos_y = df_event['source_position_y'].values[0]
+                        energy = df_event['timestamp'].values[0].astype(datetime.datetime)
                         event_photons = event.photon_stream.list_of_lists
                         zd_deg = event.zd
                         az_deg = event.az
                         cog_x = df_event['cog_x'].values[0]
                         cog_y = df_event['cog_y'].values[0]
-                        sky_source_az = df_event['az_source_calc'].values[0]
-                        sky_source_zd = df_event['zd_source_calc'].values[0]
-                        zd_deg1 = df_event['az_tracking'].values[0]
-                        az_deg1 = df_event['zd_tracking'].values[0]
+                        sky_source_az = df_event['source_position_az'].values[0]
+                        sky_source_zd = df_event['source_position_zd'].values[0]
+                        zd_deg1 = df_event['pointing_position_zd'].values[0]
+                        az_deg1 = df_event['pointing_position_az'].values[0]
                         event_num = event.observation_info.event
                         night = event.observation_info.night
                         run = event.observation_info.run
@@ -94,7 +97,8 @@ class ObservationPreprocessor(BasePreprocessor):
                             for element in chid_to_pixel[index]:
                                 coords = pixel_index_to_grid[element[0]]
                                 for value in event_photons[index]:
-                                    input_matrix[coords[0]][coords[1]][value - 30] += element[1] * 1
+                                    if value < self.shape[3]:
+                                        input_matrix[coords[0]][coords[1]][value] += element[1] * 1
 
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x,
                                      source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1,
