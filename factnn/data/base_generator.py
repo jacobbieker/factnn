@@ -15,7 +15,8 @@ class BaseGenerator(object):
 
         self.batch_size = config['batch_size']
         self.input = config['input']
-        self.second_input = config['second_input']
+        if 'second_input' in config:
+            self.second_input = config['second_input']
         self.start_slice = config['start_slice']
         self.number_slices = config['number_slices']
         self.train_fraction = config['train_fraction']

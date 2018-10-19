@@ -15,10 +15,10 @@ class DispGenerator(BaseGenerator):
             # Not flowing from photonstream files
             with h5py.File(self.input, 'r') as input_one:
                 self.input_data = input_one['Image']
-                source_y = input_one['Source_X'].values
-                source_x = input_one['Source_Y'].values
-                cog_x = input_one['COG_X'].values
-                cog_y = input_one['COG_Y'].values
+                source_y = input_one['Source_X'][:]
+                source_x = input_one['Source_Y'][:]
+                cog_x = input_one['COG_X'][:]
+                cog_y = input_one['COG_Y'][:]
                 self.labels = euclidean_distance(
                     source_x, source_y,
                     cog_x, cog_y
@@ -33,11 +33,11 @@ class SignGenerator(BaseGenerator):
             # Not flowing from photonstream files
             with h5py.File(self.input, 'r') as input_one:
                 self.input_data = input_one['Image']
-                source_y = input_one['Source_X'].values
-                source_x = input_one['Source_Y'].values
-                cog_x = input_one['COG_X'].values
-                cog_y = input_one['COG_Y'].values
-                delta = input_one['Delta'].values
+                source_y = input_one['Source_X'][:]
+                source_x = input_one['Source_Y'][:]
+                cog_x = input_one['COG_X'][:]
+                cog_y = input_one['COG_Y'][:]
+                delta = input_one['Delta'][:]
 
                 true_delta = np.arctan2(
                     cog_y - source_y,
