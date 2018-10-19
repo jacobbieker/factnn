@@ -38,7 +38,6 @@ class SignGenerator(BaseGenerator):
                 cog_x = input_one['COG_X'][:]
                 cog_y = input_one['COG_Y'][:]
                 delta = input_one['Delta'][:]
-
                 true_delta = np.arctan2(
                     cog_y - source_y,
                     cog_x - source_x

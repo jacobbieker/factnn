@@ -105,7 +105,10 @@ class BaseModel(object):
         self.shape = config['shape']
         self.start_slice = config['start_slice']
         self.number_slices = config['number_slices']
-        self.batch_normalization = config['batch_normalization']
+        if 'batch_normalization' in config:
+            self.batch_normalization = config['batch_normalization']
+        else:
+            self.batch_normalization = False
         self.activation = config['activation']
         self.model_type = None
         self.auc = None
