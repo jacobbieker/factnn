@@ -18,3 +18,9 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+Overview
+========
+
+FACTNN is a Python package designed to probe analyzing and classifying air shower data from the First G-APD Cherenkov Telescope (FACT)
+using neural networks.
