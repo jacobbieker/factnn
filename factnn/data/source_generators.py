@@ -14,7 +14,7 @@ class DispGenerator(BaseGenerator):
         if not self.from_directory:
             # Not flowing from photonstream files
             with h5py.File(self.input, 'r') as input_one:
-                self.input_data = input_one['Image']
+                self.input_shape = input_one['Image'].shape
                 source_y = input_one['Source_X'][:]
                 source_x = input_one['Source_Y'][:]
                 cog_x = input_one['COG_X'][:]
@@ -23,6 +23,7 @@ class DispGenerator(BaseGenerator):
                     source_x, source_y,
                     cog_x, cog_y
                 )
+                self.input_shape = (-1, self.input_shape[1], self.input_shape[2], self.input_shape[3], 1)
 
 
 class SignGenerator(BaseGenerator):
@@ -32,7 +33,7 @@ class SignGenerator(BaseGenerator):
         if not self.from_directory:
             # Not flowing from photonstream files
             with h5py.File(self.input, 'r') as input_one:
-                self.input_data = input_one['Image']
+                self.input_shape = input_one['Image'].shape
                 source_y = input_one['Source_X'][:]
                 source_x = input_one['Source_Y'][:]
                 cog_x = input_one['COG_X'][:]
@@ -43,3 +44,5 @@ class SignGenerator(BaseGenerator):
                     cog_x - source_x
                 )
                 self.labels = np.sign(np.abs(delta - true_delta) - np.pi / 2)
+                self.input_shape = (-1, self.input_shape[1], self.input_shape[2], self.input_shape[3], 1)
+

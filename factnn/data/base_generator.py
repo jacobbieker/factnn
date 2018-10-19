@@ -75,35 +75,38 @@ class BaseGenerator(object):
                         batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
                                                                                 time_slice=self.start_slice,
                                                                                 total_slices=self.number_slices,
-                                                                                training_data=self.input_shape,
                                                                                 labels=self.labels,
-                                                                                proton_data=self.second_input_data,
                                                                                 type_training=self.type_gen,
-                                                                                augment=self.augment)
-                        return (batch_images, batch_image_label)
+                                                                                augment=self.augment,
+                                                                                gamma=self.input,
+                                                                                proton_input=self.second_input,
+                                                                                shape=self.input_shape)
+                        return batch_images, batch_image_label
                 elif self.mode == "validate":
                     while True:
                         batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
                                                                                 time_slice=self.start_slice,
                                                                                 total_slices=self.number_slices,
-                                                                                training_data=self.input_data,
                                                                                 labels=self.labels,
-                                                                                proton_data=self.second_input_data,
                                                                                 type_training=self.type_gen,
-                                                                                augment=self.augment)
-                        return (batch_images, batch_image_label)
+                                                                                augment=self.augment,
+                                                                                gamma=self.input,
+                                                                                proton_input=self.second_input,
+                                                                                shape=self.input_shape)
+                        return batch_images, batch_image_label
 
                 elif self.mode == "test":
                     while True:
                         batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
                                                                                 time_slice=self.start_slice,
                                                                                 total_slices=self.number_slices,
-                                                                                training_data=self.input_data,
                                                                                 labels=self.labels,
-                                                                                proton_data=self.second_input_data,
                                                                                 type_training=self.type_gen,
-                                                                                augment=self.augment)
-                        return (batch_images, batch_image_label)
+                                                                                augment=self.augment,
+                                                                                gamma=self.input,
+                                                                                proton_input=self.second_input,
+                                                                                shape=self.input_shape)
+                        return batch_images, batch_image_label
             else:
                 # not chunked
                 if self.mode == "train":
@@ -111,44 +114,38 @@ class BaseGenerator(object):
                         batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
                                                                                time_slice=self.start_slice,
                                                                                total_slices=self.number_slices,
-                                                                               training_data=self.input_data,
-                                                                               input=self.input,
-                                                                               proton_input=self.second_input,
                                                                                labels=self.labels,
-                                                                               proton_data=self.second_input_data,
                                                                                type_training=self.type_gen,
                                                                                augment=self.augment,
+                                                                               gamma=self.input,
+                                                                               proton_input=self.second_input,
                                                                                shape=self.input_shape)
-                        return (batch_images, batch_image_label)
+                        return batch_images, batch_image_label
                 elif self.mode == "validate":
                     while True:
                         batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
                                                                                time_slice=self.start_slice,
                                                                                total_slices=self.number_slices,
-                                                                               training_data=self.input_data,
-                                                                               input=self.input,
-                                                                               proton_input=self.second_input,
                                                                                labels=self.labels,
-                                                                               proton_data=self.second_input_data,
                                                                                type_training=self.type_gen,
                                                                                augment=self.augment,
+                                                                               gamma=self.input,
+                                                                               proton_input=self.second_input,
                                                                                shape=self.input_shape)
-                        return (batch_images, batch_image_label)
+                        return batch_images, batch_image_label
 
                 elif self.mode == "test":
                     while True:
                         batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
                                                                                time_slice=self.start_slice,
                                                                                total_slices=self.number_slices,
-                                                                               training_data=self.input_data,
-                                                                               input=self.input,
-                                                                               proton_input=self.second_input,
                                                                                labels=self.labels,
-                                                                               proton_data=self.second_input_data,
                                                                                type_training=self.type_gen,
                                                                                augment=self.augment,
+                                                                               gamma=self.input,
+                                                                               proton_input=self.second_input,
                                                                                shape=self.input_shape)
-                        return (batch_images, batch_image_label)
+                        return batch_images, batch_image_label
 
 
     def __str__(self):

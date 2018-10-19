@@ -1,7 +1,5 @@
 import numpy as np
 from sklearn.utils import shuffle
-from factnn.preprocess.observation_preprocessors import ObservationPreprocessor
-from factnn.preprocess.simulation_preprocessors import GammaPreprocessor, ProtonPreprocessor
 import h5py
 
 def image_augmenter(images):
@@ -59,7 +57,7 @@ def common_step(batch_images, positions, time_slice, total_slices, labels=None, 
         return batch_images, batch_image_label
 
 
-def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, training_data, gamma, proton_input=None, labels=None, proton_data=None,
+def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
                           type_training=None, augment=True, swap=True, shape=None):
     '''
     Gets a random part of the HDF5 database within start and stop endpoints
@@ -89,12 +87,18 @@ def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, training_
     # Range for all positions, to keep with other ones
     positions = range(start_pos, int(start_pos + size))
     with h5py.File(gamma, "r") as images_one:
-        with h5py.File(proton_input, "r") as images_two:
-            proton_data = images_two["Image"]
+        if proton_input is not None:
+            with h5py.File(proton_input, "r") as images_two:
+                proton_data = images_two["Image"]
+                training_data = images_one["Image"]
+                batch_images = training_data[start_pos:int(start_pos + size), time_slice:time_slice + total_slices, ::]
+                return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
+                                   proton_data=proton_data, type_training=type_training, augment=augment, swap=swap, shape=shape)
+        else:
             training_data = images_one["Image"]
             batch_images = training_data[start_pos:int(start_pos + size), time_slice:time_slice + total_slices, ::]
             return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
-                               proton_data=proton_data, type_training=type_training, augment=augment, swap=swap, shape=shape)
+                               type_training=type_training, augment=augment, swap=swap, shape=shape)
 
 
 def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
@@ -124,12 +128,18 @@ def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, gamm
     positions = np.random.randint(start, stop, size=size)
     positions = sorted(positions)
     with h5py.File(gamma, "r") as images_one:
-        with h5py.File(proton_input, "r") as images_two:
-            proton_data = images_two["Image"]
+        if proton_input is not None:
+            with h5py.File(proton_input, "r") as images_two:
+                proton_data = images_two["Image"]
+                training_data = images_one["Image"]
+                batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
+                return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
+                                   proton_data=proton_data, type_training=type_training, augment=augment, swap=swap, shape=shape)
+        else:
             training_data = images_one["Image"]
             batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
             return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
-                               proton_data=proton_data, type_training=type_training, augment=augment, swap=swap, shape=shape)
+                               type_training=type_training, augment=augment, swap=swap, shape=shape)
 
 
 def get_random_from_list(indicies, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
@@ -159,12 +169,18 @@ def get_random_from_list(indicies, size, time_slice, total_slices, gamma, proton
     positions = np.random.choice(indicies, size=size, replace=False)
     positions = sorted(positions)
     with h5py.File(gamma, "r") as images_one:
-        with h5py.File(proton_input, "r") as images_two:
-            proton_data = images_two["Image"]
+        if proton_input is not None:
+            with h5py.File(proton_input, "r") as images_two:
+                proton_data = images_two["Image"]
+                training_data = images_one["Image"]
+                batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
+                return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
+                                   proton_data=proton_data, type_training=type_training, augment=augment, swap=swap, shape=shape)
+        else:
             training_data = images_one["Image"]
             batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
             return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
-                               proton_data=proton_data, type_training=type_training, augment=augment, swap=swap, shape=shape)
+                               type_training=type_training, augment=augment, swap=swap, shape=shape)
 
 
 def get_random_from_paths(paths, size, time_slice, total_slices, preprocessor, labels=None,
