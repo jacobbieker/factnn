@@ -143,6 +143,7 @@ class BaseModel(object):
             self.name = None
 
         self.init()
+        self.create()
 
     def init(self):
         '''

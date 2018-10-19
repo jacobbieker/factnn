@@ -9,5 +9,5 @@ class SeparationGenerator(BaseGenerator):
             # Not flowing from photonstream files
             with h5py.File(self.input, 'r') as input_one:
                 with h5py.File(self.second_input, 'r') as input_two:
-                    self.input_data = input_one['Image']
-                    self.second_input_data = input_two['Image']
+                    self.input_shape = input_one["Image"].shape
+            self.input_shape = (-1, self.input_shape[1], self.input_shape[2], self.input_shape[3], 1)

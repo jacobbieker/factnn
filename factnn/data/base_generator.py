@@ -25,6 +25,7 @@ class BaseGenerator(object):
         self.second_input_data = None
         self.labels = None
         self.type_gen = None
+        self.input_shape = None
         # Items is either an int, the number of samples to use, or an array of indicies for the generator
         # If items is an array, then chunked must be False, and cannot be from_directory
         self.items = config['samples']
@@ -50,6 +51,8 @@ class BaseGenerator(object):
 
         self.init()
 
+        # Now self.input_shape will be defined, so set to the correct value of 1 at the end
+
     def init(self):
         '''
         Model specific inits are here, such as calculating Disp labels
@@ -72,12 +75,12 @@ class BaseGenerator(object):
                         batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
                                                                                 time_slice=self.start_slice,
                                                                                 total_slices=self.number_slices,
-                                                                                training_data=self.input_data,
+                                                                                training_data=self.input_shape,
                                                                                 labels=self.labels,
                                                                                 proton_data=self.second_input_data,
                                                                                 type_training=self.type_gen,
                                                                                 augment=self.augment)
-                        yield (batch_images, batch_image_label)
+                        return (batch_images, batch_image_label)
                 elif self.mode == "validate":
                     while True:
                         batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
@@ -88,7 +91,7 @@ class BaseGenerator(object):
                                                                                 proton_data=self.second_input_data,
                                                                                 type_training=self.type_gen,
                                                                                 augment=self.augment)
-                        yield (batch_images, batch_image_label)
+                        return (batch_images, batch_image_label)
 
                 elif self.mode == "test":
                     while True:
@@ -100,7 +103,7 @@ class BaseGenerator(object):
                                                                                 proton_data=self.second_input_data,
                                                                                 type_training=self.type_gen,
                                                                                 augment=self.augment)
-                        yield (batch_images, batch_image_label)
+                        return (batch_images, batch_image_label)
             else:
                 # not chunked
                 if self.mode == "train":
@@ -109,22 +112,28 @@ class BaseGenerator(object):
                                                                                time_slice=self.start_slice,
                                                                                total_slices=self.number_slices,
                                                                                training_data=self.input_data,
+                                                                               input=self.input,
+                                                                               proton_input=self.second_input,
                                                                                labels=self.labels,
                                                                                proton_data=self.second_input_data,
                                                                                type_training=self.type_gen,
-                                                                               augment=self.augment)
-                        yield (batch_images, batch_image_label)
+                                                                               augment=self.augment,
+                                                                               shape=self.input_shape)
+                        return (batch_images, batch_image_label)
                 elif self.mode == "validate":
                     while True:
                         batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
                                                                                time_slice=self.start_slice,
                                                                                total_slices=self.number_slices,
                                                                                training_data=self.input_data,
+                                                                               input=self.input,
+                                                                               proton_input=self.second_input,
                                                                                labels=self.labels,
                                                                                proton_data=self.second_input_data,
                                                                                type_training=self.type_gen,
-                                                                               augment=self.augment)
-                        yield (batch_images, batch_image_label)
+                                                                               augment=self.augment,
+                                                                               shape=self.input_shape)
+                        return (batch_images, batch_image_label)
 
                 elif self.mode == "test":
                     while True:
@@ -132,11 +141,15 @@ class BaseGenerator(object):
                                                                                time_slice=self.start_slice,
                                                                                total_slices=self.number_slices,
                                                                                training_data=self.input_data,
+                                                                               input=self.input,
+                                                                               proton_input=self.second_input,
                                                                                labels=self.labels,
                                                                                proton_data=self.second_input_data,
                                                                                type_training=self.type_gen,
-                                                                               augment=self.augment)
-                        yield (batch_images, batch_image_label)
+                                                                               augment=self.augment,
+                                                                               shape=self.input_shape)
+                        return (batch_images, batch_image_label)
+
 
     def __str__(self):
         return NotImplemented

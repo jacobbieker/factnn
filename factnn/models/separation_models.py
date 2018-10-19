@@ -59,7 +59,7 @@ class SeparationModel(BaseModel):
             model.add(Dropout(self.fc_dropout))
 
         # Final Dense layer
-        model.add(Dense(1, activation='softmax'))
+        model.add(Dense(2, activation='softmax'))
         model.compile(optimizer='adam', loss='categorical_crossentropy',
                       metrics=['acc'])
 

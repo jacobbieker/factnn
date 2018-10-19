@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.utils import shuffle
 from factnn.preprocess.observation_preprocessors import ObservationPreprocessor
 from factnn.preprocess.simulation_preprocessors import GammaPreprocessor, ProtonPreprocessor
-
+import h5py
 
 def image_augmenter(images):
     """
@@ -35,13 +35,15 @@ def image_augmenter(images):
 
 
 def common_step(batch_images, positions, time_slice, total_slices, labels=None, proton_data=None,
-                type_training=None, augment=True, swap=True):
+                type_training=None, augment=True, swap=True, shape=None):
     if augment:
         batch_images = image_augmenter(batch_images)
     if type_training == "Separation":
         proton_images = proton_data[positions, time_slice:time_slice + total_slices, ::]
         if augment:
             proton_images = image_augmenter(proton_images)
+        batch_images = batch_images.reshape(shape)
+        proton_images = proton_images.reshape(shape)
         labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
         batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
         batch_images = np.concatenate([batch_images, proton_images], axis=0)
@@ -51,13 +53,14 @@ def common_step(batch_images, positions, time_slice, total_slices, labels=None, 
     else:
         labels = labels[positions]
         batch_image_label = labels
+        batch_images = batch_images.reshape(shape)
         if swap:
             batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
         return batch_images, batch_image_label
 
 
-def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, training_data, labels=None, proton_data=None,
-                          type_training=None, augment=True, swap=True):
+def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, training_data, gamma, proton_input=None, labels=None, proton_data=None,
+                          type_training=None, augment=True, swap=True, shape=None):
     '''
     Gets a random part of the HDF5 database within start and stop endpoints
     This is to help with shuffling data, as currently all the ones come and go in the same
@@ -83,31 +86,19 @@ def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, training_
 
     # Get random starting position
     start_pos = np.random.randint(start, last_possible_start)
-
-    batch_images = training_data[start_pos:int(start_pos + size), time_slice:time_slice + total_slices, ::]
-    if augment:
-        batch_images = image_augmenter(batch_images)
-    if type_training == "Separation":
-        proton_images = proton_data[start_pos:int(start_pos + size), time_slice:time_slice+total_slices, ::]
-        if augment:
-            proton_images = image_augmenter(proton_images)
-        labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
-        batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
-        batch_images = np.concatenate([batch_images, proton_images], axis=0)
-
-        if swap:
-            batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
-        return batch_images, batch_image_label
-    else:
-        labels = labels[start_pos:int(start_pos + size)]
-        batch_image_label = labels
-        if swap:
-            batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
-        return batch_images, batch_image_label
+    # Range for all positions, to keep with other ones
+    positions = range(start_pos, int(start_pos + size))
+    with h5py.File(gamma, "r") as images_one:
+        with h5py.File(proton_input, "r") as images_two:
+            proton_data = images_two["Image"]
+            training_data = images_one["Image"]
+            batch_images = training_data[start_pos:int(start_pos + size), time_slice:time_slice + total_slices, ::]
+            return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
+                               proton_data=proton_data, type_training=type_training, augment=augment, swap=swap, shape=shape)
 
 
-def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, training_data, labels=None,
-                               proton_data=None, type_training=None, augment=True, swap=True):
+def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
+                               type_training=None, augment=True, swap=True, shape=None):
     '''
     Gets a random part of the HDF5 database within start and stop endpoints
     This is to help with shuffling data, as currently all the ones come and go in the same
@@ -131,14 +122,18 @@ def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, trai
 
     # Get random positions within the start and stop sizes
     positions = np.random.randint(start, stop, size=size)
+    positions = sorted(positions)
+    with h5py.File(gamma, "r") as images_one:
+        with h5py.File(proton_input, "r") as images_two:
+            proton_data = images_two["Image"]
+            training_data = images_one["Image"]
+            batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
+            return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
+                               proton_data=proton_data, type_training=type_training, augment=augment, swap=swap, shape=shape)
 
-    batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
-    return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
-                       proton_data=proton_data, type_training=type_training, augment=augment, swap=swap)
 
-
-def get_random_from_list(indicies, size, time_slice, total_slices, training_data, labels=None,
-                         proton_data=None, type_training=None, augment=True, swap=True):
+def get_random_from_list(indicies, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
+                         type_training=None, augment=True, swap=True, shape=None):
     '''
     Gets a random part of the HDF5 database within start and stop endpoints
     This is to help with shuffling data, as currently all the ones come and go in the same
@@ -162,10 +157,14 @@ def get_random_from_list(indicies, size, time_slice, total_slices, training_data
 
     # Get random positions within the start and stop sizes
     positions = np.random.choice(indicies, size=size, replace=False)
-
-    batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
-    return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
-                       proton_data=proton_data, type_training=type_training, augment=augment, swap=swap)
+    positions = sorted(positions)
+    with h5py.File(gamma, "r") as images_one:
+        with h5py.File(proton_input, "r") as images_two:
+            proton_data = images_two["Image"]
+            training_data = images_one["Image"]
+            batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
+            return common_step(batch_images, positions, time_slice, total_slices, labels=labels,
+                               proton_data=proton_data, type_training=type_training, augment=augment, swap=swap, shape=shape)
 
 
 def get_random_from_paths(paths, size, time_slice, total_slices, preprocessor, labels=None,
