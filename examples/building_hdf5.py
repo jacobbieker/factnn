@@ -46,7 +46,6 @@ gamma_preprocessor = GammaPreprocessor(config=gamma_configuration)
 
 if not os.path.isfile(gamma_diffuse_configuration["output_file"]):
     gamma_diffuse_preprocessor.create_dataset()
-
 if not os.path.isfile(proton_configuration["output_file"]):
     proton_preprocessor.create_dataset()
 if not os.path.isfile(gamma_configuration["output_file"]):
