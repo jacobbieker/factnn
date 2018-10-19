@@ -1,6 +1,4 @@
-from factnn.preprocess.simulation_preprocessors import GammaDiffusePreprocessor
-from factnn.data.source_generators import DispGenerator, SignGenerator
-from factnn.models.source_models import DispModel, SignModel
+from factnn import GammaDiffusePreprocessor, DispGenerator, DispModel, SignGenerator, SignModel
 import os.path
 
 base_dir = "../ihp-pc41.ethz.ch/public/phs/"

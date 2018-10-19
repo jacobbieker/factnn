@@ -1,6 +1,4 @@
-from factnn.preprocess.simulation_preprocessors import GammaPreprocessor, ProtonPreprocessor
-from factnn.data.separation_generators import SeparationGenerator
-from factnn.models.separation_models import SeparationModel
+from factnn import GammaPreprocessor, ProtonPreprocessor, SeparationGenerator, SeparationModel
 import os.path
 
 base_dir = "../ihp-pc41.ethz.ch/public/phs/"

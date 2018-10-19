@@ -1,6 +1,4 @@
-from factnn.preprocess.simulation_preprocessors import GammaPreprocessor
-from factnn.data.energy_generators import EnergyGenerator
-from factnn.models.energy_models import EnergyModel
+from factnn import GammaPreprocessor, EnergyGenerator, EnergyModel
 import os.path
 
 base_dir = "../ihp-pc41.ethz.ch/public/phs/"
