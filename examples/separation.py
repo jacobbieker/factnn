@@ -3,7 +3,7 @@ from factnn.data.separation_generators import SeparationGenerator
 from factnn.models.separation_models import SeparationModel
 import os.path
 
-base_dir = "ihp-pc41.ethz.ch/public/phs/"
+base_dir = "../ihp-pc41.ethz.ch/public/phs/"
 obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "sim/gamma/"]
 proton_dir = [base_dir + "sim/proton/"]
@@ -14,7 +14,7 @@ rebin_size = 10
 gamma_configuration = {
     'directories': gamma_dir,
     'rebin_size': rebin_size,
-    'output_file': "gamma.hdf5",
+    'output_file': "../gamma.hdf5",
     'shape': shape
 
 }
@@ -22,7 +22,7 @@ gamma_configuration = {
 proton_configuration = {
     'directories': proton_dir,
     'rebin_size': rebin_size,
-    'output_file': "proton.hdf5",
+    'output_file': "../proton.hdf5",
     'shape': shape
 
 }
@@ -63,10 +63,10 @@ separation_model_configuration = {
     'lstm_dropout': 0.2,
     'fc_dropout': 0.4,
     'num_conv3d': 0,
-    'kernel_conv3d': 1,
+    'kernel_conv3d': 2,
     'strides_conv3d': 1,
     'num_lstm': 4,
-    'kernel_lstm': 1,
+    'kernel_lstm': 2,
     'strides_lstm': 1,
     'num_fc': 2,
     'pooling': False,

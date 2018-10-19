@@ -3,7 +3,7 @@ from factnn.data.energy_generators import EnergyGenerator
 from factnn.models.energy_models import EnergyModel
 import os.path
 
-base_dir = "ihp-pc41.ethz.ch/public/phs/"
+base_dir = "../ihp-pc41.ethz.ch/public/phs/"
 obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "sim/gamma/"]
 
@@ -13,7 +13,7 @@ rebin_size = 10
 gamma_configuration = {
     'directories': gamma_dir,
     'rebin_size': rebin_size,
-    'output_file': "gamma.hdf5",
+    'output_file': "../gamma.hdf5",
     'shape': shape
 
 }
@@ -25,7 +25,7 @@ if not os.path.isfile(gamma_configuration["output_file"]):
 
 energy_generator_configuration = {
     'seed': 1337,
-    'batch_size': 32,
+    'batch_size': 64,
     'input': 'gamma.hdf5',
     'start_slice': 0,
     'number_slices': 25,
@@ -45,18 +45,18 @@ energy_train.mode = "train"
 energy_test.mode = "test"
 
 energy_model_configuration = {
-    'conv_dropout': 0.3,
-    'lstm_dropout': 0.4,
+    'conv_dropout': 0.1,
+    'lstm_dropout': 0.2,
     'fc_dropout': 0.5,
-    'num_conv3d': 2,
+    'num_conv3d': 3,
     'kernel_conv3d': 2,
     'strides_conv3d': 1,
-    'num_lstm': 2,
+    'num_lstm': 1,
     'kernel_lstm': 2,
-    'strides_lstm': 2,
-    'num_fc': 2,
+    'strides_lstm': 1,
+    'num_fc': 3,
     'pooling': True,
-    'neurons': [32, 16, 8, 16, 32, 48],
+    'neurons': [32, 16, 8, 16, 32, 48, 64],
     'shape': [25, 38, 38, 1],
     'start_slice': 0,
     'number_slices': 25,

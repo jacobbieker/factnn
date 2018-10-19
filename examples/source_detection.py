@@ -3,7 +3,7 @@ from factnn.data.source_generators import DispGenerator, SignGenerator
 from factnn.models.source_models import DispModel, SignModel
 import os.path
 
-base_dir = "ihp-pc41.ethz.ch/public/phs/"
+base_dir = "../ihp-pc41.ethz.ch/public/phs/"
 obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "sim/gamma/"]
 gamma_dl2 = "gamma_simulations_diffuse_facttools_dl2.hdf5"
@@ -15,7 +15,7 @@ gamma_diffuse_configuration = {
     'directories': gamma_dir,
     'rebin_size': rebin_size,
     'dl2_file': gamma_dl2,
-    'output_file': "gamma_diffuse.hdf5",
+    'output_file': "../gamma_diffuse.hdf5",
     'shape': shape
 
 }
@@ -61,12 +61,12 @@ source_model_configuration = {
     'conv_dropout': 0.3,
     'lstm_dropout': 0.4,
     'fc_dropout': 0.5,
-    'num_conv3d': 2,
+    'num_conv3d': 1,
     'kernel_conv3d': 2,
     'strides_conv3d': 1,
-    'num_lstm': 2,
+    'num_lstm': 3,
     'kernel_lstm': 2,
-    'strides_lstm': 2,
+    'strides_lstm': 1,
     'num_fc': 2,
     'pooling': True,
     'neurons': [32, 16, 8, 16, 32, 48],
