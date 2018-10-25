@@ -17,6 +17,8 @@ class BaseGenerator(object):
         self.input = config['input']
         if 'second_input' in config:
             self.second_input = config['second_input']
+        else:
+            self.second_input = None
         self.start_slice = config['start_slice']
         self.number_slices = config['number_slices']
         self.train_fraction = config['train_fraction']
@@ -69,6 +71,7 @@ class BaseGenerator(object):
         :return:
         '''
         if not self.from_directory:
+            print("Shape: " + str(self.input_shape))
             if self.chunked:
                 if self.mode == "train":
                     while True:
