@@ -4,7 +4,7 @@ import os.path
 base_dir = "../ihp-pc41.ethz.ch/public/phs/"
 obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "sim/gamma/"]
-gamma_dl2 = "gamma_simulations_diffuse_facttools_dl2.hdf5"
+gamma_dl2 = "../gamma_simulations_diffuse_facttools_dl2.hdf5"
 
 shape = [35,60]
 rebin_size = 10
@@ -26,7 +26,7 @@ if not os.path.isfile(gamma_diffuse_configuration["output_file"]):
 source_generator_configuration = {
     'seed': 1337,
     'batch_size': 32,
-    'input': 'gamma_diffuse.hdf5',
+    'input': '../gamma_diffuse.hdf5',
     'start_slice': 0,
     'number_slices': 25,
     'train_fraction': 0.6,

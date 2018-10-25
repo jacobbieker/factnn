@@ -36,8 +36,8 @@ if not os.path.isfile(gamma_configuration["output_file"]):
 separation_generator_configuration = {
     'seed': 1337,
     'batch_size': 32,
-    'input': 'gamma.hdf5',
-    'second_input': 'proton.hdf5',
+    'input': '../gamma.hdf5',
+    'second_input': '../proton.hdf5',
     'start_slice': 0,
     'number_slices': 25,
     'train_fraction': 0.6,
