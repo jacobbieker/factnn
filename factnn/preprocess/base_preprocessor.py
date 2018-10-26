@@ -148,6 +148,7 @@ class BasePreprocessor(object):
         :return:
         """
         dataset = np.swapaxes(image, 1, 3)
+        dataset = np.array(dataset).reshape((self.shape[0], self.shape[3], self.shape[2], self.shape[1])).astype(np.float32)
         return dataset
 
     def format(self, batch):
