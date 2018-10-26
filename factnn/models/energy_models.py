@@ -8,7 +8,7 @@ def r2(y_true, y_pred):
     from keras import backend as K
     SS_res = K.sum(K.square(y_true - y_pred))
     SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
-    return 1 - SS_res / (SS_tot + K.epsilon())
+    return -1.*(1 - SS_res / (SS_tot + K.epsilon()))
 
 
 class EnergyModel(BaseModel):
@@ -67,8 +67,8 @@ class EnergyModel(BaseModel):
 
         # Final Dense layer
         model.add(Dense(1, activation='linear'))
-        model.compile(optimizer='adam', loss='mse',
-                      metrics=['mae', r2])
+        model.compile(optimizer='adam', loss=r2,
+                      metrics=['mae', 'mse'])
 
         self.model = model
 

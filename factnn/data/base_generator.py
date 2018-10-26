@@ -71,7 +71,6 @@ class BaseGenerator(object):
         :return:
         '''
         if not self.from_directory:
-            print("Shape: " + str(self.input_shape))
             if self.chunked:
                 if self.mode == "train":
                     while True:

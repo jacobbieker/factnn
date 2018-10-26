@@ -222,7 +222,8 @@ class BaseModel(object):
         return NotImplemented
 
     def __str__(self):
-        return NotImplemented
+        self.model.summary()
+        return ""
 
     def __repr__(self):
         return NotImplemented

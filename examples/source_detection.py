@@ -56,8 +56,8 @@ sign_test.mode = "test"
 
 
 source_model_configuration = {
-    'conv_dropout': 0.3,
-    'lstm_dropout': 0.4,
+    'conv_dropout': 0.2,
+    'lstm_dropout': 0.3,
     'fc_dropout': 0.5,
     'num_conv3d': 1,
     'kernel_conv3d': 2,
@@ -76,8 +76,8 @@ source_model_configuration = {
 }
 
 sign_model_configuration = {
-    'conv_dropout': 0.3,
-    'lstm_dropout': 0.4,
+    'conv_dropout': 0.2,
+    'lstm_dropout': 0.3,
     'fc_dropout': 0.5,
     'num_conv3d': 2,
     'kernel_conv3d': 2,

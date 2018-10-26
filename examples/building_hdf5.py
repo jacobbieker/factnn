@@ -1,6 +1,5 @@
 from factnn import GammaPreprocessor, GammaDiffusePreprocessor, ProtonPreprocessor
 import os.path
-
 """
 This is just to show how to make all the HDF5 files, its simply the same as in the energy, separation, and source_detection
 files but without the need to import tensorflow or anything
@@ -10,7 +9,7 @@ base_dir = "../ihp-pc41.ethz.ch/public/phs/"
 obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "sim/gamma/"]
 proton_dir = [base_dir + "sim/proton/"]
-gamma_dl2 = "gamma_simulations_diffuse_facttools_dl2.hdf5"
+gamma_dl2 = "../gamma_simulations_diffuse_facttools_dl2.hdf5"
 
 shape = [35,60]
 rebin_size = 10

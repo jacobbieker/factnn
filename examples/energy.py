@@ -23,7 +23,7 @@ if not os.path.isfile(gamma_configuration["output_file"]):
 
 energy_generator_configuration = {
     'seed': 1337,
-    'batch_size': 64,
+    'batch_size': 32,
     'input': '../gamma.hdf5',
     'start_slice': 0,
     'number_slices': 25,
@@ -54,7 +54,7 @@ energy_model_configuration = {
     'strides_lstm': 1,
     'num_fc': 3,
     'pooling': True,
-    'neurons': [32, 16, 8, 16, 32, 48, 64],
+    'neurons': [32, 32, 16, 16, 16, 32, 48, 64],
     'shape': [25, 38, 38, 1],
     'start_slice': 0,
     'number_slices': 25,
@@ -63,6 +63,7 @@ energy_model_configuration = {
 }
 
 energy_model = EnergyModel(config=energy_model_configuration)
+print(energy_model)
 
 """
 
