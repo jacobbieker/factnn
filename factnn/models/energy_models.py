@@ -35,11 +35,15 @@ class EnergyModel(BaseModel):
                                  padding='same', input_shape=self.shape, activation=self.activation,
                                  dropout=self.conv_dropout, recurrent_dropout=self.lstm_dropout,
                                  recurrent_activation='hard_sigmoid', return_sequences=True))
+            if self.pooling:
+                model.add(MaxPooling3D())
             for i in range(self.num_lstm - 1):
                 model.add(ConvLSTM2D(self.neurons[i + 1], kernel_size=self.kernel_lstm, strides=self.strides_lstm,
                                      padding='same', activation=self.activation,
                                      dropout=self.conv_dropout, recurrent_dropout=self.lstm_dropout,
                                      recurrent_activation='hard_sigmoid', return_sequences=True))
+                if self.pooling:
+                    model.add(MaxPooling3D())
 
             for i in range(self.num_conv3d):
                 model.add(Conv3D(self.neurons[self.num_lstm + i],
@@ -52,6 +56,8 @@ class EnergyModel(BaseModel):
             model.add(Conv3D(self.neurons[0], input_shape=self.shape,
                              kernel_size=self.kernel_conv3d, strides=self.strides_conv3d,
                              padding='same', activation=self.activation))
+            if self.pooling:
+                model.add(MaxPooling3D())
             for i in range(self.num_conv3d - 1):
                 model.add(Conv3D(self.neurons[i + 1],
                                  kernel_size=self.kernel_conv3d, strides=self.strides_conv3d,
