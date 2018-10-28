@@ -197,6 +197,8 @@ class BaseModel(object):
         early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
                                                    patience=self.patience,
                                                    verbose=0, mode='auto')
+
+        tensorboard = keras.callbacks.TensorBoard(update_freq='epoch')
         if isinstance(self.train_generator.items, int):
             num_events = int(self.train_generator.items * self.train_generator.train_fraction)
             val_num = int(self.train_generator.items * self.train_generator.validate_fraction)
@@ -210,7 +212,7 @@ class BaseModel(object):
             epochs=self.epochs,
             verbose=1,
             validation_data=self.validate_generator,
-            callbacks=[early_stop, model_checkpoint],
+            callbacks=[early_stop, model_checkpoint, tensorboard],
             validation_steps=int(np.floor(val_num / self.validate_generator.batch_size))
         )
 
