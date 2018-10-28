@@ -35,7 +35,7 @@ def image_augmenter(images):
 def common_step(batch_images, positions, labels=None, proton_images=None, augment=True, swap=True, shape=None):
     if augment:
         batch_images = image_augmenter(batch_images)
-    if proton_images:
+    if proton_images is not None:
         if augment:
             proton_images = image_augmenter(proton_images)
         batch_images = batch_images.reshape(shape)

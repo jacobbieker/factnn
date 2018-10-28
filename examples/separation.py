@@ -35,7 +35,7 @@ if not os.path.isfile(gamma_configuration["output_file"]):
 
 separation_generator_configuration = {
     'seed': 1337,
-    'batch_size': 32,
+    'batch_size': 24,
     'input': '../gamma.hdf5',
     'second_input': '../proton.hdf5',
     'start_slice': 0,
@@ -60,16 +60,16 @@ separation_model_configuration = {
     'conv_dropout': 0.1,
     'lstm_dropout': 0.2,
     'fc_dropout': 0.4,
-    'num_conv3d': 0,
-    'kernel_conv3d': 2,
+    'num_conv3d': 2,
+    'kernel_conv3d': 3,
     'strides_conv3d': 1,
-    'num_lstm': 4,
+    'num_lstm': 1,
     'kernel_lstm': 2,
     'strides_lstm': 1,
     'num_fc': 2,
-    'pooling': False,
-    'neurons': [16, 32, 32, 64, 32, 48],
-    'shape': [25, 25, 25, 1],
+    'pooling': True,
+    'neurons': [32, 64, 128, 32, 48],
+    'shape': [25, 38, 38, 1],
     'start_slice': 0,
     'number_slices': 25,
     'activation': 'relu',
@@ -78,6 +78,7 @@ separation_model_configuration = {
 
 separation_model = SeparationModel(config=separation_model_configuration)
 
+print(separation_model)
 """
 
 Now run the models with the generators!
