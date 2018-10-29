@@ -26,7 +26,7 @@ if not os.path.isfile(gamma_diffuse_configuration["output_file"]):
 
 # Since the Gamma Diffuse simulations seem to be located in order, this should allow for better testing of small groups
 # So that not need to use whole thing, but also get a random uniform sample from it anyways
-used_positions = list(np.random.randint(0, 550000, size=20000))
+used_positions = list(np.random.randint(0, 550000, size=200000))
 
 source_generator_configuration = {
     'seed': 1337,

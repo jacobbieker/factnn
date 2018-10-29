@@ -175,6 +175,8 @@ def get_random_from_list(indicies, size, time_slice, total_slices, gamma, proton
         else:
             training_data = images_one["Image"]
             positions = sorted(positions)
+            print("\n")
+            print(positions)
             batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
             return common_step(batch_images, positions, labels=labels, augment=augment, swap=swap, shape=shape)
 

@@ -199,12 +199,8 @@ class BaseModel(object):
                                                    verbose=0, mode='auto')
 
         tensorboard = keras.callbacks.TensorBoard(update_freq='epoch')
-        if isinstance(self.train_generator.items, int):
-            num_events = int(self.train_generator.items * self.train_generator.train_fraction)
-            val_num = int(self.train_generator.items * self.train_generator.validate_fraction)
-        else:
-            num_events = int(len(self.train_generator.items) * self.train_generator.train_fraction)
-            val_num = int(len(self.train_generator.items) * self.train_generator.validate_fraction)
+        num_events = int(len(self.train_generator.train_data))
+        val_num = int(len(self.train_generator.validate_data))
 
         self.model.fit_generator(
             generator=self.train_generator,

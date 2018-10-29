@@ -1,5 +1,6 @@
-from factnn.data.augment import image_augmenter, get_completely_random_hdf5, get_random_hdf5_chunk, get_random_from_list
-
+from factnn.data.augment import get_completely_random_hdf5, get_random_hdf5_chunk, get_random_from_list
+from sklearn.model_selection import train_test_split
+import numpy as np
 
 # TODO Add k-fold cross-validation generation
 
@@ -21,8 +22,6 @@ class BaseGenerator(object):
             self.second_input = None
         self.start_slice = config['start_slice']
         self.number_slices = config['number_slices']
-        self.train_fraction = config['train_fraction']
-        self.validate_fraction = config['validate_fraction']
         self.input_data = None
         self.second_input_data = None
         self.labels = None
@@ -30,10 +29,21 @@ class BaseGenerator(object):
         self.input_shape = None
         # Items is either an int, the number of samples to use, or an array of indicies for the generator
         # If items is an array, then chunked must be False, and cannot be from_directory
-        self.items = config['samples']
         self.mode = config['mode']
+        self.train_data = None
+        self.validate_data = None
+        self.test_data = None
 
-        # TODO Actually do something with the train and validate fractions
+        if 'train_data' in config:
+            self.train_data = config['train_data']
+
+        if 'validate_data' in config:
+            self.validate_data = config['validate_data']
+
+        if 'test_data' in config:
+            self.test_data = config['test_data']
+
+        # Converts into train, test, and validate datasets
 
         if 'chunked' in config:
             self.chunked = config['chunked']
@@ -73,116 +83,40 @@ class BaseGenerator(object):
         :return:
         '''
         if not self.from_directory:
-            if type(self.items) is int:
-                if self.chunked:
-                    if self.mode == "train":
-                        while True:
-                            batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
-                                                                                    time_slice=self.start_slice,
-                                                                                    total_slices=self.number_slices,
-                                                                                    labels=self.labels,
-                                                                                    type_training=self.type_gen,
-                                                                                    augment=self.augment,
-                                                                                    gamma=self.input,
-                                                                                    proton_input=self.second_input,
-                                                                                    shape=self.input_shape)
-                            return batch_images, batch_image_label
-                    elif self.mode == "validate":
-                        while True:
-                            batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
-                                                                                    time_slice=self.start_slice,
-                                                                                    total_slices=self.number_slices,
-                                                                                    labels=self.labels,
-                                                                                    type_training=self.type_gen,
-                                                                                    augment=self.augment,
-                                                                                    gamma=self.input,
-                                                                                    proton_input=self.second_input,
-                                                                                    shape=self.input_shape)
-                            return batch_images, batch_image_label
+            if self.mode == "train":
+                while True:
+                    batch_images, batch_image_label = get_random_from_list(self.train_data, size=self.batch_size,
+                                                                           time_slice=self.start_slice,
+                                                                           total_slices=self.number_slices,
+                                                                           labels=self.labels,
+                                                                           augment=self.augment,
+                                                                           gamma=self.input,
+                                                                           proton_input=self.second_input,
+                                                                           shape=self.input_shape)
+                    return batch_images, batch_image_label
+            elif self.mode == "validate":
+                while True:
+                    batch_images, batch_image_label = get_random_from_list(self.validate_data, size=self.batch_size,
+                                                                           time_slice=self.start_slice,
+                                                                           total_slices=self.number_slices,
+                                                                           labels=self.labels,
+                                                                           augment=self.augment,
+                                                                           gamma=self.input,
+                                                                           proton_input=self.second_input,
+                                                                           shape=self.input_shape)
+                    return batch_images, batch_image_label
 
-                    elif self.mode == "test":
-                        while True:
-                            batch_images, batch_image_label = get_random_hdf5_chunk(0, self.items, size=self.batch_size,
-                                                                                    time_slice=self.start_slice,
-                                                                                    total_slices=self.number_slices,
-                                                                                    labels=self.labels,
-                                                                                    type_training=self.type_gen,
-                                                                                    augment=self.augment,
-                                                                                    gamma=self.input,
-                                                                                    proton_input=self.second_input,
-                                                                                    shape=self.input_shape)
-                            return batch_images, batch_image_label
-                else:
-                    # not chunked
-                    if self.mode == "train":
-                        while True:
-                            batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
-                                                                                   time_slice=self.start_slice,
-                                                                                   total_slices=self.number_slices,
-                                                                                   labels=self.labels,
-                                                                                   augment=self.augment,
-                                                                                   gamma=self.input,
-                                                                                   proton_input=self.second_input,
-                                                                                   shape=self.input_shape)
-                            return batch_images, batch_image_label
-                    elif self.mode == "validate":
-                        while True:
-                            batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
-                                                                                   time_slice=self.start_slice,
-                                                                                   total_slices=self.number_slices,
-                                                                                   labels=self.labels,
-                                                                                   augment=self.augment,
-                                                                                   gamma=self.input,
-                                                                                   proton_input=self.second_input,
-                                                                                   shape=self.input_shape)
-                            return batch_images, batch_image_label
-
-                    elif self.mode == "test":
-                        while True:
-                            batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
-                                                                                   time_slice=self.start_slice,
-                                                                                   total_slices=self.number_slices,
-                                                                                   labels=self.labels,
-                                                                                   augment=self.augment,
-                                                                                   gamma=self.input,
-                                                                                   proton_input=self.second_input,
-                                                                                   shape=self.input_shape)
-                            return batch_images, batch_image_label
-            elif type(self.items) is list:
-                if self.mode == "train":
-                    while True:
-                        batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
-                                                                               time_slice=self.start_slice,
-                                                                               total_slices=self.number_slices,
-                                                                               labels=self.labels,
-                                                                               augment=self.augment,
-                                                                               gamma=self.input,
-                                                                               proton_input=self.second_input,
-                                                                               shape=self.input_shape)
-                        return batch_images, batch_image_label
-                elif self.mode == "validate":
-                    while True:
-                        batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
-                                                                               time_slice=self.start_slice,
-                                                                               total_slices=self.number_slices,
-                                                                               labels=self.labels,
-                                                                               augment=self.augment,
-                                                                               gamma=self.input,
-                                                                               proton_input=self.second_input,
-                                                                               shape=self.input_shape)
-                        return batch_images, batch_image_label
-
-                elif self.mode == "test":
-                    while True:
-                        batch_images, batch_image_label = get_random_from_list(self.items, size=self.batch_size,
-                                                                               time_slice=self.start_slice,
-                                                                               total_slices=self.number_slices,
-                                                                               labels=self.labels,
-                                                                               augment=self.augment,
-                                                                               gamma=self.input,
-                                                                               proton_input=self.second_input,
-                                                                               shape=self.input_shape)
-                        return batch_images, batch_image_label
+            elif self.mode == "test":
+                while True:
+                    batch_images, batch_image_label = get_random_from_list(self.test_data, size=self.batch_size,
+                                                                           time_slice=self.start_slice,
+                                                                           total_slices=self.number_slices,
+                                                                           labels=self.labels,
+                                                                           augment=self.augment,
+                                                                           gamma=self.input,
+                                                                           proton_input=self.second_input,
+                                                                           shape=self.input_shape)
+                    return batch_images, batch_image_label
 
     def __str__(self):
         return NotImplemented

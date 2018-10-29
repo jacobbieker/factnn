@@ -1,5 +1,7 @@
 from factnn import GammaPreprocessor, EnergyGenerator, EnergyModel
 import os.path
+from factnn.data import kfold
+import numpy as np
 
 base_dir = "../ihp-pc41.ethz.ch/public/phs/"
 obs_dir = [base_dir + "public/"]
@@ -21,16 +23,22 @@ gamma_preprocessor = GammaPreprocessor(config=gamma_configuration)
 if not os.path.isfile(gamma_configuration["output_file"]):
     gamma_preprocessor.create_dataset()
 
+used_positions = list(np.random.randint(0, 800000, size=200000))
+indexes = kfold.split_data(used_positions, kfolds=5)
+print(len(indexes[0][0]))
+print(len(indexes[1][0]))
+print(len(indexes[2][0]))
+
 energy_generator_configuration = {
     'seed': 1337,
     'batch_size': 32,
     'input': '../gamma.hdf5',
     'start_slice': 0,
     'number_slices': 25,
-    'train_fraction': 0.6,
-    'validate_fraction': 0.2,
+    'train_data': indexes[0][0],
+    'validate_data': indexes[1][0],
+    'test_data': indexes[2][0],
     'mode': 'train',
-    'samples': 20000,
     'chunked': False,
     'augment': True,
 }

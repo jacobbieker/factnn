@@ -1,5 +1,6 @@
 from factnn import GammaPreprocessor, ProtonPreprocessor, SeparationGenerator, SeparationModel
 import os.path
+from factnn.data import kfold
 
 base_dir = "../ihp-pc41.ethz.ch/public/phs/"
 obs_dir = [base_dir + "public/"]
@@ -33,6 +34,12 @@ if not os.path.isfile(proton_configuration["output_file"]):
 if not os.path.isfile(gamma_configuration["output_file"]):
     gamma_preprocessor.create_dataset()
 
+
+indexes = kfold.split_data(range(0,20000), kfolds=5)
+print(len(indexes[0][0]))
+print(len(indexes[1][0]))
+print(len(indexes[2][0]))
+
 separation_generator_configuration = {
     'seed': 1337,
     'batch_size': 24,
@@ -40,8 +47,9 @@ separation_generator_configuration = {
     'second_input': '../proton.hdf5',
     'start_slice': 0,
     'number_slices': 25,
-    'train_fraction': 0.6,
-    'validate_fraction': 0.2,
+    'train_data': indexes[0][0],
+    'validate_data': indexes[1][0],
+    'test_data': indexes[2][0],
     'mode': 'train',
     'samples': 150000,
     'chunked': False,
