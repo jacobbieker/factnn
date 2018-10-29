@@ -1,5 +1,6 @@
 from factnn import GammaDiffusePreprocessor, DispGenerator, DispModel, SignGenerator, SignModel
 import os.path
+import numpy as np
 
 base_dir = "../ihp-pc41.ethz.ch/public/phs/"
 obs_dir = [base_dir + "public/"]
@@ -23,6 +24,10 @@ gamma_diffuse_preprocessor = GammaDiffusePreprocessor(config=gamma_diffuse_confi
 if not os.path.isfile(gamma_diffuse_configuration["output_file"]):
     gamma_diffuse_preprocessor.create_dataset()
 
+# Since the Gamma Diffuse simulations seem to be located in order, this should allow for better testing of small groups
+# So that not need to use whole thing, but also get a random uniform sample from it anyways
+used_positions = list(np.random.randint(0, 550000, size=20000))
+
 source_generator_configuration = {
     'seed': 1337,
     'batch_size': 32,
@@ -32,7 +37,7 @@ source_generator_configuration = {
     'train_fraction': 0.6,
     'validate_fraction': 0.2,
     'mode': 'train',
-    'samples': 550000,
+    'samples': used_positions,
     'chunked': False,
     'augment': True,
 }
@@ -67,12 +72,12 @@ source_model_configuration = {
     'strides_lstm': 1,
     'num_fc': 2,
     'pooling': True,
-    'neurons': [32, 16, 8, 16, 32, 48],
+    'neurons': [32, 32, 32, 64, 32, 48],
     'shape': [25, 38, 38, 1],
     'start_slice': 0,
     'number_slices': 25,
     'activation': 'relu',
-    'name': 'testDisp',
+    'patience': 200,
 }
 
 sign_model_configuration = {
@@ -109,11 +114,9 @@ disp_model.validate_generator = disp_validate
 disp_model.test_generator = disp_test
 
 disp_model.train()
-disp_model.apply()
 
 sign_model.train_generator = sign_train
 sign_model.validate_generator = sign_validate
 sign_model.test_generator = sign_test
 
 sign_model.train()
-sign_model.apply()

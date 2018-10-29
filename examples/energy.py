@@ -30,7 +30,7 @@ energy_generator_configuration = {
     'train_fraction': 0.6,
     'validate_fraction': 0.2,
     'mode': 'train',
-    'samples': 800000,
+    'samples': 20000,
     'chunked': False,
     'augment': True,
 }
@@ -45,21 +45,21 @@ energy_test.mode = "test"
 energy_model_configuration = {
     'conv_dropout': 0.1,
     'lstm_dropout': 0.2,
-    'fc_dropout': 0.5,
+    'fc_dropout': 0.3,
     'num_conv3d': 3,
     'kernel_conv3d': 2,
     'strides_conv3d': 1,
     'num_lstm': 1,
     'kernel_lstm': 2,
     'strides_lstm': 1,
-    'num_fc': 3,
+    'num_fc': 2,
     'pooling': True,
-    'neurons': [32, 32, 16, 16, 16, 32, 48, 64],
+    'neurons': [32, 64, 128, 64, 32, 64],
     'shape': [25, 38, 38, 1],
     'start_slice': 0,
     'number_slices': 25,
     'activation': 'relu',
-    'name': 'testEnergy',
+    'patience': 400,
 }
 
 energy_model = EnergyModel(config=energy_model_configuration)

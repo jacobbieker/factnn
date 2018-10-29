@@ -99,7 +99,7 @@ def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, gamma, pr
 
 
 def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
-                               type_training=None, augment=True, swap=True, shape=None):
+                               augment=True, swap=True, shape=None):
     '''
     Gets a random part of the HDF5 database within start and stop endpoints
     This is to help with shuffling data, as currently all the ones come and go in the same
@@ -139,9 +139,9 @@ def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, gamm
 
 
 def get_random_from_list(indicies, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
-                         type_training=None, augment=True, swap=True, shape=None):
+                        augment=True, swap=True, shape=None):
     '''
-    Gets a random part of the HDF5 database within start and stop endpoints
+    Gets a random part of the HDF5 database within a list of given indicies
     This is to help with shuffling data, as currently all the ones come and go in the same
     order
     Does not guarantee that a given event will be used though, unlike before
@@ -174,6 +174,7 @@ def get_random_from_list(indicies, size, time_slice, total_slices, gamma, proton
                 return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment, swap=swap, shape=shape)
         else:
             training_data = images_one["Image"]
+            positions = sorted(positions)
             batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
             return common_step(batch_images, positions, labels=labels, augment=augment, swap=swap, shape=shape)
 
