@@ -3,6 +3,7 @@ import h5py
 import photon_stream as ps
 from fact.io import read_h5py
 from factnn.preprocess.base_preprocessor import BasePreprocessor
+from sklearn.utils import shuffle
 
 
 class ProtonPreprocessor(BasePreprocessor):
@@ -44,38 +45,41 @@ class ProtonPreprocessor(BasePreprocessor):
                 print(str(e))
 
     def single_processor(self):
-        for index, file in enumerate(self.paths):
-            mc_truth = file.split(".phs")[0] + ".ch.gz"
-            print(mc_truth)
-            try:
-                sim_reader = ps.SimulationReader(
-                    photon_stream_path=file,
-                    mmcs_corsika_path=mc_truth
-                )
-                for event in sim_reader:
-                    data = []
-                    # In the event chosen from the file
-                    # Each event is the same as each line below
-                    energy = event.simulation_truth.air_shower.energy
-                    event_photons = event.photon_stream.list_of_lists
-                    zd_deg = event.zd
-                    az_deg = event.az
-                    act_phi = event.simulation_truth.air_shower.phi
-                    act_theta = event.simulation_truth.air_shower.theta
-                    input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
-                    chid_to_pixel = self.rebinning[0]
-                    pixel_index_to_grid = self.rebinning[1]
-                    for index in range(1440):
-                        for element in chid_to_pixel[index]:
-                            coords = pixel_index_to_grid[element[0]]
-                            for value in event_photons[index]:
-                                if self.end > value > self.start:
-                                    input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
-                    data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
-                    yield self.format(data)
+        while True:
+            self.paths = shuffle(self.paths)
+            for index, file in enumerate(self.paths):
+                mc_truth = file.split(".phs")[0] + ".ch.gz"
+                print(mc_truth)
+                try:
+                    sim_reader = ps.SimulationReader(
+                        photon_stream_path=file,
+                        mmcs_corsika_path=mc_truth
+                    )
+                    for event in sim_reader:
+                        data = []
+                        # In the event chosen from the file
+                        # Each event is the same as each line below
+                        energy = event.simulation_truth.air_shower.energy
+                        event_photons = event.photon_stream.list_of_lists
+                        zd_deg = event.zd
+                        az_deg = event.az
+                        act_phi = event.simulation_truth.air_shower.phi
+                        act_theta = event.simulation_truth.air_shower.theta
+                        input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
+                        chid_to_pixel = self.rebinning[0]
+                        pixel_index_to_grid = self.rebinning[1]
+                        for index in range(1440):
+                            for element in chid_to_pixel[index]:
+                                coords = pixel_index_to_grid[element[0]]
+                                for value in event_photons[index]:
+                                    if self.end > value > self.start:
+                                        input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
+                        data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
+                        data_format = {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5, 'Theta': 6,}
+                        yield self.format(data), data_format
 
-            except Exception as e:
-                print(str(e))
+                except Exception as e:
+                    print(str(e))
 
     def format(self, batch):
         pic, energy, zd_deg, az_deg, act_phi, act_theta = zip(*batch)
@@ -180,38 +184,41 @@ class GammaPreprocessor(BasePreprocessor):
                 print(str(e))
 
     def single_processor(self):
-        for index, file in enumerate(self.paths):
-            mc_truth = file.split(".phs")[0] + ".ch.gz"
-            print(mc_truth)
-            try:
-                sim_reader = ps.SimulationReader(
-                    photon_stream_path=file,
-                    mmcs_corsika_path=mc_truth
-                )
-                for event in sim_reader:
-                    data = []
-                    # In the event chosen from the file
-                    # Each event is the same as each line below
-                    energy = event.simulation_truth.air_shower.energy
-                    event_photons = event.photon_stream.list_of_lists
-                    zd_deg = event.zd
-                    az_deg = event.az
-                    act_phi = event.simulation_truth.air_shower.phi
-                    act_theta = event.simulation_truth.air_shower.theta
-                    input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
-                    chid_to_pixel = self.rebinning[0]
-                    pixel_index_to_grid = self.rebinning[1]
-                    for index in range(1440):
-                        for element in chid_to_pixel[index]:
-                            coords = pixel_index_to_grid[element[0]]
-                            for value in event_photons[index]:
-                                if self.end > value > self.start:
-                                    input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
-                    data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
-                    yield self.format(data)
+        while True:
+            self.paths = shuffle(self.paths)
+            for index, file in enumerate(self.paths):
+                mc_truth = file.split(".phs")[0] + ".ch.gz"
+                print(mc_truth)
+                try:
+                    sim_reader = ps.SimulationReader(
+                        photon_stream_path=file,
+                        mmcs_corsika_path=mc_truth
+                    )
+                    for event in sim_reader:
+                        data = []
+                        # In the event chosen from the file
+                        # Each event is the same as each line below
+                        energy = event.simulation_truth.air_shower.energy
+                        event_photons = event.photon_stream.list_of_lists
+                        zd_deg = event.zd
+                        az_deg = event.az
+                        act_phi = event.simulation_truth.air_shower.phi
+                        act_theta = event.simulation_truth.air_shower.theta
+                        input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
+                        chid_to_pixel = self.rebinning[0]
+                        pixel_index_to_grid = self.rebinning[1]
+                        for index in range(1440):
+                            for element in chid_to_pixel[index]:
+                                coords = pixel_index_to_grid[element[0]]
+                                for value in event_photons[index]:
+                                    if self.end > value > self.start:
+                                        input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
+                        data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
+                        data_format = {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5, 'Theta': 6,}
+                        yield self.format(data), data_format
 
-            except Exception as e:
-                print(str(e))
+                except Exception as e:
+                    print(str(e))
 
     def format(self, batch):
         pic, energy, zd_deg, az_deg, act_phi, act_theta = zip(*batch)
@@ -331,53 +338,58 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                 print(str(e))
 
     def single_processor(self):
-        for index, file in enumerate(self.paths):
-            mc_truth = file.split(".phs")[0] + ".ch.gz"
-            print(mc_truth)
-            try:
-                sim_reader = ps.SimulationReader(
-                    photon_stream_path=file,
-                    mmcs_corsika_path=mc_truth
-                )
-                for event in sim_reader:
-                    data = []
-                    df_event = self.dl2_file.loc[(np.isclose(self.dl2_file['corsika_event_header_total_energy'],
-                                                             event.simulation_truth.air_shower.energy)) &
-                                                 (self.dl2_file['run_id'] == event.simulation_truth.run)]
-                    if not df_event.empty:
-                        # In the event chosen from the file
-                        # Each event is the same as each line below
-                        cog_x = df_event['cog_x'].values[0]
-                        cog_y = df_event['cog_y'].values[0]
-                        act_sky_source_zero = df_event['source_position_x'].values[0]
-                        act_sky_source_one = df_event['source_position_y'].values[0]
-                        event_photons = event.photon_stream.list_of_lists
-                        zd_deg = event.zd
-                        az_deg = event.az
-                        delta = df_event['delta'].values[0]
-                        energy = event.simulation_truth.air_shower.energy
-                        sky_source_zd = df_event['source_position_zd'].values[0]
-                        sky_source_az = df_event['source_position_zd'].values[0]
-                        zd_deg1 = df_event['aux_pointing_position_az'].values[0]
-                        az_deg1 = df_event['aux_pointing_position_zd'].values[0]
-                        input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
-                        chid_to_pixel = self.rebinning[0]
-                        pixel_index_to_grid = self.rebinning[1]
-                        for index in range(1440):
-                            for element in chid_to_pixel[index]:
-                                # Now get the first 60 event photons
-                                coords = pixel_index_to_grid[element[0]]
-                                for value in event_photons[index]:
-                                    if self.end > value > self.start:
-                                        input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
+        while True:
+            self.paths = shuffle(self.paths)
+            for index, file in enumerate(self.paths):
+                mc_truth = file.split(".phs")[0] + ".ch.gz"
+                print(mc_truth)
+                try:
+                    sim_reader = ps.SimulationReader(
+                        photon_stream_path=file,
+                        mmcs_corsika_path=mc_truth
+                    )
+                    for event in sim_reader:
+                        data = []
+                        df_event = self.dl2_file.loc[(np.isclose(self.dl2_file['corsika_event_header_total_energy'],
+                                                                 event.simulation_truth.air_shower.energy)) &
+                                                     (self.dl2_file['run_id'] == event.simulation_truth.run)]
+                        if not df_event.empty:
+                            # In the event chosen from the file
+                            # Each event is the same as each line below
+                            cog_x = df_event['cog_x'].values[0]
+                            cog_y = df_event['cog_y'].values[0]
+                            act_sky_source_zero = df_event['source_position_x'].values[0]
+                            act_sky_source_one = df_event['source_position_y'].values[0]
+                            event_photons = event.photon_stream.list_of_lists
+                            zd_deg = event.zd
+                            az_deg = event.az
+                            delta = df_event['delta'].values[0]
+                            energy = event.simulation_truth.air_shower.energy
+                            sky_source_zd = df_event['source_position_zd'].values[0]
+                            sky_source_az = df_event['source_position_zd'].values[0]
+                            zd_deg1 = df_event['aux_pointing_position_az'].values[0]
+                            az_deg1 = df_event['aux_pointing_position_zd'].values[0]
+                            input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
+                            chid_to_pixel = self.rebinning[0]
+                            pixel_index_to_grid = self.rebinning[1]
+                            for index in range(1440):
+                                for element in chid_to_pixel[index]:
+                                    # Now get the first 60 event photons
+                                    coords = pixel_index_to_grid[element[0]]
+                                    for value in event_photons[index]:
+                                        if self.end > value > self.start:
+                                            input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
 
-                        data.append([np.fliplr(np.rot90(input_matrix, 3)), act_sky_source_zero, act_sky_source_one,
-                                     cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
-                                     energy, zd_deg1, az_deg1])
-                    yield self.format(data)
+                            data.append([np.fliplr(np.rot90(input_matrix, 3)), act_sky_source_zero, act_sky_source_one,
+                                         cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
+                                         energy, zd_deg1, az_deg1])
+                        # Add an associated structure that gives the name?
+                        data_format = {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5, 'Az_Deg': 6,
+                                       'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11, 'Pointing_Az': 12}
+                        yield self.format(data), data_format
 
-            except Exception as e:
-                print(str(e))
+                except Exception as e:
+                    print(str(e))
 
     def format(self, batch):
         pic, act_sky_source_zero, act_sky_source_one, cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta, energy, zd_deg1, az_deg1 = zip(

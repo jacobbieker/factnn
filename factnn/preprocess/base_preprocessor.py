@@ -52,6 +52,11 @@ class BasePreprocessor(object):
             self.output_file = None
 
     def init(self):
+        """
+        Recalcs the file paths if called based on self.directories
+        :return:
+        """
+        # TODO Finish this
         return NotImplemented
 
     def generate_rebinning(self, size):

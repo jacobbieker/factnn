@@ -2,6 +2,7 @@ import numpy as np
 from sklearn.utils import shuffle
 import h5py
 
+
 def image_augmenter(images):
     """
     Augment images by rotating and flipping input images randomly
@@ -31,6 +32,7 @@ def image_augmenter(images):
     images = np.asarray(new_images)
     return images
 
+
 def sum_cubes(images):
     '''
     Takes the 3D data cubes and sums up along the time axis, creating a 2D image for faster processing
@@ -38,7 +40,8 @@ def sum_cubes(images):
     :return:
     '''
 
-def common_step(batch_images, positions, labels=None, proton_images=None, augment=True, swap=True, shape=None):
+
+def common_step(batch_images, positions=None, labels=None, proton_images=None, augment=True, swap=True, shape=None):
     if augment:
         batch_images = image_augmenter(batch_images)
     if proton_images is not None:
@@ -53,7 +56,8 @@ def common_step(batch_images, positions, labels=None, proton_images=None, augmen
             batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
         return batch_images, batch_image_label
     else:
-        labels = labels[positions]
+        if positions is not None:
+            labels = labels[positions]
         batch_image_label = labels
         batch_images = batch_images.reshape(shape)
         if swap:
@@ -97,7 +101,8 @@ def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, gamma, pr
                 training_data = images_one["Image"]
                 batch_images = training_data[start_pos:int(start_pos + size), time_slice:time_slice + total_slices, ::]
                 proton_images = proton_data[start_pos:int(start_pos + size), time_slice:time_slice + total_slices, ::]
-                return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment, swap=swap, shape=shape)
+                return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment,
+                                   swap=swap, shape=shape)
         else:
             training_data = images_one["Image"]
             batch_images = training_data[start_pos:int(start_pos + size), time_slice:time_slice + total_slices, ::]
@@ -137,7 +142,8 @@ def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, gamm
                 training_data = images_one["Image"]
                 batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
                 proton_images = proton_data[positions, time_slice:time_slice + total_slices, ::]
-                return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment, swap=swap, shape=shape)
+                return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment,
+                                   swap=swap, shape=shape)
         else:
             training_data = images_one["Image"]
             batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
@@ -145,7 +151,7 @@ def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, gamm
 
 
 def get_random_from_list(indicies, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
-                        augment=True, swap=True, shape=None):
+                         augment=True, swap=True, shape=None):
     '''
     Gets a random part of the HDF5 database within a list of given indicies
     This is to help with shuffling data, as currently all the ones come and go in the same
@@ -177,16 +183,16 @@ def get_random_from_list(indicies, size, time_slice, total_slices, gamma, proton
                 training_data = images_one["Image"]
                 batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
                 proton_images = proton_data[positions, time_slice:time_slice + total_slices, ::]
-                return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment, swap=swap, shape=shape)
+                return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment,
+                                   swap=swap, shape=shape)
         else:
             training_data = images_one["Image"]
             batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
             return common_step(batch_images, positions, labels=labels, augment=augment, swap=swap, shape=shape)
 
 
-
 def get_chunk_from_list(indicies, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
-                         augment=True, swap=True, shape=None, current_step=0):
+                        augment=True, swap=True, shape=None, current_step=0):
     '''
     Gets a section of the HDF5 from the list of indicies, but not randomly,so can iterate through all options
     This is to help with shuffling data, as currently all the ones come and go in the same
@@ -210,7 +216,7 @@ def get_chunk_from_list(indicies, size, time_slice, total_slices, gamma, proton_
 
     # Get random positions within the start and stop sizes
     if (current_step + 1) * size < len(indicies):
-        positions = indicies[current_step*size:(current_step+1)*size]
+        positions = indicies[current_step * size:(current_step + 1) * size]
     else:
         if current_step * size < len(indicies):
             positions = indicies[current_step * size:]
@@ -227,14 +233,27 @@ def get_chunk_from_list(indicies, size, time_slice, total_slices, gamma, proton_
                 training_data = images_one["Image"]
                 batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
                 proton_images = proton_data[positions, time_slice:time_slice + total_slices, ::]
-                return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment, swap=swap, shape=shape)
+                return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment,
+                                   swap=swap, shape=shape)
         else:
             training_data = images_one["Image"]
             batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
             return common_step(batch_images, positions, labels=labels, augment=augment, swap=swap, shape=shape)
 
-def get_random_from_paths(paths, size, time_slice, total_slices, preprocessor, labels=None,
-                          proton_data=None, type_training=None, augment=True, swap=True):
+
+def euclidean_distance(x1, y1, x2, y2):
+    return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+
+
+def true_delta(cog_y, source_y, cog_x, source_x):
+    return np.arctan2(
+        cog_y - source_y,
+        cog_x - source_x
+    )
+
+
+def get_random_from_paths(preprocessor, size, time_slice, total_slices,
+                          proton_preprocessor=None, type_training=None, augment=True, swap=True, shape=None):
     '''
     Gets a random part of the HDF5 database within start and stop endpoints
     This is to help with shuffling data, as currently all the ones come and go in the same
@@ -257,21 +276,37 @@ def get_random_from_paths(paths, size, time_slice, total_slices, preprocessor, l
     :return:
     '''
 
-    # Get random paths to use
-    used_paths = np.random.choice(paths, size=size, replace=False)
+    # For this, the single processors are assumed to infinitely iterate through their files, shuffling the order of the
+    # files after every go through of the whole file set, so some kind of shuffling, but not much
+    training_data = []
+    labels = None
+    data_format = {}
+    for i in range(size):
+        # Call processor size times to get the correct number for the batch
+        processed_data, data_format = next(preprocessor.single_processor())
+        training_data.append(processed_data)
 
-    # Need to use preprocessors streaming to generate the data
-    # TODO Add streaming preprocessors to generate data and create training_data for use
-    # As not using data in HDF5, have to generate that first
-    # TODO Have to replace the training data with created data, so need to add generator
+    # Use the type of data to determine what to keep
+    if type_training == "Separation":
+        training_data = [item[data_format["Image"]] for item in training_data]
+    elif type_training == "Energy":
+        labels = [item[data_format["Energy"]] for item in training_data]
+        training_data = [item[data_format["Image"]] for item in training_data]
+    elif type_training == "Disp":
+        labels = [euclidean_distance(item[data_format['Source_X']], item[data_format['Source_Y']],
+                                     item[data_format['COG_X']], item[data_format['COG_Y']]) for item in training_data]
+        training_data = [item[data_format["Image"]] for item in training_data]
+    elif type_training == "Sign":
+        labels = [true_delta(item[data_format['Source_X']], item[data_format['Source_Y']],
+                             item[data_format['COG_X']], item[data_format['COG_Y']]) for item in training_data]
+        training_data = [item[data_format["Image"]] for item in training_data]
 
-    # Uses the generator to generate data from random paths
-    preprocessor.paths = used_paths
-
-
-    #batch_images = training_data[used_paths, time_slice - total_slices:time_slice, ::]
-    #common_step(batch_images, positions, time_slice, total_slices, labels=labels,
-    #            proton_data=proton_data, type_training=type_training, augment=augment, swap=swap)
-
-    # TODO Actually do this, for now
-    return NotImplementedError
+    if proton_preprocessor is not None:
+        proton_data = [item[data_format["Image"]] for item in training_data]
+        batch_images = training_data[::, time_slice:time_slice + total_slices, ::]
+        proton_images = proton_data[::, time_slice:time_slice + total_slices, ::]
+        return common_step(batch_images, positions=None, labels=labels, proton_images=proton_images, augment=augment,
+                           swap=swap, shape=shape)
+    else:
+        batch_images = training_data[::, time_slice:time_slice + total_slices, ::]
+        return common_step(batch_images, positions=None, labels=labels, augment=augment, swap=swap, shape=shape)
