@@ -1,5 +1,0 @@
-h5py==2.8.0
-pyfact==0.20.1
-photon_stream
-keras==2.2.0
-fact_plots

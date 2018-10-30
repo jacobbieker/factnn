@@ -5,8 +5,9 @@ This project focuses on using convolutional neural networks to perform analysis 
 
 # Organization
 
-misc/ contains a (semi) organized collection of my attempts at using neural networks for air shower analysis. The misc/thesisFinal include the architectures that
-were used for the actual thesis. The factnn/ is where all new development is happening, including making model creation more modular, easier generation of datasets,
+The 0.1 release contains the original code from the thesis, under the misc/ folder. misc/FinalThesis is where all the final models used in the
+thesis are stored.
+The factnn/ is where all new development is happening, including making model creation more modular, easier generation of datasets,
 and adding support for streaming in photon stream format files for both training and prediction. 
 
 # Results
