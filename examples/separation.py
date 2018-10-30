@@ -97,6 +97,6 @@ separation_model.train_generator = separation_train
 separation_model.validate_generator = separation_validate
 separation_model.train_generator = separation_test
 
-separation_model.train()
+separation_model.train(train_generator=separation_train, validate_generator=separation_validate)
 separation_model.apply()
 

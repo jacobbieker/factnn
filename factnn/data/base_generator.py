@@ -1,5 +1,5 @@
 from factnn.data.augment import get_random_from_list, \
-    get_chunk_from_list, get_random_from_paths, get_chunk_from_paths
+    get_chunk_from_list, get_random_from_paths
 import numpy as np
 
 # TODO Add k-fold cross-validation generation
@@ -15,7 +15,10 @@ class BaseGenerator(object):
             self.seed = config['seed']
 
         self.batch_size = config['batch_size']
-        self.input = config['input']
+        if 'input' in config:
+            self.input = config['input']
+        else:
+            self.input = None
         if 'second_input' in config:
             self.second_input = config['second_input']
         else:
@@ -26,9 +29,10 @@ class BaseGenerator(object):
         self.second_input_data = None
         self.labels = None
         self.type_gen = None
-        self.input_shape = None
-        # Items is either an int, the number of samples to use, or an array of indicies for the generator
-        # If items is an array, then chunked must be False, and cannot be from_directory
+        if 'input_shape' in config:
+            self.input_shape = config['input_shape']
+        else:
+            self.input_shape = None
         self.mode = config['mode']
         self.train_data = None
         self.validate_data = None

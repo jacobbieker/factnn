@@ -13,7 +13,7 @@ class SeparationModel(BaseModel):
         self.model_type = "Separation"
         self.auc = 0.0
         if self.name is None:
-            self.name = self.model_type + "_" + self.num_lstm + "LSTM_" + self.num_conv3d + "Conv3D_" + self.num_fc +\
+            self.name = self.model_type + "_" + str(self.num_lstm) + "LSTM_" + str(self.num_conv3d) + "Conv3D_" + str(self.num_fc) +\
                         "FC" + ".hdf5"
 
     def create(self):

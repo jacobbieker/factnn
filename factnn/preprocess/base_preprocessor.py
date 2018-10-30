@@ -6,7 +6,8 @@ import os
 class BasePreprocessor(object):
 
     def __init__(self, config):
-        self.directories = config['directories']
+        if 'directories' in config:
+            self.directories = config['directories']
         if 'paths' in config:
             self.paths = config['paths']
         else:
@@ -26,9 +27,9 @@ class BasePreprocessor(object):
         if 'rebin_size' in config:
             if config['rebin_size'] <= 10:
                 try:
-                    self.rebinning = pickle.load(
-                        os.path.join("factnn", "resources", "rebinning_" + config['rebin_size'] + ".p"))
-                except:
+                    with open(os.path.join("..","factnn", "resources", "rebinning_" + str(config['rebin_size']) + ".p"), "rb") as rebinning_file:
+                        self.rebinning = pickle.load(rebinning_file)
+                except Exception as e:
                     self.rebinning = self.generate_rebinning(config['rebin_size'])
             else:
                 self.rebinning = self.generate_rebinning(config['rebin_size'])
@@ -102,7 +103,6 @@ class BasePreprocessor(object):
 
         list_of_squares = [square]
         steps = int(np.ceil(np.abs(square_start * 2) / square_size))
-        print(steps)
 
         pixel_index_to_grid = {}
         pix_index = 0

@@ -285,7 +285,6 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
         # Call processor size times to get the correct number for the batch
         processed_data, data_format = next(preprocessor.single_processor())
         training_data.append(processed_data)
-
     # Use the type of data to determine what to keep
     if type_training == "Separation":
         training_data = [item[data_format["Image"]] for item in training_data]
@@ -301,8 +300,18 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
                              item[data_format['COG_X']], item[data_format['COG_Y']]) for item in training_data]
         training_data = [item[data_format["Image"]] for item in training_data]
 
+    training_data = np.array(training_data)
+    training_data = training_data.reshape(-1,training_data.shape[2], training_data.shape[3], training_data.shape[4])
+
     if proton_preprocessor is not None:
-        proton_data = [item[data_format["Image"]] for item in training_data]
+        proton_data = []
+        for i in range(size):
+            # Call processor size times to get the correct number for the batch
+            processed_data, data_format = next(proton_preprocessor.single_processor())
+            proton_data.append(processed_data)
+        proton_data = [item[data_format["Image"]] for item in proton_data]
+        proton_data = np.array(proton_data)
+        proton_data = proton_data.reshape(-1, proton_data.shape[2], proton_data.shape[3], proton_data.shape[4])
         batch_images = training_data[::, time_slice:time_slice + total_slices, ::]
         proton_images = proton_data[::, time_slice:time_slice + total_slices, ::]
         return common_step(batch_images, positions=None, labels=labels, proton_images=proton_images, augment=augment,

@@ -9,11 +9,8 @@ from sklearn.utils import shuffle
 class ProtonPreprocessor(BasePreprocessor):
 
     def batch_processor(self):
-        print("Number of files: " + str(len(self.paths)))
         for index, file in enumerate(self.paths):
-            print("Index: " + str(index))
             mc_truth = file.split(".phs")[0] + ".ch.gz"
-            print(mc_truth)
             try:
                 sim_reader = ps.SimulationReader(
                     photon_stream_path=file,
@@ -49,7 +46,6 @@ class ProtonPreprocessor(BasePreprocessor):
             self.paths = shuffle(self.paths)
             for index, file in enumerate(self.paths):
                 mc_truth = file.split(".phs")[0] + ".ch.gz"
-                print(mc_truth)
                 try:
                     sim_reader = ps.SimulationReader(
                         photon_stream_path=file,
@@ -152,7 +148,6 @@ class GammaPreprocessor(BasePreprocessor):
     def batch_processor(self):
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
-            print(mc_truth)
             try:
                 sim_reader = ps.SimulationReader(
                     photon_stream_path=file,
@@ -188,7 +183,6 @@ class GammaPreprocessor(BasePreprocessor):
             self.paths = shuffle(self.paths)
             for index, file in enumerate(self.paths):
                 mc_truth = file.split(".phs")[0] + ".ch.gz"
-                print(mc_truth)
                 try:
                     sim_reader = ps.SimulationReader(
                         photon_stream_path=file,
@@ -291,7 +285,6 @@ class GammaDiffusePreprocessor(BasePreprocessor):
         self.init()
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
-            print(mc_truth)
             try:
                 sim_reader = ps.SimulationReader(
                     photon_stream_path=file,
@@ -342,7 +335,6 @@ class GammaDiffusePreprocessor(BasePreprocessor):
             self.paths = shuffle(self.paths)
             for index, file in enumerate(self.paths):
                 mc_truth = file.split(".phs")[0] + ".ch.gz"
-                print(mc_truth)
                 try:
                     sim_reader = ps.SimulationReader(
                         photon_stream_path=file,

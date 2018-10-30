@@ -177,7 +177,7 @@ class BaseModel(object):
 
         return (predictions, truth)
 
-    def train(self, train_generator=None, validate_generator=None):
+    def train(self, train_generator=None, validate_generator=None, num_events=100000, val_num=20000):
         '''
         Train model
         :return:
@@ -194,8 +194,12 @@ class BaseModel(object):
 
         tensorboard = keras.callbacks.TensorBoard(update_freq='epoch')
 
-        num_events = int(len(train_generator.train_data))
-        val_num = int(len(train_generator.validate_data))
+        if not train_generator.from_directory:
+            num_events = int(len(train_generator.train_data))
+            val_num = int(len(train_generator.validate_data))
+        else:
+            num_events = num_events
+            val_num = val_num
 
         self.model.fit_generator(
             generator=train_generator,
