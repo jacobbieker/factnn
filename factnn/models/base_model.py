@@ -114,9 +114,6 @@ class BaseModel(object):
         self.auc = None
         self.r2 = None
         self.model = None
-        self.train_generator = None
-        self.validate_generator = None
-        self.test_generator = None
 
         if 'epochs' in config:
             self.epochs = config['epochs']
@@ -159,21 +156,18 @@ class BaseModel(object):
         '''
         return NotImplemented
 
-    def apply(self):
+    def apply(self, test_generator):
         '''
         Apply model to given data set
         :return:
         '''
-        if isinstance(self.test_generator.items, int):
-            num_events = int(self.test_generator.items * self.test_generator.test_fraction)
-        else:
-            num_events = int(len(self.test_generator.items) * self.train_generator.test_fraction)
-        steps = int(np.floor(num_events / self.test_generator.batch_size))
+        num_events = int(len(test_generator.test_data))
+        steps = int(np.floor(num_events / test_generator.batch_size))
         truth = []
         predictions = []
         for i in range(steps):
             # Get each batch and test it
-            test_images, test_labels = next(self.test_generator)
+            test_images, test_labels = next(test_generator)
             test_predictions = self.model.predict_on_batch(test_images)
             predictions.append(test_predictions)
             truth.append(test_labels)
@@ -183,7 +177,7 @@ class BaseModel(object):
 
         return (predictions, truth)
 
-    def train(self):
+    def train(self, train_generator=None, validate_generator=None):
         '''
         Train model
         :return:
@@ -199,17 +193,18 @@ class BaseModel(object):
                                                    verbose=0, mode='auto')
 
         tensorboard = keras.callbacks.TensorBoard(update_freq='epoch')
-        num_events = int(len(self.train_generator.train_data))
-        val_num = int(len(self.train_generator.validate_data))
+
+        num_events = int(len(train_generator.train_data))
+        val_num = int(len(train_generator.validate_data))
 
         self.model.fit_generator(
-            generator=self.train_generator,
-            steps_per_epoch=int(np.floor(num_events / self.train_generator.batch_size)),
+            generator=train_generator,
+            steps_per_epoch=int(np.floor(num_events / train_generator.batch_size)),
             epochs=self.epochs,
             verbose=1,
-            validation_data=self.validate_generator,
+            validation_data=validate_generator,
             callbacks=[early_stop, model_checkpoint, tensorboard],
-            validation_steps=int(np.floor(val_num / self.validate_generator.batch_size))
+            validation_steps=int(np.floor(val_num / validate_generator.batch_size))
         )
 
     def save(self):

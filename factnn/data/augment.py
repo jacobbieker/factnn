@@ -31,6 +31,12 @@ def image_augmenter(images):
     images = np.asarray(new_images)
     return images
 
+def sum_cubes(images):
+    '''
+    Takes the 3D data cubes and sums up along the time axis, creating a 2D image for faster processing
+    :param images:
+    :return:
+    '''
 
 def common_step(batch_images, positions, labels=None, proton_images=None, augment=True, swap=True, shape=None):
     if augment:
@@ -174,12 +180,58 @@ def get_random_from_list(indicies, size, time_slice, total_slices, gamma, proton
                 return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment, swap=swap, shape=shape)
         else:
             training_data = images_one["Image"]
-            positions = sorted(positions)
-            print("\n")
-            print(positions)
             batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
             return common_step(batch_images, positions, labels=labels, augment=augment, swap=swap, shape=shape)
 
+
+
+def get_chunk_from_list(indicies, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
+                         augment=True, swap=True, shape=None, current_step=0):
+    '''
+    Gets a section of the HDF5 from the list of indicies, but not randomly,so can iterate through all options
+    This is to help with shuffling data, as currently all the ones come and go in the same
+    order
+    Does not guarantee that a given event will be used though, unlike before
+    Recommended to alternate this with the current one to make sure network has full coverage
+    This variant obtains a list of random points, so it will be lower than the other options, but should be better for
+    training
+
+    :param labels:
+    :param type_training:
+    :param proton_data:
+    :param training_data:
+    :param start:
+    :param stop:
+    :param size:
+    :param time_slice:
+    :param total_slices:
+    :return:
+    '''
+
+    # Get random positions within the start and stop sizes
+    if (current_step + 1) * size < len(indicies):
+        positions = indicies[current_step*size:(current_step+1)*size]
+    else:
+        if current_step * size < len(indicies):
+            positions = indicies[current_step * size:]
+            if len(positions) < size:
+                positions += indicies[0:(size - len(positions))]
+        else:
+            # More overflow
+            positions = indicies[0:size]
+    positions = sorted(positions)
+    with h5py.File(gamma, "r") as images_one:
+        if proton_input is not None:
+            with h5py.File(proton_input, "r") as images_two:
+                proton_data = images_two["Image"]
+                training_data = images_one["Image"]
+                batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
+                proton_images = proton_data[positions, time_slice:time_slice + total_slices, ::]
+                return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment, swap=swap, shape=shape)
+        else:
+            training_data = images_one["Image"]
+            batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
+            return common_step(batch_images, positions, labels=labels, augment=augment, swap=swap, shape=shape)
 
 def get_random_from_paths(paths, size, time_slice, total_slices, preprocessor, labels=None,
                           proton_data=None, type_training=None, augment=True, swap=True):

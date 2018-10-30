@@ -22,11 +22,12 @@ def split_data(indicies, kfolds, seeds=None):
             seeds.append(np.random.randint(0,2**32-1))
 
     # Now split into kfolds,
-    list_of_training = [[] for i in range(kfolds)]
-    list_of_validate = [[] for i in range(kfolds)]
-    list_of_testing = [[] for i in range(kfolds)]
+    list_of_training = []
+    list_of_validate = []
+    list_of_testing = []
     validate_fraction = 0.2
     indicies = shuffle(indicies)
+    indicies = np.asarray(indicies)
     # Now get KFOLD splits
     kf = KFold(n_splits=kfolds)
 
@@ -38,9 +39,6 @@ def split_data(indicies, kfolds, seeds=None):
         list_of_testing.append(indicies[test_index])
 
     # Now convert to a numpy array
-    print(len(list_of_testing))
-    print(len(list_of_validate))
-    print(len(list_of_training))
     return list_of_training, list_of_validate, list_of_testing
 
 

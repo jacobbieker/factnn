@@ -1,6 +1,8 @@
-from factnn.data.augment import get_completely_random_hdf5, get_random_hdf5_chunk, get_random_from_list
+from factnn.data.augment import get_completely_random_hdf5, get_random_hdf5_chunk, get_random_from_list, \
+    get_chunk_from_list
 from sklearn.model_selection import train_test_split
 import numpy as np
+
 
 # TODO Add k-fold cross-validation generation
 
@@ -33,6 +35,12 @@ class BaseGenerator(object):
         self.train_data = None
         self.validate_data = None
         self.test_data = None
+
+        self.validate_steps = None
+        self.validate_current_step = 0
+
+        self.test_steps = None
+        self.test_current_step = 0
 
         if 'train_data' in config:
             self.train_data = config['train_data']
@@ -83,8 +91,8 @@ class BaseGenerator(object):
         :return:
         '''
         if not self.from_directory:
-            if self.mode == "train":
-                while True:
+            while True:
+                if self.mode == "train":
                     batch_images, batch_image_label = get_random_from_list(self.train_data, size=self.batch_size,
                                                                            time_slice=self.start_slice,
                                                                            total_slices=self.number_slices,
@@ -94,28 +102,38 @@ class BaseGenerator(object):
                                                                            proton_input=self.second_input,
                                                                            shape=self.input_shape)
                     return batch_images, batch_image_label
-            elif self.mode == "validate":
-                while True:
-                    batch_images, batch_image_label = get_random_from_list(self.validate_data, size=self.batch_size,
-                                                                           time_slice=self.start_slice,
-                                                                           total_slices=self.number_slices,
-                                                                           labels=self.labels,
-                                                                           augment=self.augment,
-                                                                           gamma=self.input,
-                                                                           proton_input=self.second_input,
-                                                                           shape=self.input_shape)
+                elif self.mode == "validate":
+                    self.validate_steps = int(np.floor(len(self.validate_data) / self.batch_size))
+                    # Shouldn't be doing random for this one, should be same everytime
+                    batch_images, batch_image_label = get_chunk_from_list(self.validate_data, size=self.batch_size,
+                                                                          time_slice=self.start_slice,
+                                                                          total_slices=self.number_slices,
+                                                                          labels=self.labels,
+                                                                          augment=False,
+                                                                          gamma=self.input,
+                                                                          proton_input=self.second_input,
+                                                                          shape=self.input_shape,
+                                                                          swap=False,
+                                                                          current_step=self.validate_current_step)
+                    self.validate_current_step += 1
+                    self.validate_current_step %= self.validate_steps
                     return batch_images, batch_image_label
 
-            elif self.mode == "test":
-                while True:
-                    batch_images, batch_image_label = get_random_from_list(self.test_data, size=self.batch_size,
-                                                                           time_slice=self.start_slice,
-                                                                           total_slices=self.number_slices,
-                                                                           labels=self.labels,
-                                                                           augment=self.augment,
-                                                                           gamma=self.input,
-                                                                           proton_input=self.second_input,
-                                                                           shape=self.input_shape)
+                elif self.mode == "test":
+                    self.test_steps = int(np.floor(len(self.test_data) / self.batch_size))
+                    # Shouldn't be random or augmenting this one, should be same everytime
+                    batch_images, batch_image_label = get_chunk_from_list(self.test_data, size=self.batch_size,
+                                                                          time_slice=self.start_slice,
+                                                                          total_slices=self.number_slices,
+                                                                          labels=self.labels,
+                                                                          augment=False,
+                                                                          gamma=self.input,
+                                                                          proton_input=self.second_input,
+                                                                          shape=self.input_shape,
+                                                                          swap=False,
+                                                                          current_step=self.test_current_step)
+                    self.test_current_step += 1
+                    self.test_current_step %= self.test_steps
                     return batch_images, batch_image_label
 
     def __str__(self):

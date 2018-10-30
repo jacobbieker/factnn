@@ -23,7 +23,7 @@ gamma_preprocessor = GammaPreprocessor(config=gamma_configuration)
 if not os.path.isfile(gamma_configuration["output_file"]):
     gamma_preprocessor.create_dataset()
 
-used_positions = list(np.random.randint(0, 800000, size=200000))
+used_positions = list(np.random.choice(800000, replace=False, size=400000))
 indexes = kfold.split_data(used_positions, kfolds=5)
 print(len(indexes[0][0]))
 print(len(indexes[1][0]))
@@ -54,20 +54,20 @@ energy_model_configuration = {
     'conv_dropout': 0.1,
     'lstm_dropout': 0.2,
     'fc_dropout': 0.3,
-    'num_conv3d': 3,
+    'num_conv3d': 4,
     'kernel_conv3d': 2,
     'strides_conv3d': 1,
-    'num_lstm': 1,
+    'num_lstm': 0,
     'kernel_lstm': 2,
     'strides_lstm': 1,
     'num_fc': 2,
     'pooling': True,
-    'neurons': [32, 64, 128, 64, 32, 64],
+    'neurons': [32, 64, 128, 64, 64, 128],
     'shape': [25, 38, 38, 1],
     'start_slice': 0,
     'number_slices': 25,
     'activation': 'relu',
-    'patience': 400,
+    'patience': 10,
 }
 
 energy_model = EnergyModel(config=energy_model_configuration)
