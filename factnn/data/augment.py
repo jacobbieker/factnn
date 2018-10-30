@@ -290,14 +290,17 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
         training_data = [item[data_format["Image"]] for item in training_data]
     elif type_training == "Energy":
         labels = [item[data_format["Energy"]] for item in training_data]
+        labels = np.array(labels)
         training_data = [item[data_format["Image"]] for item in training_data]
     elif type_training == "Disp":
         labels = [euclidean_distance(item[data_format['Source_X']], item[data_format['Source_Y']],
                                      item[data_format['COG_X']], item[data_format['COG_Y']]) for item in training_data]
+        labels = np.array(labels)
         training_data = [item[data_format["Image"]] for item in training_data]
     elif type_training == "Sign":
         labels = [true_delta(item[data_format['Source_X']], item[data_format['Source_Y']],
                              item[data_format['COG_X']], item[data_format['COG_Y']]) for item in training_data]
+        labels = np.array(labels)
         training_data = [item[data_format["Image"]] for item in training_data]
 
     training_data = np.array(training_data)

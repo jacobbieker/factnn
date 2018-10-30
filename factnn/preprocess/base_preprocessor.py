@@ -52,6 +52,8 @@ class BasePreprocessor(object):
         else:
             self.output_file = None
 
+        self.init()
+
     def init(self):
         """
         Recalcs the file paths if called based on self.directories

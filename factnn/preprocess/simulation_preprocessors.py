@@ -282,7 +282,6 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                            "corsika_event_header_total_energy", "corsika_event_header_az", "run_id"])
 
     def batch_processor(self):
-        self.init()
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
             try:
@@ -378,7 +377,8 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                         # Add an associated structure that gives the name?
                         data_format = {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5, 'Az_Deg': 6,
                                        'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11, 'Pointing_Az': 12}
-                        yield self.format(data), data_format
+                        if len(data) != 0:
+                            yield self.format(data), data_format
 
                 except Exception as e:
                     print(str(e))

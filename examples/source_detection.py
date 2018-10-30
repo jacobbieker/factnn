@@ -7,8 +7,17 @@ obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "sim/gamma/"]
 gamma_dl2 = "../gamma_simulations_diffuse_facttools_dl2.hdf5"
 
-shape = [35,60]
-rebin_size = 10
+shape = [30,70]
+rebin_size = 3
+
+# Get paths from the directories
+gamma_paths = []
+for directory in gamma_dir:
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith("phs.jsonl.gz"):
+                gamma_paths.append(os.path.join(root, file))
+
 
 gamma_diffuse_configuration = {
     'directories': gamma_dir,
