@@ -105,7 +105,8 @@ class ObservationPreprocessor(BasePreprocessor):
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, source_pos_x,
                                      source_pos_y, sky_source_zd, sky_source_az, zd_deg1, az_deg1,
                                      event_num, night, run, cog_x, cog_y])
-                    yield data
+                    # need to do the format thing here
+                    yield self.format(data)
 
             except Exception as e:
                 print(str(e))

@@ -83,7 +83,7 @@ energy_model.train_generator = energy_train
 energy_model.validate_generator = energy_validate
 energy_model.test_generator = energy_test
 
-energy_model.train()
+energy_model.train(train_generator=energy_train, validate_generator=energy_validate)
 energy_model.apply()
 
 
