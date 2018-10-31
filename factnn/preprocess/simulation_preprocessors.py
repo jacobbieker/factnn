@@ -41,7 +41,7 @@ class ProtonPreprocessor(BasePreprocessor):
             except Exception as e:
                 print(str(e))
 
-    def single_processor(self):
+    def single_processor(self, normalize=False):
         while True:
             self.paths = shuffle(self.paths)
             for index, file in enumerate(self.paths):
@@ -72,7 +72,12 @@ class ProtonPreprocessor(BasePreprocessor):
                                         input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                         data_format = {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5, 'Theta': 6,}
-                        yield self.format(data), data_format
+                        data = self.format(data)
+                        if normalize:
+                            data = list(data)
+                            data[0] = self.normalize_image(data[0])
+                            data = tuple(data)
+                        yield data, data_format
 
                 except Exception as e:
                     print(str(e))
@@ -198,7 +203,7 @@ class GammaPreprocessor(BasePreprocessor):
             except Exception as e:
                 print(str(e))
 
-    def single_processor(self):
+    def single_processor(self, normalize=False):
         while True:
             self.paths = shuffle(self.paths)
             for index, file in enumerate(self.paths):
@@ -226,10 +231,15 @@ class GammaPreprocessor(BasePreprocessor):
                                 coords = pixel_index_to_grid[element[0]]
                                 for value in event_photons[index]:
                                     if self.end > value > self.start:
-                                        input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
+                                        input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 100
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
                         data_format = {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5, 'Theta': 6,}
-                        yield self.format(data), data_format
+                        data = self.format(data)
+                        if normalize:
+                            data = list(data)
+                            data[0] = self.normalize_image(data[0])
+                            data = tuple(data)
+                        yield data, data_format
 
                 except Exception as e:
                     print(str(e))
@@ -369,7 +379,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
             except Exception as e:
                 print(str(e))
 
-    def single_processor(self):
+    def single_processor(self, normalize=False):
         while True:
             self.paths = shuffle(self.paths)
             for index, file in enumerate(self.paths):
@@ -410,15 +420,20 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                     for value in event_photons[index]:
                                         if self.end > value > self.start:
                                             input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
-
                             data.append([np.fliplr(np.rot90(input_matrix, 3)), act_sky_source_zero, act_sky_source_one,
                                          cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
                                          energy, zd_deg1, az_deg1])
                         # Add an associated structure that gives the name?
                         data_format = {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5, 'Az_Deg': 6,
                                        'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11, 'Pointing_Az': 12}
+
                         if len(data) != 0:
-                            yield self.format(data), data_format
+                            data = self.format(data)
+                            if normalize:
+                                data = list(data)
+                                data[0] = self.normalize_image(data[0])
+                                data = tuple(data)
+                            yield data, data_format
 
                 except Exception as e:
                     print(str(e))

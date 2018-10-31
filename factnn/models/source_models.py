@@ -91,7 +91,7 @@ class SignModel(BaseModel):
         self.model_type = "Sign"
         self.auc = 0.0
         if self.name is None:
-            self.name = self.model_type + "_" + self.num_lstm + "LSTM_" + self.num_conv3d + "Conv3D_" + self.num_fc + \
+            self.name = self.model_type + "_" + str(self.num_lstm) + "LSTM_" + str(self.num_conv3d) + "Conv3D_" + str(self.num_fc) + \
                         "FC" + ".hdf5"
 
     def create(self):
@@ -106,12 +106,15 @@ class SignModel(BaseModel):
                                  padding='same', input_shape=self.shape, activation=self.activation,
                                  dropout=self.conv_dropout, recurrent_dropout=self.lstm_dropout,
                                  recurrent_activation='hard_sigmoid', return_sequences=True))
+            if self.pooling:
+                model.add(MaxPooling3D())
             for i in range(self.num_lstm - 1):
                 model.add(ConvLSTM2D(self.neurons[i + 1], kernel_size=self.kernel_lstm, strides=self.strides_lstm,
                                      padding='same', activation=self.activation,
                                      dropout=self.conv_dropout, recurrent_dropout=self.lstm_dropout,
                                      recurrent_activation='hard_sigmoid', return_sequences=True))
-
+                if self.pooling:
+                    model.add(MaxPooling3D())
             for i in range(self.num_conv3d):
                 model.add(Conv3D(self.neurons[self.num_lstm + i],
                                  kernel_size=self.kernel_conv3d, strides=self.strides_conv3d,
@@ -123,6 +126,8 @@ class SignModel(BaseModel):
             model.add(Conv3D(self.neurons[0], input_shape=self.shape,
                              kernel_size=self.kernel_conv3d, strides=self.strides_conv3d,
                              padding='same', activation=self.activation))
+            if self.pooling:
+                model.add(MaxPooling3D())
             for i in range(self.num_conv3d - 1):
                 model.add(Conv3D(self.neurons[i + 1],
                                  kernel_size=self.kernel_conv3d, strides=self.strides_conv3d,
@@ -137,7 +142,7 @@ class SignModel(BaseModel):
             model.add(Dropout(self.fc_dropout))
 
         # Final Dense layer
-        model.add(Dense(1, activation='softmax'))
+        model.add(Dense(2, activation='softmax'))
         model.compile(optimizer='adam', loss='categorical_crossentropy',
                       metrics=['acc'])
 

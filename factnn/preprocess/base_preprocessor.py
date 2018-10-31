@@ -157,6 +157,27 @@ class BasePreprocessor(object):
         """
         return NotImplementedError
 
+    def normalize_image(self, iamge):
+        """
+        Assumes Image in the format given by reformat, and designed for single processor
+        :param image:
+        :return:
+        """
+        # Now have the whole data image, go through an normalize each slice
+        temp_matrix = []
+        for data_cube in iamge:
+            for image_slice in data_cube:
+                # Each time slice you normalize
+                mean = np.mean(image_slice)
+                stddev = np.std(image_slice)
+                denom = np.max([stddev, 1.0/np.sqrt(image_slice.size)])
+                image_slice = (image_slice - mean) / denom
+                temp_matrix.append(image_slice)
+        # Should be normalized now
+        temp_matrix = np.array(temp_matrix)
+        temp_matrix = temp_matrix.reshape(1, temp_matrix.shape[0], temp_matrix.shape[1], temp_matrix.shape[2])
+        return temp_matrix
+
     def reformat(self, image):
         """
         Reformats image to what is needed for LSTM with time, width, height, channel order

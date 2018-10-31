@@ -1,4 +1,4 @@
-from factnn import GammaDiffusePreprocessor, DispGenerator, DispModel
+from factnn import GammaDiffusePreprocessor, DispGenerator, DispModel, SignGenerator, SignModel
 import os.path
 from factnn.utils import kfold
 
@@ -7,7 +7,7 @@ obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "sim/gamma/"]
 gamma_dl2 = "../gamma_simulations_diffuse_facttools_dl2.hdf5"
 
-shape = [0,70]
+shape = [30,70]
 rebin_size = 5
 
 # Get paths from the directories
@@ -40,7 +40,7 @@ gamma_validate_preprocessor = GammaDiffusePreprocessor(config=gamma_configuratio
 
 source_generator_configuration = {
     'seed': 1337,
-    'batch_size': 4,
+    'batch_size': 8,
     'start_slice': 0,
     'number_slices': shape[1]-shape[0],
     'mode': 'train',
@@ -51,9 +51,9 @@ source_generator_configuration = {
 }
 
 
-disp_train = DispGenerator(config=source_generator_configuration)
-disp_validate = DispGenerator(config=source_generator_configuration)
-disp_test = DispGenerator(config=source_generator_configuration)
+disp_train = SignGenerator(config=source_generator_configuration)
+disp_validate = SignGenerator(config=source_generator_configuration)
+disp_test = SignGenerator(config=source_generator_configuration)
 
 disp_train.train_preprocessor = gamma_train_preprocessor
 disp_train.validate_preprocessor = gamma_validate_preprocessor
@@ -68,23 +68,23 @@ source_model_configuration = {
     'conv_dropout': 0.2,
     'lstm_dropout': 0.3,
     'fc_dropout': 0.5,
-    'num_conv3d': 2,
-    'kernel_conv3d': 2,
+    'num_conv3d': 0,
+    'kernel_conv3d': 5,
     'strides_conv3d': 1,
-    'num_lstm': 1,
-    'kernel_lstm': 2,
+    'num_lstm': 4,
+    'kernel_lstm': 3,
     'strides_lstm': 1,
-    'num_fc': 2,
+    'num_fc': 1,
     'pooling': True,
-    'neurons': [16, 16, 32, 24, 36],
+    'neurons': [16, 16, 16, 16, 32],
     'shape': [shape[1]-shape[0], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
     'start_slice': 0,
-    'number_slices': 38,
+    'number_slices': shape[1]-shape[0],
     'activation': 'relu',
 }
 
-disp_model = DispModel(config=source_model_configuration)
-
+disp_model = SignModel(config=source_model_configuration)
+print(disp_model)
 """
 
 Now run the models with the generators!
@@ -95,4 +95,6 @@ disp_model.train_generator = disp_train
 disp_model.validate_generator = disp_validate
 disp_model.test_generator = disp_test
 
-disp_model.train(train_generator=disp_train, validate_generator=disp_validate, num_events=gamma_train_preprocessor.count_events(), val_num=gamma_validate_preprocessor.count_events())
+# This is done as an approx of the actual number of events, but is a ton faster
+from examples.open_crab_sample_constants import NUM_EVENTS_DIFFUSE
+disp_model.train(train_generator=disp_train, validate_generator=disp_validate, num_events=int(NUM_EVENTS_DIFFUSE*0.8*0.8), val_num=int(NUM_EVENTS_DIFFUSE*0.8*0.2))

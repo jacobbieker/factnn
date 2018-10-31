@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.utils import shuffle
 import h5py
+from keras.utils import to_categorical
 
 
 def image_augmenter(images):
@@ -251,6 +252,14 @@ def true_delta(cog_y, source_y, cog_x, source_x):
         cog_x - source_x
     )
 
+def true_sign(source_x, source_y, cog_x, cog_y, delta):
+
+    true_delta = np.arctan2(
+        cog_y - source_y,
+        cog_x - source_x,
+        )
+    true_sign = np.sign(np.abs(delta - true_delta) - np.pi / 2)
+    return true_sign
 
 def get_random_from_paths(preprocessor, size, time_slice, total_slices,
                           proton_preprocessor=None, type_training=None, augment=True, swap=True, shape=None):
@@ -298,9 +307,17 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
         labels = np.array(labels)
         training_data = [item[data_format["Image"]] for item in training_data]
     elif type_training == "Sign":
-        labels = [true_delta(item[data_format['Source_X']], item[data_format['Source_Y']],
-                             item[data_format['COG_X']], item[data_format['COG_Y']]) for item in training_data]
+        labels = [true_sign(item[data_format['Source_X']], item[data_format['Source_Y']],
+                             item[data_format['COG_X']], item[data_format['COG_Y']], item[data_format['Delta']]) for item in training_data]
         labels = np.array(labels)
+        # Create own categorical one since only two sides anyway
+        new_labels = np.zeros((labels.shape[0],2))
+        for index, element in enumerate(labels):
+            if element < 0:
+                new_labels[index][0] = 1.
+            else:
+                new_labels[index][1] = 1.
+        labels = new_labels
         training_data = [item[data_format["Image"]] for item in training_data]
 
     training_data = np.array(training_data)

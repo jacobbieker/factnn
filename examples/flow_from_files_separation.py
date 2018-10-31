@@ -7,8 +7,8 @@ obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "sim/gamma/"]
 proton_dir = [base_dir + "sim/proton/"]
 
-shape = [25,90]
-rebin_size = 3
+shape = [30,70]
+rebin_size = 5
 
 # Get paths from the directories
 gamma_paths = []
@@ -112,5 +112,7 @@ Now run the models with the generators!
 separation_model.train_generator = separation_train
 separation_model.validate_generator = separation_validate
 
-separation_model.train(train_generator=separation_train, validate_generator=separation_validate, val_num=int(150000*0.8*0.2), num_events=int(150000*0.8*0.8))
+from examples.open_crab_sample_constants import NUM_EVENTS_GAMMA, NUM_EVENTS_PROTON
+
+separation_model.train(train_generator=separation_train, validate_generator=separation_validate, val_num=int(NUM_EVENTS_PROTON*0.8*0.2), num_events=int(NUM_EVENTS_PROTON*0.8*0.8))
 
