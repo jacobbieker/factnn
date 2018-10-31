@@ -1,13 +1,13 @@
 from factnn import GammaPreprocessor, ProtonPreprocessor, SeparationGenerator, SeparationModel
 import os.path
-from factnn.data import kfold
+from factnn.utils import kfold
 
 base_dir = "../ihp-pc41.ethz.ch/public/phs/"
 obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "sim/gamma/"]
 proton_dir = [base_dir + "sim/proton/"]
 
-shape = [30,70]
+shape = [25,90]
 rebin_size = 3
 
 # Get paths from the directories
@@ -60,14 +60,14 @@ gamma_validate_preprocessor = GammaPreprocessor(config=gamma_configuration)
 
 separation_generator_configuration = {
     'seed': 1337,
-    'batch_size': 4,
+    'batch_size': 8,
     'start_slice': 0,
-    'number_slices': 38,
+    'number_slices': shape[1] - shape[0],
     'mode': 'train',
     'chunked': False,
     'augment': True,
     'from_directory': True,
-    'input_shape': [-1, gamma_train_preprocessor.shape[3]-2, gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
+    'input_shape': [-1, gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
 }
 
 separation_validate = SeparationGenerator(config=separation_generator_configuration)
@@ -85,18 +85,18 @@ separation_model_configuration = {
     'conv_dropout': 0.1,
     'lstm_dropout': 0.2,
     'fc_dropout': 0.4,
-    'num_conv3d': 3,
-    'kernel_conv3d': 2,
+    'num_conv3d': 0,
+    'kernel_conv3d': 3,
     'strides_conv3d': 1,
-    'num_lstm': 0,
-    'kernel_lstm': 2,
-    'strides_lstm': 1,
+    'num_lstm': 3,
+    'kernel_lstm': 5,
+    'strides_lstm': 2,
     'num_fc': 2,
     'pooling': True,
-    'neurons': [16, 16, 16, 8, 32],
-    'shape': [gamma_train_preprocessor.shape[3]-2, gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
+    'neurons': [8, 16, 32, 8, 16],
+    'shape': [gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
     'start_slice': 0,
-    'number_slices': 25,
+    'number_slices': shape[1] - shape[0],
     'activation': 'relu',
 }
 
@@ -112,5 +112,5 @@ Now run the models with the generators!
 separation_model.train_generator = separation_train
 separation_model.validate_generator = separation_validate
 
-separation_model.train(train_generator=separation_train, validate_generator=separation_validate)
+separation_model.train(train_generator=separation_train, validate_generator=separation_validate, val_num=int(150000*0.8*0.2), num_events=int(150000*0.8*0.8))
 

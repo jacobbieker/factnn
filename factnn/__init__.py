@@ -6,4 +6,4 @@ from factnn.preprocess.observation_preprocessors import ObservationPreprocessor
 from factnn.data.separation_generators import SeparationGenerator
 from factnn.data.energy_generators import EnergyGenerator
 from factnn.data.source_generators import DispGenerator, SignGenerator
-from factnn.plotting import plotting
+from factnn.utils import plotting

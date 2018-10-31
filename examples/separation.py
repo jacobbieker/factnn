@@ -1,6 +1,6 @@
 from factnn import GammaPreprocessor, ProtonPreprocessor, SeparationGenerator, SeparationModel
 import os.path
-from factnn.data import kfold
+from factnn.utils import kfold
 
 base_dir = "../ihp-pc41.ethz.ch/public/phs/"
 obs_dir = [base_dir + "public/"]
@@ -35,7 +35,7 @@ if not os.path.isfile(gamma_configuration["output_file"]):
     gamma_preprocessor.create_dataset()
 
 
-indexes = kfold.split_data(range(0,20000), kfolds=5)
+indexes = kfold.split_data(range(0, 20000), kfolds=5)
 print(len(indexes[0][0]))
 print(len(indexes[1][0]))
 print(len(indexes[2][0]))

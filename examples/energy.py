@@ -1,6 +1,6 @@
 from factnn import GammaPreprocessor, EnergyGenerator, EnergyModel
 import os.path
-from factnn.data import kfold
+from factnn.utils import kfold
 import numpy as np
 
 base_dir = "../ihp-pc41.ethz.ch/public/phs/"

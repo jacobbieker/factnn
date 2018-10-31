@@ -52,6 +52,8 @@ class BasePreprocessor(object):
         else:
             self.output_file = None
 
+        self.num_events = -1
+
         self.init()
 
     def init(self):
@@ -147,6 +149,13 @@ class BasePreprocessor(object):
 
     def single_processor(self):
         return NotImplemented
+
+    def count_events(self):
+        """
+        Ideally to count the number of events in the files for the streaming data
+        :return:
+        """
+        return NotImplementedError
 
     def reformat(self, image):
         """

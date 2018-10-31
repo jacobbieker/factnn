@@ -1,13 +1,12 @@
 from factnn import GammaPreprocessor, EnergyGenerator, EnergyModel
 import os.path
-from factnn.data import kfold
-import numpy as np
+from factnn.utils import kfold
 
 base_dir = "../ihp-pc41.ethz.ch/public/phs/"
 obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "sim/gamma/"]
 
-shape = [15,80]
+shape = [0,70]
 rebin_size = 10
 
 # Get paths from the directories
@@ -70,7 +69,7 @@ energy_model_configuration = {
     'strides_lstm': 1,
     'num_fc': 2,
     'pooling': True,
-    'neurons': [32, 64, 128, 64, 512],
+    'neurons': [8, 16, 32, 64, 128, 256],
     'shape': [gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
     'start_slice': 0,
     'number_slices': 25,
@@ -91,6 +90,6 @@ energy_model.train_generator = energy_train
 energy_model.validate_generator = energy_validate
 energy_model.test_generator = energy_test
 
-energy_model.train(train_generator=energy_train, validate_generator=energy_validate, num_events=int(400000*0.8*0.8), val_num=int(400000*0.8*0.2))
+energy_model.train(train_generator=energy_train, validate_generator=energy_validate, num_events=gamma_train_preprocessor.count_events(), val_num=gamma_validate_preprocessor.count_events())
 
 

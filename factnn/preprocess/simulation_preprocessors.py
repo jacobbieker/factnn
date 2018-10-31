@@ -77,6 +77,26 @@ class ProtonPreprocessor(BasePreprocessor):
                 except Exception as e:
                     print(str(e))
 
+    def count_events(self):
+        if self.num_events < 0:
+            count = 0
+            for index, file in enumerate(self.paths):
+                mc_truth = file.split(".phs")[0] + ".ch.gz"
+                try:
+                    sim_reader = ps.SimulationReader(
+                        photon_stream_path=file,
+                        mmcs_corsika_path=mc_truth
+                    )
+                    count += sum(1 for _ in sim_reader)
+                except Exception as e:
+                    print(str(e))
+            print(count)
+            print('\n')
+            self.num_events = count
+            return count
+        else:
+            return self.num_events
+
     def format(self, batch):
         pic, energy, zd_deg, az_deg, act_phi, act_theta = zip(*batch)
         pic = self.reformat(np.array(pic))
@@ -213,6 +233,26 @@ class GammaPreprocessor(BasePreprocessor):
 
                 except Exception as e:
                     print(str(e))
+
+    def count_events(self):
+        if self.num_events < 0:
+            count = 0
+            for index, file in enumerate(self.paths):
+                mc_truth = file.split(".phs")[0] + ".ch.gz"
+                try:
+                    sim_reader = ps.SimulationReader(
+                        photon_stream_path=file,
+                        mmcs_corsika_path=mc_truth
+                    )
+                    count += sum(1 for _ in sim_reader)
+                except Exception as e:
+                    print(str(e))
+            print(count)
+            print('\n')
+            self.num_events = count
+            return count
+        else:
+            return self.num_events
 
     def format(self, batch):
         pic, energy, zd_deg, az_deg, act_phi, act_theta = zip(*batch)
@@ -382,6 +422,29 @@ class GammaDiffusePreprocessor(BasePreprocessor):
 
                 except Exception as e:
                     print(str(e))
+
+    def count_events(self):
+        if self.num_events < 0:
+            count = 0
+            for index, file in enumerate(self.paths):
+                mc_truth = file.split(".phs")[0] + ".ch.gz"
+                try:
+                    sim_reader = ps.SimulationReader(
+                        photon_stream_path=file,
+                        mmcs_corsika_path=mc_truth
+                    )
+                    for event in sim_reader:
+                        df_event = self.dl2_file.loc[(np.isclose(self.dl2_file['corsika_event_header_total_energy'],
+                                                                 event.simulation_truth.air_shower.energy)) &
+                                                     (self.dl2_file['run_id'] == event.simulation_truth.run)]
+                        if not df_event.empty:
+                            count += 1
+                except Exception as e:
+                    print(str(e))
+            self.num_events = count
+            return count
+        else:
+            return self.num_events
 
     def format(self, batch):
         pic, act_sky_source_zero, act_sky_source_one, cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta, energy, zd_deg1, az_deg1 = zip(

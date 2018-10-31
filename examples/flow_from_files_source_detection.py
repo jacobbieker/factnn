@@ -1,14 +1,14 @@
-from factnn import GammaDiffusePreprocessor, DispGenerator, DispModel, SignGenerator, SignModel
+from factnn import GammaDiffusePreprocessor, DispGenerator, DispModel
 import os.path
-from factnn.data import kfold
+from factnn.utils import kfold
 
 base_dir = "../ihp-pc41.ethz.ch/public/phs/"
 obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "sim/gamma/"]
 gamma_dl2 = "../gamma_simulations_diffuse_facttools_dl2.hdf5"
 
-shape = [30,70]
-rebin_size = 2
+shape = [0,70]
+rebin_size = 5
 
 # Get paths from the directories
 gamma_paths = []
@@ -42,12 +42,12 @@ source_generator_configuration = {
     'seed': 1337,
     'batch_size': 4,
     'start_slice': 0,
-    'number_slices': 38,
+    'number_slices': shape[1]-shape[0],
     'mode': 'train',
     'chunked': False,
     'augment': True,
     'from_directory': True,
-    'input_shape': [-1, 38, gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
+    'input_shape': [-1, shape[1]-shape[0], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
 }
 
 
@@ -77,7 +77,7 @@ source_model_configuration = {
     'num_fc': 2,
     'pooling': True,
     'neurons': [16, 16, 32, 24, 36],
-    'shape': [38, gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
+    'shape': [shape[1]-shape[0], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
     'start_slice': 0,
     'number_slices': 38,
     'activation': 'relu',
@@ -95,4 +95,4 @@ disp_model.train_generator = disp_train
 disp_model.validate_generator = disp_validate
 disp_model.test_generator = disp_test
 
-disp_model.train(train_generator=disp_train, validate_generator=disp_validate, num_events=int(550000*0.8*0.8), val_num=int(550000*0.8*0.2))
+disp_model.train(train_generator=disp_train, validate_generator=disp_validate, num_events=gamma_train_preprocessor.count_events(), val_num=gamma_validate_preprocessor.count_events())
