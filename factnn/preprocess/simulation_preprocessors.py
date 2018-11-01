@@ -41,7 +41,7 @@ class ProtonPreprocessor(BasePreprocessor):
             except Exception as e:
                 print(str(e))
 
-    def single_processor(self, normalize=False):
+    def single_processor(self, normalize=False, collapse_time=False, final_slices=5, as_channels=False):
         while True:
             self.paths = shuffle(self.paths)
             for index, file in enumerate(self.paths):
@@ -76,6 +76,10 @@ class ProtonPreprocessor(BasePreprocessor):
                         if normalize:
                             data = list(data)
                             data[0] = self.normalize_image(data[0])
+                            data = tuple(data)
+                        if collapse_time:
+                            data = list(data)
+                            data[0] = self.collapse_image_time(data[0], final_slices, as_channels)
                             data = tuple(data)
                         yield data, data_format
 
@@ -203,7 +207,7 @@ class GammaPreprocessor(BasePreprocessor):
             except Exception as e:
                 print(str(e))
 
-    def single_processor(self, normalize=False):
+    def single_processor(self, normalize=False, collapse_time=False, final_slices=5, as_channels=False):
         while True:
             self.paths = shuffle(self.paths)
             for index, file in enumerate(self.paths):
@@ -238,6 +242,10 @@ class GammaPreprocessor(BasePreprocessor):
                         if normalize:
                             data = list(data)
                             data[0] = self.normalize_image(data[0])
+                            data = tuple(data)
+                        if collapse_time:
+                            data = list(data)
+                            data[0] = self.collapse_image_time(data[0], final_slices, as_channels)
                             data = tuple(data)
                         yield data, data_format
 
@@ -379,7 +387,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
             except Exception as e:
                 print(str(e))
 
-    def single_processor(self, normalize=False):
+    def single_processor(self, normalize=False, collapse_time=False, final_slices=5, as_channels=False):
         while True:
             self.paths = shuffle(self.paths)
             for index, file in enumerate(self.paths):
@@ -432,6 +440,10 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                             if normalize:
                                 data = list(data)
                                 data[0] = self.normalize_image(data[0])
+                                data = tuple(data)
+                            if collapse_time:
+                                data = list(data)
+                                data[0] = self.collapse_image_time(data[0], final_slices, as_channels)
                                 data = tuple(data)
                             yield data, data_format
 

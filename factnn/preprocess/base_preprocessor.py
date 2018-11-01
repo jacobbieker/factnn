@@ -54,6 +54,11 @@ class BasePreprocessor(object):
 
         self.num_events = -1
 
+        if 'as_channels' in config:
+            self.as_channels = config['as_channels']
+        else:
+            self.as_channels = False
+
         self.init()
 
     def init(self):
@@ -147,7 +152,7 @@ class BasePreprocessor(object):
     def batch_processor(self):
         return NotImplemented
 
-    def single_processor(self):
+    def single_processor(self, normalize=False, collapse_time=False, final_slices=5):
         return NotImplemented
 
     def count_events(self):
@@ -157,7 +162,7 @@ class BasePreprocessor(object):
         """
         return NotImplementedError
 
-    def normalize_image(self, iamge):
+    def normalize_image(self, image):
         """
         Assumes Image in the format given by reformat, and designed for single processor
         :param image:
@@ -165,7 +170,7 @@ class BasePreprocessor(object):
         """
         # Now have the whole data image, go through an normalize each slice
         temp_matrix = []
-        for data_cube in iamge:
+        for data_cube in image:
             for image_slice in data_cube:
                 # Each time slice you normalize
                 mean = np.mean(image_slice)
@@ -176,6 +181,44 @@ class BasePreprocessor(object):
         # Should be normalized now
         temp_matrix = np.array(temp_matrix)
         temp_matrix = temp_matrix.reshape(1, temp_matrix.shape[0], temp_matrix.shape[1], temp_matrix.shape[2])
+        return temp_matrix
+
+    def collapse_image_time(self, image, final_slices, as_channels=False):
+        """
+        Partially flattens an image cube to a smaller set, e.g. (1,40,75,75) with final_slices=3 becomes
+        (1,3,75,75) with each new slice being a sum of the fraction of slices of the whole
+
+        If as_channels is True, then the time_slices are moved to the channels, so the previous example
+        would end up with the final shape (1,75,75,3)
+
+        :param image: The image in (1, time_slices, width, height, channel) order
+        :param final_slices: Number of slices to use
+        :param as_channels: Boolean, if the time dimension should be moved to the channels
+        :return: Converted image cube with the proper dimensions
+        """
+        temp_matrix = []
+        num_slices_per_final_slice = int(np.floor(image.shape[1] / final_slices))
+        for data_cube in image:
+            # Need to now sum up along each smaller section
+            for time_slice in range(final_slices):
+                if time_slice < (final_slices - 1):
+                    image_slice = data_cube[time_slice*num_slices_per_final_slice:((time_slice+1)*num_slices_per_final_slice), ::]
+                else:
+                    # To use all the available slices
+                    image_slice = data_cube[time_slice*num_slices_per_final_slice:, ::]
+                image_slice = np.sum(image_slice, axis=0)
+                temp_matrix.append(image_slice)
+        # Should be normalized now
+        temp_matrix = np.array(temp_matrix)
+        # Now to convert to chennel format if needed
+        if as_channels:
+            temp_matrix = np.swapaxes(temp_matrix, 0, 2)
+            # Second one is to keep the order of the width/height
+            temp_matrix = np.swapaxes(temp_matrix, 0, 1)
+            temp_matrix = temp_matrix.reshape(1, temp_matrix.shape[0], temp_matrix.shape[1], temp_matrix.shape[2])
+        else:
+            # Else keep same format as before
+            temp_matrix = temp_matrix.reshape(1, temp_matrix.shape[0], temp_matrix.shape[1], temp_matrix.shape[2])
         return temp_matrix
 
     def reformat(self, image):

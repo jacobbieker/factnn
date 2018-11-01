@@ -54,6 +54,11 @@ class BaseGenerator(object):
         self.proton_validate_preprocessor = None
         self.proton_test_preprocessor = None
 
+        if 'as_channels' in config:
+            self.as_channels = config['as_channels']
+        else:
+            self.as_channels = False
+
         if 'train_data' in config:
             self.train_data = config['train_data']
 
@@ -157,7 +162,8 @@ class BaseGenerator(object):
                                                                         augment=self.augment,
                                                                         shape=self.input_shape,
                                                                         type_training=self.type_gen,
-                                                                        proton_preprocessor=self.proton_train_preprocessor)
+                                                                        proton_preprocessor=self.proton_train_preprocessor,
+                                                                        as_channels=self.as_channels)
                 return batch_images, batch_image_label
 
             elif self.mode == "validate":
@@ -169,7 +175,8 @@ class BaseGenerator(object):
                                                                         shape=self.input_shape,
                                                                         swap=False,
                                                                         type_training=self.type_gen,
-                                                                        proton_preprocessor=self.proton_validate_preprocessor)
+                                                                        proton_preprocessor=self.proton_validate_preprocessor,
+                                                                        as_channels=self.as_channels)
                 return batch_images, batch_image_label
             elif self.mode == "test":
                 batch_images, batch_image_label = get_random_from_paths(preprocessor=self.test_preprocessor,
@@ -180,7 +187,8 @@ class BaseGenerator(object):
                                                                         shape=self.input_shape,
                                                                         swap=False,
                                                                         type_training=self.type_gen,
-                                                                        proton_preprocessor=self.proton_test_preprocessor)
+                                                                        proton_preprocessor=self.proton_test_preprocessor,
+                                                                        as_channels=self.as_channels)
                 return batch_images, batch_image_label
 
     def __str__(self):

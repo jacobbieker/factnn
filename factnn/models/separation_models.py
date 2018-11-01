@@ -71,5 +71,8 @@ class SeparationModel(BaseModel):
 
         self.model = model
 
-    def save(self):
-        self.model.save(self.name)
+    def save(self, name=None):
+        if name is None:
+            self.model.save(self.name)
+        else:
+            self.model.save(name)

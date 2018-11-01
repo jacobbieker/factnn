@@ -4,7 +4,7 @@ import h5py
 from keras.utils import to_categorical
 
 
-def image_augmenter(images):
+def image_augmenter(images, as_channels=False):
     """
     Augment images by rotating and flipping input images randomly
     Does this on the 2nd and 3rd axis of each 4D image stack
@@ -16,40 +16,46 @@ def image_augmenter(images):
         vert_val = np.random.rand()
         if vert_val < 0.5:
             # Flip the image vertically
-            image = np.flip(image, 1)
+            if not as_channels:
+                image = np.flip(image, 1)
+            else:
+                image = np.flip(image, 0)
         horz_val = np.random.rand()
         if horz_val < 0.5:
             # Flip horizontally
-            image = np.flip(image, 2)
+            if not as_channels:
+                image = np.flip(image, 2)
+            else:
+                image = np.flip(image, 1)
         rot_val = np.random.rand()
         if rot_val < 0.3:
             # Rotate 90 degrees
-            image = np.rot90(image, 1, axes=(1, 2))
+            if not as_channels:
+                image = np.rot90(image, 1, axes=(1, 2))
+            else:
+                image = np.rot90(image, 1, axes=(0, 1))
         elif rot_val > 0.7:
             # Rotate 270 degrees
-            image = np.rot90(image, 3, axes=(1, 2))
+            if not as_channels:
+                image = np.rot90(image, 3, axes=(1, 2))
+            else:
+                image = np.rot90(image, 3, axes=(0, 1))
 
         new_images.append(image)
     images = np.asarray(new_images)
     return images
 
 
-def sum_cubes(images):
-    '''
-    Takes the 3D data cubes and sums up along the time axis, creating a 2D image for faster processing
-    :param images:
-    :return:
-    '''
-
-
-def common_step(batch_images, positions=None, labels=None, proton_images=None, augment=True, swap=True, shape=None):
+def common_step(batch_images, positions=None, labels=None, proton_images=None, augment=True, swap=True, shape=None,
+                as_channels=False):
     if augment:
-        batch_images = image_augmenter(batch_images)
+        batch_images = image_augmenter(batch_images, as_channels)
     if proton_images is not None:
         if augment:
-            proton_images = image_augmenter(proton_images)
-        batch_images = batch_images.reshape(shape)
-        proton_images = proton_images.reshape(shape)
+            proton_images = image_augmenter(proton_images, as_channels)
+        if not as_channels:
+            batch_images = batch_images.reshape(shape)
+            proton_images = proton_images.reshape(shape)
         labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
         batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
         batch_images = np.concatenate([batch_images, proton_images], axis=0)
@@ -60,7 +66,8 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
         if positions is not None:
             labels = labels[positions]
         batch_image_label = labels
-        batch_images = batch_images.reshape(shape)
+        if not as_channels:
+            batch_images = batch_images.reshape(shape)
         if swap:
             batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
         return batch_images, batch_image_label
@@ -252,17 +259,19 @@ def true_delta(cog_y, source_y, cog_x, source_x):
         cog_x - source_x
     )
 
-def true_sign(source_x, source_y, cog_x, cog_y, delta):
 
+def true_sign(source_x, source_y, cog_x, cog_y, delta):
     true_delta = np.arctan2(
         cog_y - source_y,
         cog_x - source_x,
-        )
+    )
     true_sign = np.sign(np.abs(delta - true_delta) - np.pi / 2)
     return true_sign
 
+
 def get_random_from_paths(preprocessor, size, time_slice, total_slices,
-                          proton_preprocessor=None, type_training=None, augment=True, swap=True, shape=None):
+                          proton_preprocessor=None, type_training=None, augment=True, swap=True, shape=None,
+                          as_channels=False, final_slices=5):
     '''
     Gets a random part of the HDF5 database within start and stop endpoints
     This is to help with shuffling data, as currently all the ones come and go in the same
@@ -292,7 +301,10 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
     data_format = {}
     for i in range(size):
         # Call processor size times to get the correct number for the batch
-        processed_data, data_format = next(preprocessor.single_processor())
+        if as_channels:
+            processed_data, data_format = next(preprocessor.single_processor(final_slices=final_slices, as_channels=as_channels, collapse_time=True))
+        else:
+            processed_data, data_format = next(preprocessor.single_processor())
         training_data.append(processed_data)
     # Use the type of data to determine what to keep
     if type_training == "Separation":
@@ -308,10 +320,11 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
         training_data = [item[data_format["Image"]] for item in training_data]
     elif type_training == "Sign":
         labels = [true_sign(item[data_format['Source_X']], item[data_format['Source_Y']],
-                             item[data_format['COG_X']], item[data_format['COG_Y']], item[data_format['Delta']]) for item in training_data]
+                            item[data_format['COG_X']], item[data_format['COG_Y']], item[data_format['Delta']]) for item
+                  in training_data]
         labels = np.array(labels)
         # Create own categorical one since only two sides anyway
-        new_labels = np.zeros((labels.shape[0],2))
+        new_labels = np.zeros((labels.shape[0], 2))
         for index, element in enumerate(labels):
             if element < 0:
                 new_labels[index][0] = 1.
@@ -321,21 +334,32 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
         training_data = [item[data_format["Image"]] for item in training_data]
 
     training_data = np.array(training_data)
-    training_data = training_data.reshape(-1,training_data.shape[2], training_data.shape[3], training_data.shape[4])
+    training_data = training_data.reshape(-1, training_data.shape[2], training_data.shape[3], training_data.shape[4])
 
     if proton_preprocessor is not None:
         proton_data = []
         for i in range(size):
             # Call processor size times to get the correct number for the batch
-            processed_data, data_format = next(proton_preprocessor.single_processor())
+            if as_channels:
+                processed_data, data_format = next(proton_preprocessor.single_processor(final_slices=final_slices, as_channels=as_channels, collapse_time=True))
+            else:
+                processed_data, data_format = next(proton_preprocessor.single_processor())
             proton_data.append(processed_data)
         proton_data = [item[data_format["Image"]] for item in proton_data]
         proton_data = np.array(proton_data)
         proton_data = proton_data.reshape(-1, proton_data.shape[2], proton_data.shape[3], proton_data.shape[4])
-        batch_images = training_data[::, time_slice:time_slice + total_slices, ::]
-        proton_images = proton_data[::, time_slice:time_slice + total_slices, ::]
+        if not as_channels:
+            batch_images = training_data[::, time_slice:time_slice + total_slices, ::]
+            proton_images = proton_data[::, time_slice:time_slice + total_slices, ::]
+        else:
+            batch_images = training_data
+            proton_images = proton_data
         return common_step(batch_images, positions=None, labels=labels, proton_images=proton_images, augment=augment,
-                           swap=swap, shape=shape)
+                           swap=swap, shape=shape, as_channels=as_channels)
     else:
-        batch_images = training_data[::, time_slice:time_slice + total_slices, ::]
-        return common_step(batch_images, positions=None, labels=labels, augment=augment, swap=swap, shape=shape)
+        if not as_channels:
+            batch_images = training_data[::, time_slice:time_slice + total_slices, ::]
+        else:
+            batch_images = training_data
+        return common_step(batch_images, positions=None, labels=labels, augment=augment, swap=swap, shape=shape,
+                           as_channels=as_channels)

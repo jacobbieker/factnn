@@ -38,14 +38,16 @@ gamma_configuration = {
     'rebin_size': rebin_size,
     'output_file': "../gamma.hdf5",
     'shape': shape,
-    'paths': gamma_indexes[0][0]
+    'paths': gamma_indexes[0][0],
+    'as_channels': True
 }
 
 proton_configuration = {
     'rebin_size': rebin_size,
     'output_file': "../proton.hdf5",
     'shape': shape,
-    'paths': proton_indexes[0][0]
+    'paths': proton_indexes[0][0],
+    'as_channels': True
 }
 
 
@@ -69,6 +71,7 @@ separation_generator_configuration = {
     'augment': True,
     'from_directory': True,
     'input_shape': [-1, gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
+    'as_channels': True,
 }
 
 separation_validate = SeparationGenerator(config=separation_generator_configuration)
@@ -87,72 +90,68 @@ separation_validate.proton_validate_preprocessor = proton_validate_preprocessor
 separation_validate.train_preprocessor = gamma_train_preprocessor
 separation_validate.validate_preprocessor = gamma_validate_preprocessor
 
-separation_model_configuration = {
-    'conv_dropout': 0.4,
-    'lstm_dropout': 0.5,
-    'fc_dropout': 0.5,
-    'num_conv3d': 0,
-    'kernel_conv3d': 3,
-    'strides_conv3d': 1,
-    'num_lstm': 3,
-    'kernel_lstm': 5,
-    'strides_lstm': 2,
-    'num_fc': 2,
-    'pooling': True,
-    'neurons': [16, 16, 16, 16, 16],
-    'shape': [gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
-    'start_slice': 0,
-    'number_slices': shape[1] - shape[0],
-    'activation': 'relu',
-}
+from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D, Conv2D, MaxPooling2D
+from keras.models import Sequential
+import keras
+import numpy as np
 
-separation_model = SeparationModel(config=separation_model_configuration)
+separation_model = Sequential()
 
-print(separation_model)
+#separation_model.add(ConvLSTM2D(32, kernel_size=3, strides=2,
+#                     padding='same', input_shape=[gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
+#                     activation='relu',
+#                     dropout=0.3, recurrent_dropout=0.5,
+#                     return_sequences=True))
+separation_model.add(Conv2D(32, input_shape=[gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 5],
+                            kernel_size=1, strides=1,
+                            padding='same', activation='relu'))
+separation_model.add(Conv2D(32,
+                            kernel_size=3, strides=1,
+                            padding='same', activation='relu'))
+separation_model.add(MaxPooling2D())
+separation_model.add(Dropout(0.4))
+separation_model.add(Flatten())
+separation_model.add(Dense(32))
+separation_model.add(Dropout(0.5))
+separation_model.add(Dense(64))
+separation_model.add(Dense(2, activation='softmax'))
+separation_model.compile(optimizer='adam', loss='categorical_crossentropy',
+              metrics=['acc'])
+
+separation_model.summary()
+model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_test.hdf5",
+                                                   monitor='val_loss',
+                                                   verbose=0,
+                                                   save_best_only=True,
+                                                   save_weights_only=False,
+                                                   mode='auto', period=1)
+early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
+                                           patience=10,
+                                           verbose=0, mode='auto')
+
+tensorboard = keras.callbacks.TensorBoard(update_freq='epoch')
+
+from examples.open_crab_sample_constants import NUM_EVENTS_GAMMA, NUM_EVENTS_PROTON
+
+event_totals = 0.8*NUM_EVENTS_PROTON
+train_num = event_totals * 0.8
+val_num = event_totals * 0.2
+
+separation_model.fit_generator(
+    generator=separation_train,
+    steps_per_epoch=int(np.floor(train_num / separation_train.batch_size)),
+    epochs=50,
+    verbose=1,
+    validation_data=separation_validate,
+    callbacks=[early_stop, model_checkpoint, tensorboard],
+    validation_steps=int(np.floor(val_num / separation_validate.batch_size))
+)
+
 
 # Save the base model to use for the kfold validation
-separation_model.save("Base_Separation.hdf5")
-separation_model.model.save_weights("Base_Separation_weights.hdf5")
 """
 
 Now run the models with the generators!
 
 """
 
-separation_model.train_generator = separation_train
-separation_model.validate_generator = separation_validate
-
-from examples.open_crab_sample_constants import NUM_EVENTS_GAMMA, NUM_EVENTS_PROTON
-
-for fold in range(5):
-    print(fold)
-    # Now change preprocessors
-    gamma_configuration['paths'] = gamma_indexes[0][fold]
-    proton_configuration['paths'] = proton_indexes[0][fold]
-    proton_train_preprocessor = ProtonPreprocessor(config=proton_configuration)
-    gamma_train_preprocessor = GammaPreprocessor(config=gamma_configuration)
-
-    gamma_configuration['paths'] = gamma_indexes[1][fold]
-    proton_configuration['paths'] = proton_indexes[1][fold]
-
-    proton_validate_preprocessor = ProtonPreprocessor(config=proton_configuration)
-    gamma_validate_preprocessor = GammaPreprocessor(config=gamma_configuration)
-
-    separation_validate = SeparationGenerator(config=separation_generator_configuration)
-    separation_train = SeparationGenerator(config=separation_generator_configuration)
-
-    separation_validate.mode = "validate"
-    separation_train.mode = "train"
-
-    separation_train.proton_train_preprocessor = proton_train_preprocessor
-    separation_train.proton_validate_preprocessor = proton_validate_preprocessor
-    separation_train.train_preprocessor = gamma_train_preprocessor
-    separation_train.validate_preprocessor = gamma_validate_preprocessor
-
-    separation_validate.proton_train_preprocessor = proton_train_preprocessor
-    separation_validate.proton_validate_preprocessor = proton_validate_preprocessor
-    separation_validate.train_preprocessor = gamma_train_preprocessor
-    separation_validate.validate_preprocessor = gamma_validate_preprocessor
-    separation_model.model.load_weights("Base_Separation_weights.hdf5")
-    separation_model.train(train_generator=separation_train, validate_generator=separation_validate, val_num=int(NUM_EVENTS_PROTON*0.8*0.2), num_events=int(NUM_EVENTS_PROTON*0.8*0.8))
-    separation_model.save("fold_" + str(fold) + "_separation.hdf5")
