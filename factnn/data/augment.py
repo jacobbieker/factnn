@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.utils import shuffle
 import h5py
-from keras.utils import to_categorical
 
 
 def image_augmenter(images, as_channels=False):
@@ -302,9 +301,9 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
     for i in range(size):
         # Call processor size times to get the correct number for the batch
         if as_channels:
-            processed_data, data_format = next(preprocessor.single_processor(final_slices=final_slices, as_channels=as_channels, collapse_time=True))
+            processed_data, data_format = next(preprocessor)
         else:
-            processed_data, data_format = next(preprocessor.single_processor())
+            processed_data, data_format = next(preprocessor)
         training_data.append(processed_data)
     # Use the type of data to determine what to keep
     if type_training == "Separation":
@@ -341,9 +340,9 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
         for i in range(size):
             # Call processor size times to get the correct number for the batch
             if as_channels:
-                processed_data, data_format = next(proton_preprocessor.single_processor(final_slices=final_slices, as_channels=as_channels, collapse_time=True))
+                processed_data, data_format = next(proton_preprocessor)
             else:
-                processed_data, data_format = next(proton_preprocessor.single_processor())
+                processed_data, data_format = next(proton_preprocessor)
             proton_data.append(processed_data)
         proton_data = [item[data_format["Image"]] for item in proton_data]
         proton_data = np.array(proton_data)

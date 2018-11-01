@@ -134,13 +134,13 @@ tensorboard = keras.callbacks.TensorBoard(update_freq='epoch')
 from examples.open_crab_sample_constants import NUM_EVENTS_GAMMA, NUM_EVENTS_PROTON
 
 event_totals = 0.8*NUM_EVENTS_PROTON
-train_num = event_totals * 0.8
+train_num = 2000#(event_totals * 0.8)
 val_num = event_totals * 0.2
 
 separation_model.fit_generator(
     generator=separation_train,
     steps_per_epoch=int(np.floor(train_num / separation_train.batch_size)),
-    epochs=50,
+    epochs=500,
     verbose=1,
     validation_data=separation_validate,
     callbacks=[early_stop, model_checkpoint, tensorboard],
