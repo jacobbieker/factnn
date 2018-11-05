@@ -11,11 +11,35 @@ gamma_dir = [base_dir + "sim/gamma/"]
 proton_dir = [base_dir + "sim/proton/"]
 gamma_dl2 = "../gamma_simulations_diffuse_facttools_dl2.hdf5"
 
-shape = [35,60]
-rebin_size = 10
+shape = [30,70]
+rebin_size = 5
+
+# Get paths from the directories
+max_files = 100
+current_files = 0
+gamma_paths = []
+for directory in gamma_dir:
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if current_files < max_files:
+                if file.endswith("phs.jsonl.gz"):
+                        gamma_paths.append(os.path.join(root, file))
+                        current_files += 1
+
+
+# Get paths from the directories
+current_files = 0
+crab_paths = []
+for directory in proton_dir:
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if current_files < max_files:
+                if file.endswith("phs.jsonl.gz"):
+                    crab_paths.append(os.path.join(root, file))
+                    current_files += 1
 
 gamma_diffuse_configuration = {
-    'directories': gamma_dir,
+    'paths': gamma_paths,
     'rebin_size': rebin_size,
     'dl2_file': gamma_dl2,
     'output_file': "../gamma_diffuse.hdf5",
@@ -24,7 +48,7 @@ gamma_diffuse_configuration = {
 }
 
 gamma_configuration = {
-    'directories': gamma_dir,
+    'paths': gamma_paths,
     'rebin_size': rebin_size,
     'output_file': "../gamma.hdf5",
     'shape': shape
@@ -32,7 +56,7 @@ gamma_configuration = {
 }
 
 proton_configuration = {
-    'directories': proton_dir,
+    'paths': crab_paths,
     'rebin_size': rebin_size,
     'output_file': "../proton.hdf5",
     'shape': shape
@@ -43,8 +67,8 @@ gamma_diffuse_preprocessor = GammaDiffusePreprocessor(config=gamma_diffuse_confi
 proton_preprocessor = ProtonPreprocessor(config=proton_configuration)
 gamma_preprocessor = GammaPreprocessor(config=gamma_configuration)
 
-if not os.path.isfile(gamma_diffuse_configuration["output_file"]):
-    gamma_diffuse_preprocessor.create_dataset()
+#if not os.path.isfile(gamma_diffuse_configuration["output_file"]):
+#    gamma_diffuse_preprocessor.create_dataset()
 if not os.path.isfile(proton_configuration["output_file"]):
     proton_preprocessor.create_dataset()
 if not os.path.isfile(gamma_configuration["output_file"]):

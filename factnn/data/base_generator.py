@@ -94,7 +94,7 @@ class BaseGenerator(object):
         self.training_gen = None
         self.proton_gen = None
         self.val_training_gen = None
-        self.val_proton_gen = False
+        self.val_proton_gen = None
         # Now self.input_shape will be defined, so set to the correct value of 1 at the end
 
     def init(self):
@@ -162,8 +162,8 @@ class BaseGenerator(object):
             if self.mode == "train":
                 if not self.set_gens:
                     if self.as_channels:
-                        self.training_gen = self.train_preprocessor.single_processor(final_slices=5, as_channels=self.as_channels, collapse_time=True)
-                        self.proton_gen = self.proton_train_preprocessor.single_processor(final_slices=5, as_channels=self.as_channels, collapse_time=True)
+                        self.training_gen = self.train_preprocessor.single_processor(final_slices=1, as_channels=self.as_channels, collapse_time=True)
+                        self.proton_gen = self.proton_train_preprocessor.single_processor(final_slices=1, as_channels=self.as_channels, collapse_time=True)
                         self.set_gens = True
                     else:
                         self.training_gen = self.train_preprocessor.single_processor()
@@ -183,8 +183,8 @@ class BaseGenerator(object):
             elif self.mode == "validate":
                 if not self.set_gens:
                     if self.as_channels:
-                        self.val_training_gen = self.validate_preprocessor.single_processor(final_slices=5, as_channels=self.as_channels, collapse_time=True)
-                        self.val_proton_gen = self.proton_validate_preprocessor.single_processor(final_slices=5, as_channels=self.as_channels, collapse_time=True)
+                        self.val_training_gen = self.validate_preprocessor.single_processor(final_slices=1, as_channels=self.as_channels, collapse_time=True)
+                        self.val_proton_gen = self.proton_validate_preprocessor.single_processor(final_slices=1, as_channels=self.as_channels, collapse_time=True)
                         self.set_gens = True
                     else:
                         self.val_training_gen = self.validate_preprocessor.single_processor()
@@ -202,7 +202,16 @@ class BaseGenerator(object):
                                                                         as_channels=self.as_channels)
                 return batch_images, batch_image_label
             elif self.mode == "test":
-                batch_images, batch_image_label = get_random_from_paths(preprocessor=self.test_preprocessor,
+                if not self.set_gens:
+                    if self.as_channels:
+                        self.val_training_gen = self.test_preprocessor.single_processor(final_slices=5, as_channels=self.as_channels, collapse_time=True)
+                        self.val_proton_gen = self.proton_test_preprocessor.single_processor(final_slices=5, as_channels=self.as_channels, collapse_time=True)
+                        self.set_gens = True
+                    else:
+                        self.val_training_gen = self.test_preprocessor.single_processor()
+                        self.val_proton_gen = self.proton_test_preprocessor.single_processor()
+                        self.set_gens = True
+                batch_images, batch_image_label = get_random_from_paths(preprocessor=self.val_training_gen,
                                                                         size=self.batch_size,
                                                                         time_slice=self.start_slice,
                                                                         total_slices=self.number_slices,
@@ -210,7 +219,7 @@ class BaseGenerator(object):
                                                                         shape=self.input_shape,
                                                                         swap=False,
                                                                         type_training=self.type_gen,
-                                                                        proton_preprocessor=self.proton_test_preprocessor,
+                                                                        proton_preprocessor=self.val_proton_gen,
                                                                         as_channels=self.as_channels)
                 return batch_images, batch_image_label
 

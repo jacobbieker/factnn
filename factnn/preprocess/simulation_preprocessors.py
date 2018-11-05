@@ -44,6 +44,7 @@ class ProtonPreprocessor(BasePreprocessor):
     def single_processor(self, normalize=False, collapse_time=False, final_slices=5, as_channels=False):
         while True:
             self.paths = shuffle(self.paths)
+            print("\nNew Proton")
             for index, file in enumerate(self.paths):
                 mc_truth = file.split(".phs")[0] + ".ch.gz"
                 try:
@@ -210,6 +211,7 @@ class GammaPreprocessor(BasePreprocessor):
     def single_processor(self, normalize=False, collapse_time=False, final_slices=5, as_channels=False):
         while True:
             self.paths = shuffle(self.paths)
+            print("\nNew Gamma")
             for index, file in enumerate(self.paths):
                 mc_truth = file.split(".phs")[0] + ".ch.gz"
                 try:

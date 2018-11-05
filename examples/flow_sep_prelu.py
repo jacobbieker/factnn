@@ -1,4 +1,4 @@
-from factnn import GammaPreprocessor, ProtonPreprocessor, SeparationGenerator, SeparationModel
+from factnn import GammaPreprocessor, ProtonPreprocessor, SeparationGenerator, SeparationModel, ObservationPreprocessor
 import os.path
 from factnn.utils import kfold
 from keras.models import load_model
@@ -21,17 +21,17 @@ for directory in gamma_dir:
 
 
 # Get paths from the directories
-proton_paths = []
+crab_paths = []
 for directory in proton_dir:
     for root, dirs, files in os.walk(directory):
         for file in files:
             if file.endswith("phs.jsonl.gz"):
-                proton_paths.append(os.path.join(root, file))
+                crab_paths.append(os.path.join(root, file))
 
 
 # Now do the Kfold Cross validation Part for both sets of paths
 gamma_indexes = kfold.split_data(gamma_paths, kfolds=5)
-proton_indexes = kfold.split_data(proton_paths, kfolds=5)
+proton_indexes = kfold.split_data(crab_paths, kfolds=5)
 
 
 gamma_configuration = {
@@ -90,39 +90,42 @@ separation_validate.proton_validate_preprocessor = proton_validate_preprocessor
 separation_validate.train_preprocessor = gamma_train_preprocessor
 separation_validate.validate_preprocessor = gamma_validate_preprocessor
 
-from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D, Conv2D, MaxPooling2D
+"""
+from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D, Conv2D, MaxPooling2D, PReLU
 from keras.models import Sequential
 import keras
 import numpy as np
 
-#separation_model = Sequential()
+separation_model = Sequential()
 
 #separation_model.add(ConvLSTM2D(32, kernel_size=3, strides=2,
 #                     padding='same', input_shape=[gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
 #                     activation='relu',
 #                     dropout=0.3, recurrent_dropout=0.5,
 #                     return_sequences=True))
-"""
+
 separation_model.add(Conv2D(32, input_shape=[gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 5],
                             kernel_size=1, strides=1,
-                            padding='same', activation='relu'))
+                            padding='same'))
+separation_model.add(PReLU())
 separation_model.add(Conv2D(32,
                             kernel_size=3, strides=1,
-                            padding='same', activation='relu'))
+                            padding='same'))
+separation_model.add(PReLU())
 separation_model.add(MaxPooling2D())
 separation_model.add(Dropout(0.4))
 separation_model.add(Flatten())
 separation_model.add(Dense(32))
+separation_model.add(PReLU())
 separation_model.add(Dropout(0.5))
 separation_model.add(Dense(64))
+separation_model.add(PReLU())
 separation_model.add(Dense(2, activation='softmax'))
 separation_model.compile(optimizer='adam', loss='categorical_crossentropy',
               metrics=['acc'])
-"""
-from keras.models import load_model
-separation_model = load_model("Outside_test.hdf5")
+
 separation_model.summary()
-model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_test.hdf5",
+model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_sep_prelu.hdf5",
                                                    monitor='val_loss',
                                                    verbose=0,
                                                    save_best_only=True,
@@ -150,7 +153,7 @@ separation_model.fit_generator(
     validation_steps=int(np.floor(val_num / separation_validate.batch_size))
 )
 
-
+"""
 # Save the base model to use for the kfold validation
 """
 
@@ -158,3 +161,58 @@ Now run the models with the generators!
 
 """
 
+import numpy as np
+from examples.open_crab_sample_constants import NUM_EVENTS_PROTON
+import matplotlib.pyplot as plt
+
+gamma_configuration = {
+    'rebin_size': rebin_size,
+    'output_file': "../gamma.hdf5",
+    'shape': shape,
+    'paths': gamma_paths,
+    'as_channels': True
+}
+
+proton_configuration = {
+    'rebin_size': rebin_size,
+    'output_file': "../proton.hdf5",
+    'shape': shape,
+    'paths': crab_paths,
+    'as_channels': True
+}
+
+separation_validate.proton_train_preprocessor = proton_train_preprocessor
+separation_validate.proton_validate_preprocessor = proton_validate_preprocessor
+separation_validate.train_preprocessor = gamma_train_preprocessor
+separation_validate.validate_preprocessor = gamma_validate_preprocessor
+
+
+proton_test_preprocessor = ProtonPreprocessor(config=proton_configuration)
+gamma_test_preprocessor = GammaPreprocessor(config=gamma_configuration)
+
+separation_model = load_model("Outside_sep_prelu.hdf5")
+
+separation_validate = SeparationGenerator(config=separation_generator_configuration)
+separation_validate.mode = "test"
+separation_validate.test_preprocessor = gamma_train_preprocessor
+separation_validate.proton_test_preprocessor = proton_test_preprocessor
+
+num_events = NUM_EVENTS_PROTON
+steps = int(np.floor(num_events/16))
+truth = []
+predictions = []
+for i in range(steps):
+    print("Step: " + str(i) + "/" + str(steps))
+    # Get each batch and test it
+    test_images, test_labels = next(separation_validate)
+    test_predictions = separation_model.predict_on_batch(test_images)
+    predictions.append(test_predictions)
+    truth.append(test_labels)
+
+predictions = np.asarray(predictions).reshape(-1, )
+truth = np.asarray(truth).reshape(-1, )
+
+from factnn import plotting
+
+plot = plotting.plot_roc(truth, predictions)
+plt.show()
