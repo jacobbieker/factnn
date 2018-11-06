@@ -1,7 +1,7 @@
 import unittest
-from factnn.data.energy_generators import EnergyGenerator
-from factnn.data.separation_generators import SeparationGenerator
-from factnn.data.source_generators import DispGenerator, SignGenerator
+from factnn.generator.generator.energy_generators import EnergyGenerator
+from factnn.generator.generator.separation_generators import SeparationGenerator
+from factnn.generator.generator.source_generators import DispGenerator, SignGenerator
 
 
 class TestEnergyGenerator(unittest.TestCase):

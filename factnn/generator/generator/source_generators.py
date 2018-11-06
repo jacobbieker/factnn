@@ -1,4 +1,4 @@
-from factnn.data.base_generator import BaseGenerator
+from factnn.generator.generator.base_generator import BaseGenerator
 import h5py
 import numpy as np
 

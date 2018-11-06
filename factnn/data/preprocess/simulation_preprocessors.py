@@ -2,7 +2,7 @@ import numpy as np
 import h5py
 import photon_stream as ps
 from fact.io import read_h5py
-from factnn.preprocess.base_preprocessor import BasePreprocessor
+from factnn.data.preprocess.base_preprocessor import BasePreprocessor
 from sklearn.utils import shuffle
 
 

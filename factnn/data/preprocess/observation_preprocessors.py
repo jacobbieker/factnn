@@ -4,7 +4,7 @@ import photon_stream as ps
 from fact.io import read_h5py
 import datetime
 
-from factnn.preprocess.base_preprocessor import BasePreprocessor
+from factnn.data.preprocess.base_preprocessor import BasePreprocessor
 
 
 class ObservationPreprocessor(BasePreprocessor):

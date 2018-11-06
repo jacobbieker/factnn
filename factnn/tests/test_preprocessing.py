@@ -1,7 +1,6 @@
 import unittest
 
-from factnn.preprocess.observation_preprocessors import ObservationPreprocessor
-from factnn.preprocess.simulation_preprocessors import ProtonPreprocessor, GammaPreprocessor
+from factnn.data.preprocess.simulation_preprocessors import GammaPreprocessor
 
 
 class TestProtonPreprocessor(unittest.TestCase):

@@ -48,6 +48,33 @@ class BaseSequence(Sequence):
         Otherwise, the validation data could be set to use the first few elements from each file instead, the batch size,
         but this makes the validation set much smaller than otherwise usually used
 
+
+        Final setup then would be:
+
+        BaseGenerator for HDF5 files, streaming in files with infinite loops if no need for multiprocesssing
+        SequenceGenerator for streaming in files, with each file used once per iteration, regardless of how much of it is used
+        EventGenerator for streaming in files where there is one event per file, still a form of Sequence Generator,
+        but designed for a single event per file setup
+
+        Other things needed:
+        Preprocessor on_batch_preprocess for SequenceGenerator
+        Way to generate the one event per file setup
+        New class of DataFormatter?
+
+        Dataset class that holds the parts for creating the HDF5 dataset, one file per event conversion, and
+
+        New Design:
+            models -> holds most useful models
+            docs -> docs
+            resources -> resources
+            tests -> tests
+            utils -> augment, plotting parts
+            data -> data.preprocess holds preprocessors
+            data -> data.dataset holds creating HDF5 converthing to different storage formats
+            generator -> generator.keras holds Sequence-based generators
+            generator -> generator.generator holds BaseGenerator-based generators
+
+
         :param paths:
         :param num_elements:
         :param batch_size: Maximum size of batch, might be smaller depending on how many events are left in each file

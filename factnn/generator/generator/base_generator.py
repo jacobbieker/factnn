@@ -1,4 +1,4 @@
-from factnn.data.augment import get_random_from_list, \
+from factnn.utils.augment import get_random_from_list, \
     get_chunk_from_list, get_random_from_paths
 import numpy as np
 
