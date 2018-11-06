@@ -47,7 +47,7 @@ class SeparationModel(BaseModel):
 
         else:
             model.add(Conv3D(self.neurons[0], input_shape=self.shape,
-                             kernel_size=self.kernel_conv3d, strides=self.strides_conv3d,
+                             kernel_size=1, strides=1,
                              padding='same', activation=self.activation))
             if self.pooling:
                 model.add(MaxPooling3D())

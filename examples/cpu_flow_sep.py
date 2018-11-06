@@ -12,8 +12,8 @@ obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "sim/gamma/"]
 proton_dir = [base_dir + "sim/proton/"]
 
-shape = [0,100]
-rebin_size = 90
+shape = [30,70]
+rebin_size = 5
 
 # Get paths from the directories
 gamma_paths = []
@@ -74,7 +74,7 @@ separation_generator_configuration = {
     'chunked': False,
     'augment': True,
     'from_directory': True,
-    'input_shape': [-1, gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
+    'input_shape': [-1, gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 5],
     'as_channels': True,
 }
 
@@ -94,6 +94,74 @@ separation_validate.proton_validate_preprocessor = proton_validate_preprocessor
 separation_validate.train_preprocessor = gamma_train_preprocessor
 separation_validate.validate_preprocessor = gamma_validate_preprocessor
 
+
+from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D, Conv2D, MaxPooling2D, PReLU, ReLU, BatchNormalization
+from keras.models import Sequential
+import keras
+import numpy as np
+
+separation_model = Sequential()
+
+#separation_model.add(ConvLSTM2D(32, kernel_size=3, strides=2,
+#                     padding='same', input_shape=[gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
+#                     activation='relu',
+#                     dropout=0.3, recurrent_dropout=0.5,
+#                     return_sequences=True))
+
+separation_model.add(BatchNormalization(input_shape=[gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 5]))
+separation_model.add(Conv2D(8,
+                            kernel_size=3, strides=1,
+                            padding='same'))
+separation_model.add(ReLU())
+separation_model.add(MaxPooling2D())
+separation_model.add(BatchNormalization())
+separation_model.add(Conv2D(8,
+                            kernel_size=3, strides=1,
+                            padding='same'))
+separation_model.add(ReLU())
+separation_model.add(MaxPooling2D())
+separation_model.add(BatchNormalization())
+separation_model.add(Dropout(0.4))
+separation_model.add(Flatten())
+separation_model.add(Dense(16))
+separation_model.add(ReLU())
+separation_model.add(Dropout(0.5))
+separation_model.add(Dense(32))
+separation_model.add(ReLU())
+separation_model.add(Dense(2, activation='softmax'))
+separation_model.compile(optimizer='adam', loss='categorical_crossentropy',
+                         metrics=['acc'])
+
+separation_model.summary()
+model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_cpu_sep_relu_batchnorm_first.hdf5",
+                                                   monitor='val_loss',
+                                                   verbose=0,
+                                                   save_best_only=True,
+                                                   save_weights_only=False,
+                                                   mode='auto', period=1)
+early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
+                                           patience=10,
+                                           verbose=0, mode='auto')
+
+tensorboard = keras.callbacks.TensorBoard(update_freq='batch', write_images=True)
+
+from examples.open_crab_sample_constants import NUM_EVENTS_GAMMA, NUM_EVENTS_PROTON
+
+event_totals = 0.8*NUM_EVENTS_PROTON
+train_num = 24000 #(event_totals * 0.8)
+val_num = event_totals * 0.2
+
+separation_model.fit_generator(
+    generator=separation_train,
+    steps_per_epoch=int(np.floor(train_num / separation_train.batch_size)),
+    epochs=500,
+    verbose=2,
+    validation_data=separation_validate,
+    callbacks=[early_stop, model_checkpoint, tensorboard],
+    validation_steps=int(np.floor(val_num / separation_validate.batch_size))
+)
+
+"""
 
 from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D, Conv2D, MaxPooling2D, PReLU
 from keras.models import Sequential
@@ -157,3 +225,4 @@ separation_model.fit_generator(
     validation_steps=int(np.floor(val_num / separation_validate.batch_size))
 )
 
+"""

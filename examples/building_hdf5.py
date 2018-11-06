@@ -28,6 +28,7 @@ for directory in gamma_dir:
 
 
 # Get paths from the directories
+max_files = 1000
 current_files = 0
 crab_paths = []
 for directory in proton_dir:
@@ -50,7 +51,7 @@ gamma_diffuse_configuration = {
 gamma_configuration = {
     'paths': gamma_paths,
     'rebin_size': rebin_size,
-    'output_file': "../gamma.hdf5",
+    'output_file': "../gamma1.hdf5",
     'shape': shape
 
 }
@@ -58,7 +59,7 @@ gamma_configuration = {
 proton_configuration = {
     'paths': crab_paths,
     'rebin_size': rebin_size,
-    'output_file': "../proton.hdf5",
+    'output_file': "../proton1.hdf5",
     'shape': shape
 
 }

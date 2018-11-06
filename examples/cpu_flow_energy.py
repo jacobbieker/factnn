@@ -1,3 +1,7 @@
+#import os
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 from factnn import GammaPreprocessor, ProtonPreprocessor, SeparationGenerator, SeparationModel, ObservationPreprocessor, EnergyGenerator
 import os.path
 from factnn.utils import kfold
@@ -60,20 +64,6 @@ proton_configuration['paths'] = proton_indexes[1][0]
 proton_validate_preprocessor = ProtonPreprocessor(config=proton_configuration)
 gamma_validate_preprocessor = GammaPreprocessor(config=gamma_configuration)
 
-
-separation_generator_configuration = {
-    'seed': 1337,
-    'batch_size': 16,
-    'start_slice': 0,
-    'number_slices': shape[1] - shape[0],
-    'mode': 'train',
-    'chunked': False,
-    'augment': True,
-    'from_directory': True,
-    'input_shape': [-1, gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
-    'as_channels': True,
-}
-
 energy_gen_config = {
     'seed': 1337,
     'batch_size': 32,
@@ -91,32 +81,11 @@ energy_train = EnergyGenerator(config=energy_gen_config)
 energy_validate = EnergyGenerator(config=energy_gen_config)
 energy_validate.mode = 'validate'
 
-energy_train.proton_train_preprocessor = proton_train_preprocessor
-energy_train.proton_validate_preprocessor = proton_validate_preprocessor
 energy_train.train_preprocessor = gamma_train_preprocessor
 energy_train.validate_preprocessor = gamma_validate_preprocessor
 
-energy_validate.proton_train_preprocessor = proton_train_preprocessor
-energy_validate.proton_validate_preprocessor = proton_validate_preprocessor
 energy_validate.train_preprocessor = gamma_train_preprocessor
 energy_validate.validate_preprocessor = gamma_validate_preprocessor
-
-separation_validate = SeparationGenerator(config=separation_generator_configuration)
-separation_train = SeparationGenerator(config=separation_generator_configuration)
-
-separation_validate.mode = "validate"
-separation_train.mode = "train"
-
-separation_train.proton_train_preprocessor = proton_train_preprocessor
-separation_train.proton_validate_preprocessor = proton_validate_preprocessor
-separation_train.train_preprocessor = gamma_train_preprocessor
-separation_train.validate_preprocessor = gamma_validate_preprocessor
-
-separation_validate.proton_train_preprocessor = proton_train_preprocessor
-separation_validate.proton_validate_preprocessor = proton_validate_preprocessor
-separation_validate.train_preprocessor = gamma_train_preprocessor
-separation_validate.validate_preprocessor = gamma_validate_preprocessor
-
 
 from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D, Conv2D, MaxPooling2D, PReLU, BatchNormalization, ReLU
 from keras.models import Sequential
@@ -151,12 +120,24 @@ separation_model.add(ReLU())
 separation_model.add(Dropout(0.5))
 separation_model.add(Dense(64))
 separation_model.add(ReLU())
-separation_model.add(Dense(2, activation='softmax'))
-separation_model.compile(optimizer='adam', loss='categorical_crossentropy',
-                         metrics=['acc'])
+#separation_model.add(Dense(2, activation='softmax'))
+#separation_model.compile(optimizer='adam', loss='categorical_crossentropy',
+#                         metrics=['acc'])
+
+# For energy
+
+def r2(y_true, y_pred):
+    from keras import backend as K
+    SS_res = K.sum(K.square(y_true - y_pred))
+    SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
+    return -1.*(1 - SS_res / (SS_tot + K.epsilon()))
+
+separation_model.add(Dense(1, activation='linear'))
+separation_model.compile(optimizer='adam', loss='mse',
+                         metrics=['mae', r2])
 
 separation_model.summary()
-model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_sep_relu_norm.hdf5",
+model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_energy_relu_norm.hdf5",
                                                    monitor='val_loss',
                                                    verbose=0,
                                                    save_best_only=True,
@@ -170,18 +151,18 @@ tensorboard = keras.callbacks.TensorBoard(update_freq='epoch')
 
 from examples.open_crab_sample_constants import NUM_EVENTS_GAMMA, NUM_EVENTS_PROTON
 
-event_totals = 0.8*NUM_EVENTS_PROTON
+event_totals = 0.8*NUM_EVENTS_GAMMA
 train_num = (event_totals * 0.8)
 val_num = event_totals * 0.2
 
 separation_model.fit_generator(
-    generator=separation_train,
-    steps_per_epoch=int(np.floor(train_num / separation_train.batch_size)),
+    generator=energy_train,
+    steps_per_epoch=int(np.floor(train_num / energy_train.batch_size)),
     epochs=500,
     verbose=1,
-    validation_data=separation_validate,
+    validation_data=energy_validate,
     callbacks=[early_stop, model_checkpoint, tensorboard],
-    validation_steps=int(np.floor(val_num / separation_validate.batch_size))
+    validation_steps=int(np.floor(val_num / energy_validate.batch_size))
 )
 
 
@@ -211,11 +192,6 @@ proton_configuration = {
     'paths': crab_paths,
     'as_channels': True
 }
-
-separation_validate.proton_train_preprocessor = proton_train_preprocessor
-separation_validate.proton_validate_preprocessor = proton_validate_preprocessor
-separation_validate.train_preprocessor = gamma_train_preprocessor
-separation_validate.validate_preprocessor = gamma_validate_preprocessor
 
 
 proton_test_preprocessor = ProtonPreprocessor(config=proton_configuration)

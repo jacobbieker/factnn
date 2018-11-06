@@ -62,15 +62,29 @@ crab_configuration = {
 
 num_events = NUM_EVENTS_CRAB
 steps = int(np.floor(num_events/16))
+starting_step = 0
 truth = []
 predictions = []
-for i in range(steps):
+import pickle
+if os.path.isfile("crab_predictions.p"):
+    with open("crab_predictions.p", "rb") as savedfile:
+        predictions = pickle.load(savedfile)
+        starting_step = int(len(predictions))
+        for i in range(0, starting_step):
+            next(separation_validate)
+            print(i)
+
+for i in range(starting_step, steps):
     print("Step: " + str(i) + "/" + str(steps))
     # Get each batch and test it
     test_images, test_labels = next(separation_validate)
     test_predictions = separation_model.predict_on_batch(test_images)
     predictions.append(test_predictions)
     truth.append(test_labels)
+    if i % 10 == 0 and i != 0:
+        # Save predictions every ten steps
+        with open("crab_predictions.p", "wb") as savefile:
+            pickle.dump(predictions, savefile)
 
 predictions = np.asarray(predictions).reshape(-1, )
 truth = np.asarray(truth).reshape(-1, )
