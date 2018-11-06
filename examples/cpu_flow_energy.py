@@ -1,6 +1,6 @@
-#import os
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from factnn import GammaPreprocessor, ProtonPreprocessor, SeparationGenerator, SeparationModel, ObservationPreprocessor, EnergyGenerator
 import os.path
@@ -101,29 +101,30 @@ separation_model = Sequential()
 #                     return_sequences=True))
 
 #separation_model.add(BatchNormalization())
-separation_model.add(Conv2D(32, input_shape=[gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 5],
+separation_model.add(Conv2D(64, input_shape=[gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 5],
                             kernel_size=3, strides=1,
                             padding='same'))
-separation_model.add(ReLU())
+separation_model.add(PReLU())
 separation_model.add(MaxPooling2D())
-separation_model.add(BatchNormalization())
-separation_model.add(Conv2D(32,
+#separation_model.add(BatchNormalization())
+separation_model.add(Conv2D(64,
                             kernel_size=3, strides=1,
                             padding='same'))
-separation_model.add(ReLU())
+separation_model.add(PReLU())
 separation_model.add(MaxPooling2D())
-separation_model.add(BatchNormalization())
-separation_model.add(Dropout(0.4))
+separation_model.add(Conv2D(128,
+                            kernel_size=3, strides=1,
+                            padding='same'))
+separation_model.add(PReLU())
+separation_model.add(MaxPooling2D())
+#separation_model.add(BatchNormalization())
+separation_model.add(Dropout(0.2))
 separation_model.add(Flatten())
 separation_model.add(Dense(32))
-separation_model.add(ReLU())
-separation_model.add(Dropout(0.5))
+separation_model.add(PReLU())
+separation_model.add(Dropout(0.2))
 separation_model.add(Dense(64))
-separation_model.add(ReLU())
-#separation_model.add(Dense(2, activation='softmax'))
-#separation_model.compile(optimizer='adam', loss='categorical_crossentropy',
-#                         metrics=['acc'])
-
+separation_model.add(PReLU())
 # For energy
 
 def r2(y_true, y_pred):
@@ -137,7 +138,7 @@ separation_model.compile(optimizer='adam', loss='mse',
                          metrics=['mae', r2])
 
 separation_model.summary()
-model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_energy_relu_norm.hdf5",
+model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_energy_prelu_large.hdf5",
                                                    monitor='val_loss',
                                                    verbose=0,
                                                    save_best_only=True,
@@ -147,7 +148,7 @@ early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
                                            patience=10,
                                            verbose=0, mode='auto')
 
-tensorboard = keras.callbacks.TensorBoard(update_freq='epoch')
+tensorboard = keras.callbacks.TensorBoard(update_freq=100000, log_dir='./energy_log_prelu_large')
 
 from examples.open_crab_sample_constants import NUM_EVENTS_GAMMA, NUM_EVENTS_PROTON
 
@@ -162,7 +163,10 @@ separation_model.fit_generator(
     verbose=1,
     validation_data=energy_validate,
     callbacks=[early_stop, model_checkpoint, tensorboard],
-    validation_steps=int(np.floor(val_num / energy_validate.batch_size))
+    validation_steps=int(np.floor(val_num / energy_validate.batch_size)),
+    use_multiprocessing=True,
+    workers=12,
+    max_queue_size=100,
 )
 
 
@@ -172,54 +176,3 @@ separation_model.fit_generator(
 Now run the models with the generators!
 
 """
-
-import numpy as np
-from examples.open_crab_sample_constants import NUM_EVENTS_PROTON
-import matplotlib.pyplot as plt
-
-gamma_configuration = {
-    'rebin_size': rebin_size,
-    'output_file': "../gamma.hdf5",
-    'shape': shape,
-    'paths': gamma_paths,
-    'as_channels': True
-}
-
-proton_configuration = {
-    'rebin_size': rebin_size,
-    'output_file': "../proton.hdf5",
-    'shape': shape,
-    'paths': crab_paths,
-    'as_channels': True
-}
-
-
-proton_test_preprocessor = ProtonPreprocessor(config=proton_configuration)
-gamma_test_preprocessor = GammaPreprocessor(config=gamma_configuration)
-
-separation_model = load_model("Outside_sep_prelu.hdf5")
-
-separation_validate = SeparationGenerator(config=separation_generator_configuration)
-separation_validate.mode = "test"
-separation_validate.test_preprocessor = gamma_train_preprocessor
-separation_validate.proton_test_preprocessor = proton_test_preprocessor
-
-num_events = NUM_EVENTS_PROTON
-steps = int(np.floor(num_events/16))
-truth = []
-predictions = []
-for i in range(steps):
-    print("Step: " + str(i) + "/" + str(steps))
-    # Get each batch and test it
-    test_images, test_labels = next(separation_validate)
-    test_predictions = separation_model.predict_on_batch(test_images)
-    predictions.append(test_predictions)
-    truth.append(test_labels)
-
-predictions = np.asarray(predictions).reshape(-1, )
-truth = np.asarray(truth).reshape(-1, )
-
-from factnn import plotting
-
-plot = plotting.plot_roc(truth, predictions)
-plt.show()

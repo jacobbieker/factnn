@@ -143,12 +143,12 @@ early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
                                            patience=10,
                                            verbose=0, mode='auto')
 
-tensorboard = keras.callbacks.TensorBoard(update_freq='batch', write_images=True)
+tensorboard = keras.callbacks.TensorBoard(update_freq='epoch', write_images=True)
 
 from examples.open_crab_sample_constants import NUM_EVENTS_GAMMA, NUM_EVENTS_PROTON
 
 event_totals = 0.8*NUM_EVENTS_PROTON
-train_num = 24000 #(event_totals * 0.8)
+train_num = 3600 #(event_totals * 0.8)
 val_num = event_totals * 0.2
 
 separation_model.fit_generator(
@@ -158,7 +158,10 @@ separation_model.fit_generator(
     verbose=2,
     validation_data=separation_validate,
     callbacks=[early_stop, model_checkpoint, tensorboard],
-    validation_steps=int(np.floor(val_num / separation_validate.batch_size))
+    validation_steps=int(np.floor(val_num / separation_validate.batch_size)),
+    use_multiprocessing=True,
+    workers=2,
+    max_queue_size=30
 )
 
 """
