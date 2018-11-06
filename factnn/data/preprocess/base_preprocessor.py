@@ -66,7 +66,6 @@ class BasePreprocessor(object):
         Recalcs the file paths if called based on self.directories
         :return:
         """
-        # TODO Finish this
         return NotImplemented
 
     def generate_rebinning(self, size):
@@ -155,6 +154,25 @@ class BasePreprocessor(object):
     def single_processor(self, normalize=False, collapse_time=False, final_slices=5):
         return NotImplemented
 
+    def on_batch_processor(self, filepath, size, sample=False, normalize=False, collapse_time=False, final_slices=5):
+        """
+        Returns at most size-elements from the file at filepath, if sample=True, then does resevoir sampling of the entire
+        file, otherwise takes the first size-elements
+        :param size: Number of elements to return, usually batch size
+        :param normalize: Whether to normalize the images or not
+        :param collapse_time: Whether to collapse the time axis to final_slices number of slices
+        :param final_slices: Number of slices to collapse the time axis to, defaults to 5
+        :return:
+        """
+        return NotImplementedError
+
+    def event_processor(self, directory):
+        """
+        Goes through each event in all the files specified in self.paths and returns each event individually, including the
+        default photon-stream representation, and auxiliary data and saves it to a new file based on the
+        :return:
+        """
+
     def count_events(self):
         """
         Ideally to count the number of events in the files for the streaming data
@@ -232,7 +250,4 @@ class BasePreprocessor(object):
         return dataset
 
     def format(self, batch):
-        return NotImplemented
-
-    def create_dataset(self):
         return NotImplemented

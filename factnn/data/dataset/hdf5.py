@@ -1,10 +1,9 @@
 import h5py
-from factnn import ProtonPreprocessor, GammaPreprocessor, GammaDiffusePreprocessor
 
-def create_dataset(paths, preprocessor, output_file="proton.hdf5"):
+
+def create_dataset(preprocessor, output_file="output.hdf5"):
     """
     Create an HDF5 dataset from a preprocessor's output
-    :param paths: Paths to files to send to the preprocessor
     :param preprocessor: The preprocessor to use, outputs data, data_format on each call of next
     :param output_file: Name of the output file
     :return:
