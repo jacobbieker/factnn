@@ -381,10 +381,9 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
 
     # For this, the single processors are assumed to infinitely iterate through their files, shuffling the order of the
     # files after every go through of the whole file set, so some kind of shuffling, but not much
-    training_data = []
     labels = None
-    data_format = {}
-    training_data.append(images)
+    data_format = images[0][1]
+    training_data = [item[0] for item in images]
     # Use the type of data to determine what to keep
     if type_training == "Separation":
         training_data = [item[data_format["Image"]] for item in training_data]
@@ -416,8 +415,7 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
     training_data = training_data.reshape(-1, training_data.shape[2], training_data.shape[3], training_data.shape[4])
 
     if proton_images is not None:
-        proton_data = []
-        proton_data.append(proton_images)
+        proton_data = [item[0] for item in proton_images]
         proton_data = [item[data_format["Image"]] for item in proton_data]
         proton_data = np.array(proton_data)
         proton_data = proton_data.reshape(-1, proton_data.shape[2], proton_data.shape[3], proton_data.shape[4])

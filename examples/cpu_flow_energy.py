@@ -1,18 +1,20 @@
-#import os
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# import os
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-from factnn import GammaPreprocessor, ProtonPreprocessor, SeparationGenerator, SeparationModel, ObservationPreprocessor, EnergyGenerator
+from factnn import GammaPreprocessor, ProtonPreprocessor
+from factnn.generator.keras.eventfile_generator import EventFileGenerator
+from factnn.data.preprocess.eventfile_preprocessor import EventFilePreprocessor
 import os.path
 from factnn.utils import kfold
 from keras.models import load_model
 
-base_dir = "../ihp-pc41.ethz.ch/public/phs/"
+base_dir = "/home/jacob/Development/event_files/"
 obs_dir = [base_dir + "public/"]
-gamma_dir = [base_dir + "sim/gamma/"]
-proton_dir = [base_dir + "sim/proton/"]
+gamma_dir = [base_dir + "gamma/"]
+proton_dir = [base_dir + "proton/"]
 
-shape = [30,70]
+shape = [30, 70]
 rebin_size = 5
 
 # Get paths from the directories
@@ -20,23 +22,18 @@ gamma_paths = []
 for directory in gamma_dir:
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.endswith("phs.jsonl.gz"):
-                gamma_paths.append(os.path.join(root, file))
-
+            gamma_paths.append(os.path.join(root, file))
 
 # Get paths from the directories
 crab_paths = []
 for directory in proton_dir:
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.endswith("phs.jsonl.gz"):
-                crab_paths.append(os.path.join(root, file))
-
+            crab_paths.append(os.path.join(root, file))
 
 # Now do the Kfold Cross validation Part for both sets of paths
 gamma_indexes = kfold.split_data(gamma_paths, kfolds=5)
 proton_indexes = kfold.split_data(crab_paths, kfolds=5)
-
 
 gamma_configuration = {
     'rebin_size': rebin_size,
@@ -54,15 +51,14 @@ proton_configuration = {
     'as_channels': True
 }
 
-
-proton_train_preprocessor = ProtonPreprocessor(config=proton_configuration)
-gamma_train_preprocessor = GammaPreprocessor(config=gamma_configuration)
+proton_train_preprocessor = EventFilePreprocessor(config=proton_configuration)
+gamma_train_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
 gamma_configuration['paths'] = gamma_indexes[1][0]
 proton_configuration['paths'] = proton_indexes[1][0]
 
-proton_validate_preprocessor = ProtonPreprocessor(config=proton_configuration)
-gamma_validate_preprocessor = GammaPreprocessor(config=gamma_configuration)
+proton_validate_preprocessor = EventFilePreprocessor(config=proton_configuration)
+gamma_validate_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
 energy_gen_config = {
     'seed': 1337,
@@ -73,40 +69,48 @@ energy_gen_config = {
     'chunked': False,
     'augment': True,
     'from_directory': True,
-    'input_shape': [-1, gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
+    'input_shape': [-1, gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2],
+                    gamma_train_preprocessor.shape[1], 1],
     'as_channels': True,
 }
 
-energy_train = EnergyGenerator(config=energy_gen_config)
-energy_validate = EnergyGenerator(config=energy_gen_config)
-energy_validate.mode = 'validate'
+energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=32,
+                                  preprocessor=gamma_train_preprocessor,
+                                  as_channels=True,
+                                  final_slices=5,
+                                  slices=(30, 70),
+                                  augment=True,
+                                  training_type='Energy')
 
-energy_train.train_preprocessor = gamma_train_preprocessor
-energy_train.validate_preprocessor = gamma_validate_preprocessor
+energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=32,
+                                     preprocessor=gamma_validate_preprocessor,
+                                     as_channels=True,
+                                     final_slices=5,
+                                     slices=(30, 70),
+                                     augment=True,
+                                     training_type='Energy')
 
-energy_validate.train_preprocessor = gamma_train_preprocessor
-energy_validate.validate_preprocessor = gamma_validate_preprocessor
-
-from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D, Conv2D, MaxPooling2D, PReLU, BatchNormalization, ReLU
+from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D, Conv2D, MaxPooling2D, PReLU, \
+    BatchNormalization, ReLU
 from keras.models import Sequential
 import keras
 import numpy as np
 
 separation_model = Sequential()
 
-#separation_model.add(ConvLSTM2D(32, kernel_size=3, strides=2,
+# separation_model.add(ConvLSTM2D(32, kernel_size=3, strides=2,
 #                     padding='same', input_shape=[gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
 #                     activation='relu',
 #                     dropout=0.3, recurrent_dropout=0.5,
 #                     return_sequences=True))
 
-#separation_model.add(BatchNormalization())
+# separation_model.add(BatchNormalization())
 separation_model.add(Conv2D(64, input_shape=[gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 5],
                             kernel_size=3, strides=1,
                             padding='same'))
 separation_model.add(PReLU())
 separation_model.add(MaxPooling2D())
-#separation_model.add(BatchNormalization())
+# separation_model.add(BatchNormalization())
 separation_model.add(Conv2D(64,
                             kernel_size=3, strides=1,
                             padding='same'))
@@ -117,7 +121,7 @@ separation_model.add(Conv2D(128,
                             padding='same'))
 separation_model.add(PReLU())
 separation_model.add(MaxPooling2D())
-#separation_model.add(BatchNormalization())
+# separation_model.add(BatchNormalization())
 separation_model.add(Dropout(0.2))
 separation_model.add(Flatten())
 separation_model.add(Dense(32))
@@ -125,13 +129,16 @@ separation_model.add(PReLU())
 separation_model.add(Dropout(0.2))
 separation_model.add(Dense(64))
 separation_model.add(PReLU())
+
+
 # For energy
 
 def r2(y_true, y_pred):
     from keras import backend as K
     SS_res = K.sum(K.square(y_true - y_pred))
     SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
-    return -1.*(1 - SS_res / (SS_tot + K.epsilon()))
+    return -1. * (1 - SS_res / (SS_tot + K.epsilon()))
+
 
 separation_model.add(Dense(1, activation='linear'))
 separation_model.compile(optimizer='adam', loss='mse',
@@ -152,23 +159,20 @@ tensorboard = keras.callbacks.TensorBoard(update_freq=100000, log_dir='./energy_
 
 from examples.open_crab_sample_constants import NUM_EVENTS_GAMMA, NUM_EVENTS_PROTON
 
-event_totals = 0.8*NUM_EVENTS_GAMMA
+event_totals = 0.8 * NUM_EVENTS_GAMMA
 train_num = (event_totals * 0.8)
 val_num = event_totals * 0.2
 
 separation_model.fit_generator(
     generator=energy_train,
-    steps_per_epoch=int(np.floor(train_num / energy_train.batch_size)),
     epochs=500,
     verbose=1,
     validation_data=energy_validate,
     callbacks=[early_stop, model_checkpoint, tensorboard],
-    validation_steps=int(np.floor(val_num / energy_validate.batch_size)),
     use_multiprocessing=True,
-    workers=12,
-    max_queue_size=100,
+    workers=10,
+    max_queue_size=80,
 )
-
 
 # Save the base model to use for the kfold validation
 """
