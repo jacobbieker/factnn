@@ -362,3 +362,70 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
             batch_images = training_data
         return common_step(batch_images, positions=None, labels=labels, augment=augment, swap=swap, shape=shape,
                            as_channels=as_channels)
+
+
+def augment_image_batch(images, proton_images=None, type_training=None, augment=False, swap=True, shape=None,
+                        as_channels=False):
+    """
+    This is for use with the eventfile_generator, given a set of images, return the possibly augmented ones and labels
+    :param images:
+    :param proton_images:
+    :param type_training:
+    :param augment:
+    :param swap:
+    :param shape:
+    :param as_channels:
+    :param final_slices:
+    :return:
+    """
+
+    # For this, the single processors are assumed to infinitely iterate through their files, shuffling the order of the
+    # files after every go through of the whole file set, so some kind of shuffling, but not much
+    training_data = []
+    labels = None
+    data_format = {}
+    training_data.append(images)
+    # Use the type of data to determine what to keep
+    if type_training == "Separation":
+        training_data = [item[data_format["Image"]] for item in training_data]
+    elif type_training == "Energy":
+        labels = [item[data_format["Energy"]] for item in training_data]
+        labels = np.array(labels)
+        training_data = [item[data_format["Image"]] for item in training_data]
+    elif type_training == "Disp":
+        labels = [euclidean_distance(item[data_format['Source_X']], item[data_format['Source_Y']],
+                                     item[data_format['COG_X']], item[data_format['COG_Y']]) for item in training_data]
+        labels = np.array(labels)
+        training_data = [item[data_format["Image"]] for item in training_data]
+    elif type_training == "Sign":
+        labels = [true_sign(item[data_format['Source_X']], item[data_format['Source_Y']],
+                            item[data_format['COG_X']], item[data_format['COG_Y']], item[data_format['Delta']]) for item
+                  in training_data]
+        labels = np.array(labels)
+        # Create own categorical one since only two sides anyway
+        new_labels = np.zeros((labels.shape[0], 2))
+        for index, element in enumerate(labels):
+            if element < 0:
+                new_labels[index][0] = 1.
+            else:
+                new_labels[index][1] = 1.
+        labels = new_labels
+        training_data = [item[data_format["Image"]] for item in training_data]
+
+    training_data = np.array(training_data)
+    training_data = training_data.reshape(-1, training_data.shape[2], training_data.shape[3], training_data.shape[4])
+
+    if proton_images is not None:
+        proton_data = []
+        proton_data.append(proton_images)
+        proton_data = [item[data_format["Image"]] for item in proton_data]
+        proton_data = np.array(proton_data)
+        proton_data = proton_data.reshape(-1, proton_data.shape[2], proton_data.shape[3], proton_data.shape[4])
+        batch_images = training_data
+        proton_images = proton_data
+        return common_step(batch_images, positions=None, labels=labels, proton_images=proton_images, augment=augment,
+                           swap=swap, shape=shape, as_channels=as_channels)
+    else:
+        batch_images = training_data
+        return common_step(batch_images, positions=None, labels=labels, augment=augment, swap=swap, shape=shape,
+                           as_channels=as_channels)
