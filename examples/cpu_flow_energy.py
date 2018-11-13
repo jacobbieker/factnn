@@ -15,7 +15,7 @@ gamma_dir = [base_dir + "gamma/"]
 proton_dir = [base_dir + "proton/"]
 
 shape = [30, 70]
-rebin_size = 5
+rebin_size = 3
 
 # Get paths from the directories
 gamma_paths = []
@@ -105,12 +105,17 @@ separation_model = Sequential()
 #                     return_sequences=True))
 
 # separation_model.add(BatchNormalization())
-separation_model.add(Conv2D(64, input_shape=[gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 5],
+separation_model.add(Conv2D(32, input_shape=[gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 5],
                             kernel_size=3, strides=1,
                             padding='same'))
 separation_model.add(PReLU())
 separation_model.add(MaxPooling2D())
 # separation_model.add(BatchNormalization())
+separation_model.add(Conv2D(48,
+                            kernel_size=3, strides=1,
+                            padding='same'))
+separation_model.add(PReLU())
+separation_model.add(MaxPooling2D())
 separation_model.add(Conv2D(64,
                             kernel_size=3, strides=1,
                             padding='same'))
@@ -155,7 +160,7 @@ early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
                                            patience=10,
                                            verbose=0, mode='auto')
 
-tensorboard = keras.callbacks.TensorBoard(update_freq=100000, log_dir='./energy_log_prelu_large')
+tensorboard = keras.callbacks.TensorBoard(update_freq='epoch', log_dir='./energy_log_prelu_eventlist')
 
 from examples.open_crab_sample_constants import NUM_EVENTS_GAMMA, NUM_EVENTS_PROTON
 

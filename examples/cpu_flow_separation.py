@@ -1,6 +1,6 @@
-import os
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#import os
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from factnn import GammaPreprocessor, ProtonPreprocessor
 from factnn.generator.keras.eventfile_generator import EventFileGenerator
@@ -11,11 +11,11 @@ from keras.models import load_model
 
 base_dir = "/home/jacob/Development/event_files/"
 obs_dir = [base_dir + "public/"]
-gamma_dir = [base_dir + "gamma/"]
+gamma_dir = [base_dir + "diffuse_gamma/"]
 proton_dir = [base_dir + "proton/"]
 
 shape = [30, 80]
-rebin_size = 10
+rebin_size = 5
 
 # Get paths from the directories
 gamma_paths = []
@@ -24,16 +24,8 @@ for directory in gamma_dir:
         for file in files:
             gamma_paths.append(os.path.join(root, file))
 
-# Get paths from the directories
-crab_paths = []
-for directory in proton_dir:
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            crab_paths.append(os.path.join(root, file))
-
 # Now do the Kfold Cross validation Part for both sets of paths
 gamma_indexes = kfold.split_data(gamma_paths, kfolds=5)
-proton_indexes = kfold.split_data(crab_paths, kfolds=5)
 
 gamma_configuration = {
     'rebin_size': rebin_size,
@@ -43,21 +35,10 @@ gamma_configuration = {
     'as_channels': True
 }
 
-proton_configuration = {
-    'rebin_size': rebin_size,
-    'output_file': "../proton.hdf5",
-    'shape': shape,
-    'paths': proton_indexes[0][0],
-    'as_channels': True
-}
-
-proton_train_preprocessor = EventFilePreprocessor(config=proton_configuration)
 gamma_train_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
 gamma_configuration['paths'] = gamma_indexes[1][0]
-proton_configuration['paths'] = proton_indexes[1][0]
 
-proton_validate_preprocessor = EventFilePreprocessor(config=proton_configuration)
 gamma_validate_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
 energy_gen_config = {
@@ -74,30 +55,32 @@ energy_gen_config = {
     'as_channels': True,
 }
 
-energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=32,
+energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=128,
                                   preprocessor=gamma_train_preprocessor,
-                                  proton_paths=proton_indexes[0][0],
-                                  proton_preprocessor=proton_train_preprocessor,
                                   as_channels=True,
                                   final_slices=5,
                                   slices=(30, 70),
                                   augment=True,
-                                  training_type='Separation')
+                                  training_type='Disp')
 
-energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=32,
-                                     proton_paths=proton_indexes[1][0],
-                                     proton_preprocessor=proton_validate_preprocessor,
+energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=128,
                                      preprocessor=gamma_validate_preprocessor,
                                      as_channels=True,
                                      final_slices=5,
                                      slices=(30, 70),
                                      augment=False,
-                                     training_type='Separation')
+                                     training_type='Disp')
 
 from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D, Conv2D, MaxPooling2D, PReLU, ReLU, BatchNormalization
 from keras.models import Sequential
 import keras
 import numpy as np
+
+def r2(y_true, y_pred):
+    from keras import backend as K
+    SS_res = K.sum(K.square(y_true - y_pred))
+    SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
+    return -1.*(1 - SS_res / (SS_tot + K.epsilon()))
 
 separation_model = Sequential()
 
@@ -127,12 +110,12 @@ separation_model.add(ReLU())
 separation_model.add(Dropout(0.2))
 separation_model.add(Dense(64))
 separation_model.add(ReLU())
-separation_model.add(Dense(2, activation='softmax'))
-separation_model.compile(optimizer='adam', loss='categorical_crossentropy',
-                         metrics=['acc'])
+separation_model.add(Dense(1, activation='linear'))
+separation_model.compile(optimizer='adam', loss=r2,
+              metrics=['mae', 'mse'])
 
 separation_model.summary()
-model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_cpu_sep.hdf5",
+model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_cpu_source.hdf5",
                                                    monitor='val_loss',
                                                    verbose=0,
                                                    save_best_only=True,
@@ -142,7 +125,7 @@ early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
                                            patience=10,
                                            verbose=0, mode='auto')
 
-tensorboard = keras.callbacks.TensorBoard(update_freq='epoch', write_images=True)
+tensorboard = keras.callbacks.TensorBoard(update_freq='epoch', write_images=True, log_dir='./source_log')
 
 from examples.open_crab_sample_constants import NUM_EVENTS_GAMMA, NUM_EVENTS_PROTON
 

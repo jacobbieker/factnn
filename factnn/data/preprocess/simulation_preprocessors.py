@@ -7,6 +7,7 @@ from sklearn.utils import shuffle
 import pickle
 import os
 
+
 class ProtonPreprocessor(BasePreprocessor):
 
     def event_processor(self, directory):
@@ -28,7 +29,9 @@ class ProtonPreprocessor(BasePreprocessor):
                     az_deg = event.az
                     act_phi = event.simulation_truth.air_shower.phi
                     act_theta = event.simulation_truth.air_shower.theta
-                    data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta], {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5, 'Theta': 6,}]
+                    data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
+                                 {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5,
+                                  'Theta': 6, }]
                     with open(os.path.join(directory, str(index) + "_" + str(counter)), "wb") as event_file:
                         pickle.dump(data_dict, event_file)
             except Exception as e:
@@ -99,7 +102,8 @@ class ProtonPreprocessor(BasePreprocessor):
                                     if self.end > value > self.start:
                                         input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
-                        data_format = {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5, 'Theta': 6,}
+                        data_format = {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5,
+                                       'Theta': 6, }
                         data = self.format(data)
                         if normalize:
                             data = list(data)
@@ -144,6 +148,7 @@ class ProtonPreprocessor(BasePreprocessor):
         act_theta = np.array(act_theta)
         return pic, energy, zd_deg, az_deg, act_phi, act_theta
 
+
 class GammaPreprocessor(BasePreprocessor):
 
     def event_processor(self, directory):
@@ -165,7 +170,9 @@ class GammaPreprocessor(BasePreprocessor):
                     az_deg = event.az
                     act_phi = event.simulation_truth.air_shower.phi
                     act_theta = event.simulation_truth.air_shower.theta
-                    data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta], {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5, 'Theta': 6,}]
+                    data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
+                                 {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5,
+                                  'Theta': 6, }]
                     with open(os.path.join(directory, str(index) + "_" + str(counter)), "wb") as event_file:
                         pickle.dump(data_dict, event_file)
             except Exception as e:
@@ -236,7 +243,8 @@ class GammaPreprocessor(BasePreprocessor):
                                     if self.end > value > self.start:
                                         input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 100
                         data.append([np.fliplr(np.rot90(input_matrix, 3)), energy, zd_deg, az_deg, act_phi, act_theta])
-                        data_format = {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5, 'Theta': 6,}
+                        data_format = {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5,
+                                       'Theta': 6, }
                         data = self.format(data)
                         if normalize:
                             data = list(data)
@@ -281,11 +289,13 @@ class GammaPreprocessor(BasePreprocessor):
         act_theta = np.array(act_theta)
         return pic, energy, zd_deg, az_deg, act_phi, act_theta
 
+
 class GammaDiffusePreprocessor(BasePreprocessor):
 
     def init(self):
         self.dl2_file = read_h5py(self.dl2_file, key="events",
-                                  columns=["event_num", "source_position_x", "source_position_y", "cog_x", "cog_y", "delta",
+                                  columns=["event_num", "source_position_x", "source_position_y", "cog_x", "cog_y",
+                                           "delta",
                                            "source_position_az", "source_position_zd",
                                            "aux_pointing_position_az", "aux_pointing_position_zd",
                                            "corsika_event_header_total_energy", "corsika_event_header_az", "run_id"])
@@ -322,8 +332,11 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                         az_deg1 = df_event['aux_pointing_position_zd'].values[0]
                         data_dict = [[event_photons, act_sky_source_zero, act_sky_source_one,
                                       cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
-                                      energy, zd_deg1, az_deg1], {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5, 'Az_Deg': 6,
-                                                                  'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11, 'Pointing_Az': 12}]
+                                      energy, zd_deg1, az_deg1],
+                                     {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5,
+                                      'Az_Deg': 6,
+                                      'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11,
+                                      'Pointing_Az': 12}]
                         with open(os.path.join(directory, str(index) + "_" + str(counter)), "wb") as event_file:
                             pickle.dump(data_dict, event_file)
             except Exception as e:
@@ -423,8 +436,10 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                          cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
                                          energy, zd_deg1, az_deg1])
                         # Add an associated structure that gives the name?
-                        data_format = {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5, 'Az_Deg': 6,
-                                       'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11, 'Pointing_Az': 12}
+                        data_format = {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5,
+                                       'Az_Deg': 6,
+                                       'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11,
+                                       'Pointing_Az': 12}
 
                         if len(data) != 0:
                             data = self.format(data)

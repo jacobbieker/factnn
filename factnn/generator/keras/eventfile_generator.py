@@ -30,8 +30,6 @@ class EventFileGenerator(Sequence):
         if self.proton_paths is not None:
             proton_batch_files = self.proton_paths[index * self.batch_size:(index + 1) * self.batch_size]
             proton_images = self.proton_preprocessor.on_files_processor(paths=proton_batch_files)
-            #proton_images = [item[0] for item in processed_output]
-            #proton_data_format = [item[1] for item in processed_output]
         else:
             proton_images = None
         images = self.preprocessor.on_files_processor(paths=batch_files)
@@ -58,4 +56,5 @@ class EventFileGenerator(Sequence):
     def on_epoch_end(self):
         if self.augment:
             self.paths = shuffle(self.paths)
-            self.proton_paths = shuffle(self.proton_paths)
+            if self.proton_paths is not None:
+                self.proton_paths = shuffle(self.proton_paths)
