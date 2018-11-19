@@ -17,7 +17,7 @@ def data():
     gamma_dir = [base_dir + "gamma/"]
     proton_dir = [base_dir + "proton/"]
 
-    shape = [35, 70]
+    shape = [30, 90]
     rebin_size = 5
 
     # Get paths from the directories
@@ -77,13 +77,13 @@ def data():
         'as_channels': False,
     }
 
-    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=5000,
+    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=7000,
                                       preprocessor=gamma_train_preprocessor,
                                       proton_paths=proton_indexes[0][0],
                                       proton_preprocessor=proton_train_preprocessor,
                                       as_channels=False,
-                                      final_slices=10,
-                                      slices=(30, 70),
+                                      final_slices=5,
+                                      slices=(30, 80),
                                       augment=True,
                                       training_type='Separation')
 
@@ -92,8 +92,8 @@ def data():
                                          proton_preprocessor=proton_validate_preprocessor,
                                          preprocessor=gamma_validate_preprocessor,
                                          as_channels=False,
-                                         final_slices=10,
-                                         slices=(30, 70),
+                                         final_slices=5,
+                                         slices=(30, 80),
                                          augment=False,
                                          training_type='Separation')
 
@@ -114,37 +114,37 @@ from keras.layers.core import Dense, Dropout, Activation
 from keras.models import Sequential
 
 from hyperas import optim
-from hyperas.distributions import choice, uniform, choice
+from hyperas.distributions import randint, uniform, choice
 
 
 def create_model(x_train, y_train, x_test, y_test):
     separation_model = Sequential()
 
     # separation_model.add(BatchNormalization())
-    separation_model.add(ConvLSTM2D({{choice([8,16, 32, 64])}}, kernel_size={{choice([1, 2, 3, 4, 5])}}, strides=1,
+    separation_model.add(ConvLSTM2D({{randint(64)}}, kernel_size={{choice([1, 3, 5])}}, strides=1,
                                     padding='same',
-                                    batch_input_shape=[16,10,75,75,1],
+                                    input_shape=[5,75,75,1],
                                     activation={{choice(['relu', 'tanh'])}},
                                     dropout={{uniform(0,0.75)}}, recurrent_dropout={{uniform(0,0.75)}},
                                     recurrent_activation={{choice(['relu', 'tanh', 'hard_sigmoid'])}},
                                     return_sequences=True,
-                                    stateful=True))
+                                    stateful=False))
     if {{choice(['pool', 'no_pool'])}} == 'pool':
         separation_model.add(MaxPooling3D())
     if {{choice(['lstm', 'conv'])}} == 'lstm':
-        separation_model.add(ConvLSTM2D({{choice([8,16, 32, 64])}}, kernel_size={{choice([1, 2, 3, 4, 5])}}, strides=1,
+        separation_model.add(ConvLSTM2D({{randint(64)}}, kernel_size={{choice([1, 3, 5])}}, strides=1,
                                         padding='same',
                                         activation={{choice(['relu', 'tanh'])}},
                                         dropout={{uniform(0,0.75)}}, recurrent_dropout={{uniform(0,0.75)}},
                                         recurrent_activation={{choice(['relu', 'tanh', 'hard_sigmoid'])}},
                                         return_sequences=True,
-                                        stateful=True))
+                                        stateful=False))
         if {{choice(['pool', 'no_pool'])}} == 'pool':
             separation_model.add(MaxPooling3D())
     else:
         separation_model.add(
-        Conv3D({{choice([16, 32, 64])}},
-                   kernel_size={{choice([1, 2, 3, 4, 5])}},
+        Conv3D({{randint(64)}},
+                   kernel_size={{choice([1, 3, 5])}},
                    strides=1,
                    padding='same'))
         separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
@@ -152,19 +152,19 @@ def create_model(x_train, y_train, x_test, y_test):
         separation_model.add(Dropout({{uniform(0, 1)}}))
 
     if {{choice(['lstm', 'conv'])}} == 'lstm':
-        separation_model.add(ConvLSTM2D({{choice([8,16, 32, 64])}}, kernel_size={{choice([1, 2, 3, 4, 5])}}, strides=1,
+        separation_model.add(ConvLSTM2D({{randint(64)}}, kernel_size={{choice([1, 3, 5])}}, strides=1,
                                         padding='same',
                                         activation={{choice(['relu', 'tanh'])}},
                                         dropout={{uniform(0,0.75)}}, recurrent_dropout={{uniform(0,0.75)}},
                                         recurrent_activation={{choice(['relu', 'tanh', 'hard_sigmoid'])}},
                                         return_sequences=False,
-                                        stateful=True))
+                                        stateful=False))
         if {{choice(['pool', 'no_pool'])}} == 'pool':
             separation_model.add(MaxPooling3D())
     else:
         separation_model.add(
-            Conv3D({{choice([16, 32, 64])}},
-                   kernel_size={{choice([1, 2, 3, 4, 5])}},
+            Conv3D({{randint(64)}},
+                   kernel_size={{choice([1, 3, 5])}},
                    strides=1,
                    padding='same'))
         separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
@@ -172,14 +172,14 @@ def create_model(x_train, y_train, x_test, y_test):
         separation_model.add(Dropout({{uniform(0, 1)}}))
 
     separation_model.add(Flatten())
-    separation_model.add(Dense({{choice([16, 32, 64])}}))
+    separation_model.add(Dense({{randint(64)}}))
     separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
     separation_model.add(Dropout({{uniform(0, 1)}}))
-    separation_model.add(Dense({{choice([16, 32, 64, 128])}}))
+    separation_model.add(Dense({{randint(128)}}))
     separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
     separation_model.add(Dropout({{uniform(0, 1)}}))
     if {{choice(['three', 'four'])}} == 'four':
-        separation_model.add(Dense({{choice([16, 32, 64, 128])}}))
+        separation_model.add(Dense({{randint(128)}}))
         separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
         separation_model.add(Dropout({{uniform(0, 1)}}))
 
@@ -188,12 +188,12 @@ def create_model(x_train, y_train, x_test, y_test):
     separation_model.compile(optimizer={{choice(['rmsprop', 'adam', 'sgd'])}}, loss='categorical_crossentropy',
                              metrics=['acc'])
 
-    early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
-                                               patience=5,
+    early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
+                                               patience=10,
                                                verbose=0, mode='auto')
 
     result = separation_model.fit(x_train, y_train,
-                                  batch_size=16,
+                                  batch_size=32,
                                   epochs=200,
                                   verbose=2,
                                   validation_split=0.2,
@@ -208,7 +208,7 @@ if __name__ == '__main__':
     best_run, best_model = optim.minimize(model=create_model,
                                           data=data,
                                           algo=tpe.suggest,
-                                          max_evals=20,
+                                          max_evals=5,
                                           trials=Trials())
     best_model.summary()
     X_train, Y_train, X_test, Y_test = data()

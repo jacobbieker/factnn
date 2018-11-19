@@ -1,4 +1,10 @@
-from factnn import GammaPreprocessor, ProtonPreprocessor, SeparationGenerator, SeparationModel
+import os
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
+from factnn import GammaPreprocessor, ProtonPreprocessor, SeparationModel
+from factnn.generator.generator.separation_generators import SeparationGenerator
 import os.path
 from factnn.utils import kfold
 from keras.models import load_model

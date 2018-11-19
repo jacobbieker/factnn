@@ -5,9 +5,93 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from factnn import GammaPreprocessor, ProtonPreprocessor
 from factnn.generator.keras.eventfile_generator import EventFileGenerator
 from factnn.data.preprocess.eventfile_preprocessor import EventFilePreprocessor
+from factnn.generator.generator.separation_generators import SeparationGenerator
 import os.path
 from factnn.utils import kfold
 from keras.models import load_model
+
+base_dir = "../ihp-pc41.ethz.ch/public/phs/"
+obs_dir = [base_dir + "public/"]
+gamma_dir = [base_dir + "sim/gamma/"]
+proton_dir = [base_dir + "sim/proton/"]
+
+shape = [30,80]
+rebin_size = 5
+
+# Get paths from the directories
+gamma_paths = []
+for directory in gamma_dir:
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith("phs.jsonl.gz"):
+                gamma_paths.append(os.path.join(root, file))
+
+
+# Get paths from the directories
+proton_paths = []
+for directory in proton_dir:
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith("phs.jsonl.gz"):
+                proton_paths.append(os.path.join(root, file))
+
+
+# Now do the Kfold Cross validation Part for both sets of paths
+gamma_indexes = kfold.split_data(gamma_paths, kfolds=5)
+proton_indexes = kfold.split_data(proton_paths, kfolds=5)
+
+
+gamma_configuration = {
+    'rebin_size': rebin_size,
+    'output_file': "../gamma.hdf5",
+    'shape': shape,
+    'paths': gamma_indexes[0][0],
+    'as_channels': True
+}
+
+proton_configuration = {
+    'rebin_size': rebin_size,
+    'output_file': "../proton.hdf5",
+    'shape': shape,
+    'paths': proton_indexes[0][0],
+    'as_channels': True
+}
+
+
+proton_train_preprocessor = ProtonPreprocessor(config=proton_configuration)
+gamma_train_preprocessor = GammaPreprocessor(config=gamma_configuration)
+
+gamma_configuration['paths'] = gamma_indexes[1][0]
+proton_configuration['paths'] = proton_indexes[1][0]
+
+proton_validate_preprocessor = ProtonPreprocessor(config=proton_configuration)
+gamma_validate_preprocessor = GammaPreprocessor(config=gamma_configuration)
+
+
+separation_generator_configuration = {
+    'seed': 1337,
+    'batch_size': 16,
+    'start_slice': 0,
+    'number_slices': shape[1] - shape[0],
+    'mode': 'train',
+    'chunked': False,
+    'augment': True,
+    'from_directory': True,
+    'input_shape': [-1, gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2], gamma_train_preprocessor.shape[1], 1],
+    'as_channels': True,
+}
+
+separation_validate = SeparationGenerator(config=separation_generator_configuration)
+separation_train = SeparationGenerator(config=separation_generator_configuration)
+
+separation_validate.mode = "validate"
+separation_train.mode = "train"
+
+separation_train.proton_train_preprocessor = proton_train_preprocessor
+separation_train.proton_validate_preprocessor = proton_validate_preprocessor
+separation_train.train_preprocessor = gamma_train_preprocessor
+separation_train.validate_preprocessor = gamma_validate_preprocessor
+
 
 base_dir = "/home/jacob/Development/event_files/"
 obs_dir = [base_dir + "public/"]
@@ -15,7 +99,7 @@ gamma_dir = [base_dir + "gamma/"]
 proton_dir = [base_dir + "proton/"]
 
 shape = [30, 80]
-rebin_size = 10
+rebin_size = 5
 
 # Get paths from the directories
 gamma_paths = []
@@ -51,8 +135,8 @@ proton_configuration = {
     'as_channels': True
 }
 
-proton_train_preprocessor = EventFilePreprocessor(config=proton_configuration)
-gamma_train_preprocessor = EventFilePreprocessor(config=gamma_configuration)
+proton_train_preprocessor = ProtonPreprocessor(config=proton_configuration)
+gamma_train_preprocessor = GammaPreprocessor(config=gamma_configuration)
 
 gamma_configuration['paths'] = gamma_indexes[1][0]
 proton_configuration['paths'] = proton_indexes[1][0]
@@ -73,17 +157,6 @@ energy_gen_config = {
                     gamma_train_preprocessor.shape[1], 1],
     'as_channels': True,
 }
-
-energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=32,
-                                  preprocessor=gamma_train_preprocessor,
-                                  proton_paths=proton_indexes[0][0],
-                                  proton_preprocessor=proton_train_preprocessor,
-                                  as_channels=True,
-                                  final_slices=5,
-                                  slices=(30, 70),
-                                  augment=True,
-                                  training_type='Separation')
-
 energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=32,
                                      proton_paths=proton_indexes[1][0],
                                      proton_preprocessor=proton_validate_preprocessor,
@@ -151,8 +224,9 @@ train_num = 3600 #(event_totals * 0.8)
 val_num = event_totals * 0.2
 
 separation_model.fit_generator(
-    generator=energy_train,
+    generator=separation_train,
     epochs=500,
+    steps_per_epoch=int(3600/16),
     verbose=1,
     validation_data=energy_validate,
     callbacks=[early_stop, model_checkpoint, tensorboard],

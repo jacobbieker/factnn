@@ -1,6 +1,6 @@
-#import os
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from factnn import GammaPreprocessor, ProtonPreprocessor
 from factnn.generator.keras.eventfile_generator import EventFileGenerator
@@ -61,7 +61,7 @@ energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=16,
                                   final_slices=5,
                                   slices=(30, 70),
                                   augment=True,
-                                  training_type='Disp')
+                                  training_type='Separation')
 
 energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=16,
                                      preprocessor=gamma_validate_preprocessor,
@@ -69,7 +69,7 @@ energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=16,
                                      final_slices=5,
                                      slices=(30, 70),
                                      augment=False,
-                                     training_type='Disp')
+                                     training_type='Separation')
 
 from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D, Conv2D, MaxPooling2D, PReLU, ReLU, BatchNormalization
 from keras.models import Sequential
@@ -84,7 +84,7 @@ def r2(y_true, y_pred):
 
 import keras.losses
 keras.losses.r2 = r2
-
+"""
 separation_model = Sequential()
 
 #separation_model.add(ConvLSTM2D(32, kernel_size=3, strides=2,
@@ -207,13 +207,11 @@ train_num = 16000#(event_totals * 0.8)
 val_num = event_totals * 0.2
 
 separation_model.fit_generator(
-    generator=separation_train,
-    steps_per_epoch=int(np.floor(train_num / separation_train.batch_size)),
+    generator=energy_train,
+    steps_per_epoch=int(np.floor(train_num / energy_train.batch_size)),
     epochs=500,
     verbose=1,
-    validation_data=separation_validate,
+    validation_data=energy_validate,
     callbacks=[early_stop, model_checkpoint, tensorboard],
-    validation_steps=int(np.floor(val_num / separation_validate.batch_size))
+    validation_steps=int(np.floor(val_num / energy_validate.batch_size))
 )
-
-"""

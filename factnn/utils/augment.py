@@ -412,9 +412,7 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
         training_data = [item[data_format["Image"]] for item in training_data]
 
     training_data = np.array(training_data)
-    print(training_data.shape)
     training_data = training_data.reshape(-1, training_data.shape[2], training_data.shape[3], training_data.shape[4])
-    print(training_data.shape)
 
     if proton_images is not None:
         proton_data = [item[0] for item in proton_images]
