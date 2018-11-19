@@ -1,7 +1,7 @@
-#import os
+# import os
 
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from factnn import GammaPreprocessor, ProtonPreprocessor
 from factnn.generator.keras.eventfile_generator import EventFileGenerator
@@ -9,8 +9,6 @@ from factnn.data.preprocess.eventfile_preprocessor import EventFilePreprocessor
 import os.path
 from factnn.utils import kfold
 from keras.models import load_model
-
-
 
 
 def data():
@@ -45,7 +43,7 @@ def data():
         'output_file': "../gamma.hdf5",
         'shape': shape,
         'paths': gamma_indexes[0][0],
-        'as_channels': True
+        'as_channels': False
     }
 
     proton_configuration = {
@@ -53,7 +51,7 @@ def data():
         'output_file': "../proton.hdf5",
         'shape': shape,
         'paths': proton_indexes[0][0],
-        'as_channels': True
+        'as_channels': False
     }
 
     proton_train_preprocessor = EventFilePreprocessor(config=proton_configuration)
@@ -76,25 +74,25 @@ def data():
         'from_directory': True,
         'input_shape': [-1, gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2],
                         gamma_train_preprocessor.shape[1], 1],
-        'as_channels': True,
+        'as_channels': False,
     }
 
-    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=12,
+    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=5000,
                                       preprocessor=gamma_train_preprocessor,
                                       proton_paths=proton_indexes[0][0],
                                       proton_preprocessor=proton_train_preprocessor,
                                       as_channels=False,
-                                      final_slices=3,
+                                      final_slices=10,
                                       slices=(30, 70),
                                       augment=True,
                                       training_type='Separation')
 
-    energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=16,
+    energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=100,
                                          proton_paths=proton_indexes[1][0],
                                          proton_preprocessor=proton_validate_preprocessor,
                                          preprocessor=gamma_validate_preprocessor,
                                          as_channels=False,
-                                         final_slices=3,
+                                         final_slices=10,
                                          slices=(30, 70),
                                          augment=False,
                                          training_type='Separation')
@@ -112,10 +110,8 @@ import keras
 import numpy as np
 
 from hyperopt import Trials, STATUS_OK, tpe
-from keras.datasets import mnist
 from keras.layers.core import Dense, Dropout, Activation
 from keras.models import Sequential
-from keras.utils import np_utils
 
 from hyperas import optim
 from hyperas.distributions import choice, uniform, choice
@@ -125,38 +121,56 @@ def create_model(x_train, y_train, x_test, y_test):
     separation_model = Sequential()
 
     # separation_model.add(BatchNormalization())
-    separation_model.add(
-        Conv2D({{choice([16, 32, 64])}},
-               input_shape=[75, 75, 5],
-               kernel_size=3,
-               strides=1,
-               padding='same'))
-    separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
-    separation_model.add(MaxPooling2D())
-    separation_model.add(Dropout({{uniform(0, 1)}}))
-    # separation_model.add(BatchNormalization())
-    separation_model.add(Conv2D({{choice([16, 32, 64])}},
-                                kernel_size=3,
-                                strides=1,
-                                padding='same'))
-    separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
-    separation_model.add(MaxPooling2D())
-    separation_model.add(Dropout({{uniform(0, 1)}}))
-    separation_model.add(Conv2D({{choice([16, 32, 64])}},
-                                kernel_size=3,
-                                strides=1,
-                                padding='same'))
-    separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
-    separation_model.add(MaxPooling2D())
-    if {{choice(['three', 'four'])}} == 'four':
-        separation_model.add(Conv2D({{choice([16, 32, 64, 128])}},
-                                    kernel_size=3,
-                                    strides=1,
-                                    padding='same'))
+    separation_model.add(ConvLSTM2D({{choice([8,16, 32, 64])}}, kernel_size={{choice([1, 2, 3, 4, 5])}}, strides=1,
+                                    padding='same',
+                                    batch_input_shape=[16,10,75,75,1],
+                                    activation={{choice(['relu', 'tanh'])}},
+                                    dropout={{uniform(0,0.75)}}, recurrent_dropout={{uniform(0,0.75)}},
+                                    recurrent_activation={{choice(['relu', 'tanh', 'hard_sigmoid'])}},
+                                    return_sequences=True,
+                                    stateful=True))
+    if {{choice(['pool', 'no_pool'])}} == 'pool':
+        separation_model.add(MaxPooling3D())
+    if {{choice(['lstm', 'conv'])}} == 'lstm':
+        separation_model.add(ConvLSTM2D({{choice([8,16, 32, 64])}}, kernel_size={{choice([1, 2, 3, 4, 5])}}, strides=1,
+                                        padding='same',
+                                        activation={{choice(['relu', 'tanh'])}},
+                                        dropout={{uniform(0,0.75)}}, recurrent_dropout={{uniform(0,0.75)}},
+                                        recurrent_activation={{choice(['relu', 'tanh', 'hard_sigmoid'])}},
+                                        return_sequences=True,
+                                        stateful=True))
+        if {{choice(['pool', 'no_pool'])}} == 'pool':
+            separation_model.add(MaxPooling3D())
+    else:
+        separation_model.add(
+        Conv3D({{choice([16, 32, 64])}},
+                   kernel_size={{choice([1, 2, 3, 4, 5])}},
+                   strides=1,
+                   padding='same'))
         separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
-        separation_model.add(MaxPooling2D())
-        # separation_model.add(BatchNormalization())
+        separation_model.add(MaxPooling3D())
         separation_model.add(Dropout({{uniform(0, 1)}}))
+
+    if {{choice(['lstm', 'conv'])}} == 'lstm':
+        separation_model.add(ConvLSTM2D({{choice([8,16, 32, 64])}}, kernel_size={{choice([1, 2, 3, 4, 5])}}, strides=1,
+                                        padding='same',
+                                        activation={{choice(['relu', 'tanh'])}},
+                                        dropout={{uniform(0,0.75)}}, recurrent_dropout={{uniform(0,0.75)}},
+                                        recurrent_activation={{choice(['relu', 'tanh', 'hard_sigmoid'])}},
+                                        return_sequences=False,
+                                        stateful=True))
+        if {{choice(['pool', 'no_pool'])}} == 'pool':
+            separation_model.add(MaxPooling3D())
+    else:
+        separation_model.add(
+            Conv3D({{choice([16, 32, 64])}},
+                   kernel_size={{choice([1, 2, 3, 4, 5])}},
+                   strides=1,
+                   padding='same'))
+        separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
+        separation_model.add(MaxPooling3D())
+        separation_model.add(Dropout({{uniform(0, 1)}}))
+
     separation_model.add(Flatten())
     separation_model.add(Dense({{choice([16, 32, 64])}}))
     separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
@@ -179,7 +193,7 @@ def create_model(x_train, y_train, x_test, y_test):
                                                verbose=0, mode='auto')
 
     result = separation_model.fit(x_train, y_train,
-                                  batch_size={{choice([8, 16, 32, 64])}},
+                                  batch_size=16,
                                   epochs=200,
                                   verbose=2,
                                   validation_split=0.2,
@@ -194,7 +208,7 @@ if __name__ == '__main__':
     best_run, best_model = optim.minimize(model=create_model,
                                           data=data,
                                           algo=tpe.suggest,
-                                          max_evals=50,
+                                          max_evals=20,
                                           trials=Trials())
     best_model.summary()
     X_train, Y_train, X_test, Y_test = data()
@@ -202,4 +216,4 @@ if __name__ == '__main__':
     print(best_model.evaluate(X_test, Y_test))
     print("Best performing model chosen hyper-parameters:")
     print(best_run)
-    best_model.save("hyperas_seperation_best.hdf5")
+    best_model.save("hyperas_seperation_time_best.hdf5")

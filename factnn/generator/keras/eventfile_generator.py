@@ -29,15 +29,15 @@ class EventFileGenerator(Sequence):
         batch_files = self.paths[index * self.batch_size:(index + 1) * self.batch_size]
         if self.proton_paths is not None:
             proton_batch_files = self.proton_paths[index * self.batch_size:(index + 1) * self.batch_size]
-            proton_images = self.proton_preprocessor.on_files_processor(paths=proton_batch_files)
+            proton_images = self.proton_preprocessor.on_files_processor(paths=proton_batch_files, final_slices=self.final_slices)
         else:
             proton_images = None
-        images = self.preprocessor.on_files_processor(paths=batch_files)
+        images = self.preprocessor.on_files_processor(paths=batch_files, final_slices=self.final_slices)
         images, labels = augment_image_batch(images, proton_images=proton_images,
                                              type_training=self.training_type,
                                              augment=self.augment,
                                              swap=self.augment,
-                                             shape=[-1,self.slices[1]-self.slices[0], self.preprocessor.shape[1], self.preprocessor.shape[2],1],
+                                             shape=[-1,self.final_slices, self.preprocessor.shape[1], self.preprocessor.shape[2],1],
                                              as_channels=self.as_channels)
 
         return images, labels
