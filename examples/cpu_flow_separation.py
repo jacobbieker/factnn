@@ -15,7 +15,7 @@ gamma_dir = [base_dir + "diffuse_gamma/"]
 proton_dir = [base_dir + "proton/"]
 
 shape = [30, 80]
-rebin_size = 5
+rebin_size = 3
 
 # Get paths from the directories
 gamma_paths = []
@@ -55,7 +55,7 @@ energy_gen_config = {
     'as_channels': True,
 }
 
-energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=128,
+energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=16,
                                   preprocessor=gamma_train_preprocessor,
                                   as_channels=True,
                                   final_slices=5,
@@ -63,7 +63,7 @@ energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=128,
                                   augment=True,
                                   training_type='Disp')
 
-energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=128,
+energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=16,
                                      preprocessor=gamma_validate_preprocessor,
                                      as_channels=True,
                                      final_slices=5,
@@ -82,6 +82,9 @@ def r2(y_true, y_pred):
     SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
     return -1.*(1 - SS_res / (SS_tot + K.epsilon()))
 
+import keras.losses
+keras.losses.r2 = r2
+
 separation_model = Sequential()
 
 #separation_model.add(ConvLSTM2D(32, kernel_size=3, strides=2,
@@ -91,16 +94,21 @@ separation_model = Sequential()
 #                     return_sequences=True))
 
 #separation_model.add(BatchNormalization()
-separation_model.add(Conv2D(32, input_shape=[gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 5],
+separation_model.add(Conv2D(64, input_shape=[gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 5],
                             kernel_size=3, strides=1,
                             padding='same'))
-separation_model.add(ReLU())
+separation_model.add(PReLU())
 separation_model.add(MaxPooling2D())
 #separation_model.add(BatchNormalization())
-separation_model.add(Conv2D(32,
+separation_model.add(Conv2D(64,
                             kernel_size=3, strides=1,
                             padding='same'))
-separation_model.add(ReLU())
+separation_model.add(PReLU())
+separation_model.add(MaxPooling2D())
+separation_model.add(Conv2D(128,
+                            kernel_size=3, strides=1,
+                            padding='same'))
+separation_model.add(PReLU())
 separation_model.add(MaxPooling2D())
 #separation_model.add(BatchNormalization())
 separation_model.add(Dropout(0.2))
@@ -111,11 +119,13 @@ separation_model.add(Dropout(0.2))
 separation_model.add(Dense(64))
 separation_model.add(ReLU())
 separation_model.add(Dense(1, activation='linear'))
-separation_model.compile(optimizer='adam', loss=r2,
-              metrics=['mae', 'mse'])
+separation_model.compile(optimizer='adam', loss='mse',
+              metrics=['mae', r2])
 
+#separation_model = load_model("Outside_cpu_source_-0.10.hdf5")
 separation_model.summary()
-model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_cpu_source.hdf5",
+
+model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_cpu_source_large_{val_loss:.2f}.hdf5",
                                                    monitor='val_loss',
                                                    verbose=0,
                                                    save_best_only=True,
@@ -129,13 +139,11 @@ tensorboard = keras.callbacks.TensorBoard(update_freq='epoch', write_images=True
 
 from examples.open_crab_sample_constants import NUM_EVENTS_GAMMA, NUM_EVENTS_PROTON
 
-event_totals = 0.8*NUM_EVENTS_PROTON
-train_num = 3600 #(event_totals * 0.8)
-val_num = event_totals * 0.2
 
 separation_model.fit_generator(
     generator=energy_train,
     epochs=500,
+    steps_per_epoch=len(energy_train),
     verbose=1,
     validation_data=energy_validate,
     callbacks=[early_stop, model_checkpoint, tensorboard],

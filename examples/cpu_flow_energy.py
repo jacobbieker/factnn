@@ -74,7 +74,7 @@ energy_gen_config = {
     'as_channels': True,
 }
 
-energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=32,
+energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=16,
                                   preprocessor=gamma_train_preprocessor,
                                   as_channels=True,
                                   final_slices=5,
@@ -82,7 +82,7 @@ energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=32,
                                   augment=True,
                                   training_type='Energy')
 
-energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=32,
+energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=16,
                                      preprocessor=gamma_validate_preprocessor,
                                      as_channels=True,
                                      final_slices=5,
@@ -150,7 +150,7 @@ separation_model.compile(optimizer='adam', loss='mse',
                          metrics=['mae', r2])
 
 separation_model.summary()
-model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_energy_prelu_large.hdf5",
+model_checkpoint = keras.callbacks.ModelCheckpoint("Outside_energy_prelu_large_{val_loss:.2f}.hdf5",
                                                    monitor='val_loss',
                                                    verbose=0,
                                                    save_best_only=True,
@@ -162,12 +162,6 @@ early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
 
 tensorboard = keras.callbacks.TensorBoard(update_freq='epoch', log_dir='./energy_log_prelu_eventlist')
 
-from examples.open_crab_sample_constants import NUM_EVENTS_GAMMA, NUM_EVENTS_PROTON
-
-event_totals = 0.8 * NUM_EVENTS_GAMMA
-train_num = (event_totals * 0.8)
-val_num = event_totals * 0.2
-
 separation_model.fit_generator(
     generator=energy_train,
     epochs=500,
@@ -175,8 +169,8 @@ separation_model.fit_generator(
     validation_data=energy_validate,
     callbacks=[early_stop, model_checkpoint, tensorboard],
     use_multiprocessing=True,
-    workers=10,
-    max_queue_size=80,
+    workers=12,
+    max_queue_size=300,
 )
 
 # Save the base model to use for the kfold validation
