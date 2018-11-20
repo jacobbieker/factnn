@@ -1,7 +1,7 @@
-#import os
+import os
 
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from factnn import GammaPreprocessor, ProtonPreprocessor
 from factnn.generator.keras.eventfile_generator import EventFileGenerator
@@ -9,8 +9,6 @@ from factnn.data.preprocess.eventfile_preprocessor import EventFilePreprocessor
 import os.path
 from factnn.utils import kfold
 from keras.models import load_model
-
-
 
 
 def data():
@@ -45,7 +43,7 @@ def data():
         'output_file': "../gamma.hdf5",
         'shape': shape,
         'paths': gamma_indexes[0][0],
-        'as_channels': True
+        'as_channels': False
     }
 
     proton_configuration = {
@@ -53,63 +51,31 @@ def data():
         'output_file': "../proton.hdf5",
         'shape': shape,
         'paths': proton_indexes[0][0],
-        'as_channels': True
+        'as_channels': False
     }
 
-    proton_train_preprocessor = EventFilePreprocessor(config=proton_configuration)
     gamma_train_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
     gamma_configuration['paths'] = gamma_indexes[1][0]
     proton_configuration['paths'] = proton_indexes[1][0]
 
-    proton_validate_preprocessor = EventFilePreprocessor(config=proton_configuration)
     gamma_validate_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
-    energy_gen_config = {
-        'seed': 1337,
-        'batch_size': 32,
-        'start_slice': 0,
-        'number_slices': shape[1] - shape[0],
-        'mode': 'train',
-        'chunked': False,
-        'augment': True,
-        'from_directory': True,
-        'input_shape': [-1, gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2],
-                        gamma_train_preprocessor.shape[1], 1],
-        'as_channels': True,
-    }
-
-    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=16000,
+    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=1000,
                                       preprocessor=gamma_train_preprocessor,
-                                      as_channels=True,
+                                      as_channels=False,
                                       final_slices=5,
                                       slices=(30, 70),
                                       augment=True,
                                       training_type='Energy')
 
-    energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=1600,
+    energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=200,
                                          preprocessor=gamma_validate_preprocessor,
-                                         as_channels=True,
+                                         as_channels=False,
                                          final_slices=5,
                                          slices=(30, 70),
                                          augment=True,
                                          training_type='Energy')
-    # Number of batches to create
-    num_batches = 100
-    x_train = []
-    x_test = []
-    y_train = []
-    y_test = []
-    '''
-    for i in range(num_batches):
-        train, train_label = energy_train.__getitem__(i)
-        test, test_label = energy_validate.__getitem__(i)
-        for j in range(len(train)):
-            x_train.append(train[j])
-            y_train.append(train_label[j])
-            x_test.append(test[j])
-            y_test.append(test_label[j])
-        '''
 
     x_train, y_train = energy_train.__getitem__(0)
     x_test, y_test = energy_validate.__getitem__(0)
@@ -133,115 +99,78 @@ from hyperas import optim
 from hyperas.distributions import choice, randint, uniform
 
 
-def create_model(patch_size, dropout_layer, lstm_dropout, time_slices, strides):
-    # Make the model
-    model = Sequential()
-
-    # Base Conv layer
-    model.add(ConvLSTM2D(32, kernel_size={{randint(6)}}, strides=1,
-                         padding='same',
-                         input_shape=(time_slices, 75, 75, 1),
-                         activation='relu', dropout=dropout_layer/2,
-                         recurrent_dropout=lstm_dropout/2,
-                         recurrent_activation='hard_sigmoid',
-                         return_sequences=True))
-    model.add(ConvLSTM2D(64, kernel_size=patch_size,
-                         strides=strides,
-                         padding='same', activation='relu',
-                         dropout=dropout_layer/2,
-                         recurrent_dropout=lstm_dropout/2,
-                         recurrent_activation='hard_sigmoid',
-                         return_sequences=True))
-    #model.add(MaxPooling2D())
-    model.add(
-        Conv3D(64, kernel_size=patch_size, strides=strides,
-               padding='same', activation='relu'))
-    model.add(MaxPooling3D())
-    model.add(
-        Conv3D(64, kernel_size=patch_size, strides=strides,
-               padding='same', activation='relu'))
-    model.add(MaxPooling3D())
-    #model.add(MaxPooling2D())
-    model.add(Flatten())
-
-    for i in range(1):
-        model.add(Dense(128, activation='relu'))
-        model.add(Dropout(dropout_layer/2))
-        model.add(Dense(64, activation='relu'))
-        model.add(Dropout(dropout_layer/2))
-
-    # Final Dense layer
-    model.add(Dense(1, activation='linear'))
-    model.compile(optimizer='adam', loss='mse',
-                  metrics=['mae'])
-
-    return model
-
 def create_model(x_train, y_train, x_test, y_test):
-
     def r2(y_true, y_pred):
         from keras import backend as K
         SS_res = K.sum(K.square(y_true - y_pred))
         SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
         return -1. * (1 - SS_res / (SS_tot + K.epsilon()))
 
-    separation_model = Sequential()
+    # Make the model
+    model = Sequential()
 
-    # separation_model.add(BatchNormalization())
-    separation_model.add(
-        Conv2D({{choice([16, 32, 64])}},
-               input_shape=[75, 75, 5],
-               kernel_size=3,
-               strides=1,
-               padding='same'))
-    separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
-    separation_model.add(MaxPooling2D())
-    separation_model.add(Dropout({{uniform(0, 1)}}))
-    # separation_model.add(BatchNormalization())
-    separation_model.add(Conv2D({{choice([16, 32, 64])}},
-                                kernel_size=3,
-                                strides=1,
-                                padding='same'))
-    separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
-    separation_model.add(MaxPooling2D())
-    separation_model.add(Dropout({{uniform(0, 1)}}))
-    separation_model.add(Conv2D({{choice([16, 32, 64])}},
-                                kernel_size=3,
-                                strides=1,
-                                padding='same'))
-    separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
-    separation_model.add(MaxPooling2D())
-    separation_model.add(Conv2D({{choice([16, 32, 64])}},
-                                kernel_size=3,
-                                strides=1,
-                                padding='same'))
-    separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
-    separation_model.add(MaxPooling2D())
-    # separation_model.add(BatchNormalization())
-    separation_model.add(Dropout({{uniform(0, 1)}}))
-    separation_model.add(Flatten())
-    separation_model.add(Dense({{choice([16, 32, 64])}}))
-    separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
-    separation_model.add(Dropout({{uniform(0, 1)}}))
-    separation_model.add(Dense({{choice([16, 32, 64])}}))
-    separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
-    separation_model.add(Dropout({{uniform(0, 1)}}))
+    # Base Conv layer
+    model.add(ConvLSTM2D(16, kernel_size={{choice([1, 2, 3, 4, 5])}}, strides=1,
+                         padding='same',
+                         input_shape=(5, 75, 75, 1),
+                         activation={{choice(['relu', 'tanh'])}},
+                         dropout={{uniform(0, 0.75)}},
+                         recurrent_dropout={{uniform(0, 0.75)}},
+                         recurrent_activation='hard_sigmoid',
+                         return_sequences=True))
+    model.add(ConvLSTM2D(32, kernel_size={{choice([1, 2, 3, 4, 5])}},
+                         strides=1,
+                         padding='same', activation={{choice(['relu', 'tanh'])}},
+                         dropout={{uniform(0, 0.75)}},
+                         recurrent_dropout={{uniform(0, 0.75)}},
+                         recurrent_activation='hard_sigmoid',
+                         return_sequences=False))
+    model.add(MaxPooling2D())
+    model.add(
+        Conv2D(32, kernel_size={{choice([1, 2, 3, 4, 5])}}, strides=1,
+               padding='same', activation='relu'))
+    model.add(MaxPooling2D())
+    model.add(
+        Conv2D(32, kernel_size={{choice([1, 2, 3, 4, 5])}}, strides=1,
+               padding='same', activation='relu'))
+    # model.add(MaxPooling3D())
+    model.add(MaxPooling2D())
+    model.add(Flatten())
 
-    # For energy
+    model.add(Dense(64, activation='relu'))
+    model.add(Dropout({{uniform(0, 0.75)}}))
+    model.add(Dense(32, activation='relu'))
+    model.add(Dropout({{uniform(0, 0.75)}}))
 
-    separation_model.add(Dense(1, activation='linear'))
-    separation_model.compile(optimizer={{choice(['rmsprop', 'adam', 'sgd'])}}, loss='mse',
-                             metrics=['mae', r2])
+    # Final Dense layer
+    model.add(Dense(1, activation='linear'))
+    model.compile(optimizer={{choice(['rmsprop', 'adam', 'sgd'])}}, loss='mse',
+                  metrics=['mae', r2])
 
-    result = separation_model.fit(x_train, y_train,
-                                  batch_size={{choice([8, 16, 32, 64])}},
-                                  epochs=20,
-                                  verbose=2,
-                                  validation_split=0.1)
+    early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
+                                               patience=5,
+                                               verbose=0, mode='auto')
+    model_checkpoint = keras.callbacks.ModelCheckpoint("models/hyperas_thesis_energy_{val_loss:0.2}.hdf5",
+                                                       monitor='val_loss',
+                                                       verbose=0,
+                                                       save_best_only=True,
+                                                       save_weights_only=False,
+                                                       mode='auto', period=1)
+    nan_term = keras.callbacks.TerminateOnNaN()
+
+
+    result = model.fit(x_train, y_train,
+                       batch_size=8,
+                       epochs=100,
+                       verbose=2,
+                       validation_split=0.2,
+                       callbacks=[early_stop, model_checkpoint, nan_term])
     # get the highest validation accuracy of the training epochs
-    validation_acc = np.amax(result.history['val_loss'])
+    validation_acc = np.nanmin(result.history['val_loss'])
+    if np.isnan(validation_acc):
+        validation_acc = 2**32-1
     print('Best validation acc of epoch:', validation_acc)
-    return {'loss': validation_acc, 'status': STATUS_OK, 'model': separation_model}
+    return {'loss': validation_acc, 'status': STATUS_OK, 'model': model}
 
 
 if __name__ == '__main__':
@@ -251,6 +180,7 @@ if __name__ == '__main__':
                                           max_evals=10,
                                           trials=Trials())
     best_model.summary()
+    best_model.save("models/hyperas_thesis_energy_best.hdf5")
     X_train, Y_train, X_test, Y_test = data()
     print("Evalutation of best performing model:")
     print(best_model.evaluate(X_test, Y_test))

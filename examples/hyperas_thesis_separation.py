@@ -136,6 +136,7 @@ def create_model(x_train, y_train, x_test, y_test):
     separation_model.add(MaxPooling2D())
     separation_model.add(Conv2D(64, kernel_size={{choice([1,3,5])}}, strides=1,
                                 padding='same', activation={{choice(['relu', 'elu', 'sigmoid'])}}))
+    separation_model.add(MaxPooling2D())
     separation_model.add(Dropout({{uniform(0, 0.75)}}))
     separation_model.add(Flatten())
     separation_model.add(Dense(64))
@@ -150,18 +151,28 @@ def create_model(x_train, y_train, x_test, y_test):
     separation_model.compile(optimizer={{choice(['rmsprop', 'adam', 'sgd'])}}, loss='categorical_crossentropy',
                              metrics=['acc'])
 
-    early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
+    early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
                                                patience=10,
                                                verbose=0, mode='auto')
+    model_checkpoint = keras.callbacks.ModelCheckpoint("models/hyperas_thesis_sep_{val_loss:0.2}.hdf5",
+                                                       monitor='val_loss',
+                                                       verbose=0,
+                                                       save_best_only=True,
+                                                       save_weights_only=False,
+                                                       mode='auto', period=1)
+    nan_term = keras.callbacks.TerminateOnNaN()
+
 
     result = separation_model.fit(x_train, y_train,
                                   batch_size=8,
                                   epochs=100,
                                   verbose=2,
                                   validation_split=0.2,
-                                  callbacks=[early_stop])
+                                  callbacks=[early_stop, model_checkpoint, nan_term])
     # get the highest validation accuracy of the training epochs
-    validation_acc = np.amin(result.history['val_loss'])
+    validation_acc = np.nanmin(result.history['val_loss'])
+    if np.isnan(validation_acc):
+        validation_acc = 2**32-1
     print('Best validation acc of epoch:', validation_acc)
     return {'loss': validation_acc, 'status': STATUS_OK, 'model': separation_model}
 
@@ -173,6 +184,7 @@ if __name__ == '__main__':
                                           max_evals=10,
                                           trials=Trials())
     best_model.summary()
+    best_model.save("models/hyperas_thesis_sep_best.hdf5")
     X_train, Y_train, X_test, Y_test = data()
     print("Evalutation of best performing model:")
     print(best_model.evaluate(X_test, Y_test))

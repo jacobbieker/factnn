@@ -77,7 +77,7 @@ def data():
         'as_channels': False,
     }
 
-    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=4000,
+    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=6000,
                                       preprocessor=gamma_train_preprocessor,
                                       as_channels=False,
                                       final_slices=10,
@@ -131,20 +131,21 @@ def create_model(x_train, y_train, x_test, y_test):
                                 padding='same',
                                 input_shape=[10,75,75,1],
                                 activation={{choice(['relu', 'tanh'])}},
-                                dropout={{uniform(0,0.5)}}, recurrent_dropout={{uniform(0,0.5)}},
+                                dropout={{uniform(0,0.7)}}, recurrent_dropout={{uniform(0,0.7)}},
                                 recurrent_activation={{choice(['relu', 'tanh', 'hard_sigmoid'])}},
                                 return_sequences=False,
                                 stateful=False))
     # separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
-    #separation_model.add(MaxPooling2D())
+    if {{choice(['pool', 'no_pool'])}} == "pool":
+        separation_model.add(MaxPooling2D())
     #separation_model.add(Dropout({{uniform(0, 1)}}))
     separation_model.add(Flatten())
     separation_model.add(Dense(64))
     separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
-    separation_model.add(Dropout({{uniform(0, 1)}}))
+    separation_model.add(Dropout({{uniform(0, 0.75)}}))
     separation_model.add(Dense(128))
     separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
-    separation_model.add(Dropout({{uniform(0, 1)}}))
+    separation_model.add(Dropout({{uniform(0, 0.75)}}))
 
     # For energy
 
@@ -153,17 +154,25 @@ def create_model(x_train, y_train, x_test, y_test):
                              metrics=['mae', r2])
 
     early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
-                                               patience=10,
+                                               patience=5,
                                                verbose=0, mode='auto')
-
+    model_checkpoint = keras.callbacks.ModelCheckpoint("models/hyperas_thesis_disp_{val_loss:0.2}.hdf5",
+                                                       monitor='val_loss',
+                                                       verbose=0,
+                                                       save_best_only=True,
+                                                       save_weights_only=False,
+                                                       mode='auto', period=1)
+    nan_term = keras.callbacks.TerminateOnNaN()
     result = separation_model.fit(x_train, y_train,
                                   batch_size=8,
                                   epochs=100,
                                   verbose=2,
                                   validation_split=0.2,
-                                  callbacks=[early_stop])
+                                  callbacks=[early_stop, model_checkpoint, nan_term])
     # get the highest validation accuracy of the training epochs
-    validation_acc = np.amin(result.history['val_loss'])
+    validation_acc = np.nanmin(result.history['val_loss'])
+    if np.isnan(validation_acc):
+        validation_acc = 2**32-1
     print('Best validation acc of epoch:', validation_acc)
     return {'loss': validation_acc, 'status': STATUS_OK, 'model': separation_model}
 
@@ -172,9 +181,10 @@ if __name__ == '__main__':
     best_run, best_model = optim.minimize(model=create_model,
                                           data=data,
                                           algo=tpe.suggest,
-                                          max_evals=5,
+                                          max_evals=10,
                                           trials=Trials())
     best_model.summary()
+    best_model.save("models/hyperas_thesis_disp_best.hdf5")
     X_train, Y_train, X_test, Y_test = data()
     print("Evalutation of best performing model:")
     print(best_model.evaluate(X_test, Y_test))

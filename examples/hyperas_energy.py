@@ -1,7 +1,7 @@
-#import os
+import os
 
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from factnn import GammaPreprocessor, ProtonPreprocessor
 from factnn.generator.keras.eventfile_generator import EventFileGenerator
@@ -45,7 +45,7 @@ def data():
         'output_file': "../gamma.hdf5",
         'shape': shape,
         'paths': gamma_indexes[0][0],
-        'as_channels': True
+        'as_channels': False
     }
 
     proton_configuration = {
@@ -53,63 +53,31 @@ def data():
         'output_file': "../proton.hdf5",
         'shape': shape,
         'paths': proton_indexes[0][0],
-        'as_channels': True
+        'as_channels': False
     }
 
-    proton_train_preprocessor = EventFilePreprocessor(config=proton_configuration)
     gamma_train_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
     gamma_configuration['paths'] = gamma_indexes[1][0]
     proton_configuration['paths'] = proton_indexes[1][0]
 
-    proton_validate_preprocessor = EventFilePreprocessor(config=proton_configuration)
     gamma_validate_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
-    energy_gen_config = {
-        'seed': 1337,
-        'batch_size': 32,
-        'start_slice': 0,
-        'number_slices': shape[1] - shape[0],
-        'mode': 'train',
-        'chunked': False,
-        'augment': True,
-        'from_directory': True,
-        'input_shape': [-1, gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2],
-                        gamma_train_preprocessor.shape[1], 1],
-        'as_channels': True,
-    }
-
-    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=16000,
+    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=4000,
                                       preprocessor=gamma_train_preprocessor,
-                                      as_channels=True,
+                                      as_channels=False,
                                       final_slices=5,
                                       slices=(30, 70),
                                       augment=True,
                                       training_type='Energy')
 
-    energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=1600,
+    energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=400,
                                          preprocessor=gamma_validate_preprocessor,
-                                         as_channels=True,
+                                         as_channels=False,
                                          final_slices=5,
                                          slices=(30, 70),
-                                         augment=True,
+                                         augment=False,
                                          training_type='Energy')
-    # Number of batches to create
-    num_batches = 100
-    x_train = []
-    x_test = []
-    y_train = []
-    y_test = []
-    '''
-    for i in range(num_batches):
-        train, train_label = energy_train.__getitem__(i)
-        test, test_label = energy_validate.__getitem__(i)
-        for j in range(len(train)):
-            x_train.append(train[j])
-            y_train.append(train_label[j])
-            x_test.append(test[j])
-            y_test.append(test_label[j])
-        '''
 
     x_train, y_train = energy_train.__getitem__(0)
     x_test, y_test = energy_validate.__getitem__(0)
