@@ -61,20 +61,20 @@ def data():
 
     gamma_validate_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
-    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=1000,
+    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=2000,
                                       preprocessor=gamma_train_preprocessor,
                                       as_channels=False,
                                       final_slices=5,
                                       slices=(30, 70),
-                                      augment=True,
+                                      augment=False,
                                       training_type='Energy')
 
-    energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=200,
+    energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=100,
                                          preprocessor=gamma_validate_preprocessor,
                                          as_channels=False,
                                          final_slices=5,
                                          slices=(30, 70),
-                                         augment=True,
+                                         augment=False,
                                          training_type='Energy')
 
     x_train, y_train = energy_train.__getitem__(0)
@@ -148,23 +148,22 @@ def create_model(x_train, y_train, x_test, y_test):
                   metrics=['mae', r2])
 
     early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
-                                               patience=5,
+                                               patience=3,
                                                verbose=0, mode='auto')
-    model_checkpoint = keras.callbacks.ModelCheckpoint("models/hyperas_thesis_energy_{val_loss:0.2}.hdf5",
+    model_checkpoint = keras.callbacks.ModelCheckpoint("models/hyperas_thesis_energy_{val_loss:0.4}.hdf5",
                                                        monitor='val_loss',
                                                        verbose=0,
                                                        save_best_only=True,
                                                        save_weights_only=False,
                                                        mode='auto', period=1)
-    nan_term = keras.callbacks.TerminateOnNaN()
-
+    #nan_term = keras.callbacks.TerminateOnNaN()
 
     result = model.fit(x_train, y_train,
                        batch_size=8,
                        epochs=100,
                        verbose=2,
                        validation_split=0.2,
-                       callbacks=[early_stop, model_checkpoint, nan_term])
+                       callbacks=[early_stop, model_checkpoint, ])#nan_term])
     # get the highest validation accuracy of the training epochs
     validation_acc = np.nanmin(result.history['val_loss'])
     if np.isnan(validation_acc):

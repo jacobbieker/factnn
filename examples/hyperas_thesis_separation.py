@@ -1,7 +1,7 @@
-#import os
+import os
 
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 from factnn import GammaPreprocessor, ProtonPreprocessor
 from factnn.generator.keras.eventfile_generator import EventFileGenerator
@@ -79,24 +79,24 @@ def data():
         'as_channels': False,
     }
 
-    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=3000,
+    energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=200,
                                       preprocessor=gamma_train_preprocessor,
                                       proton_paths=proton_indexes[0][0],
                                       proton_preprocessor=proton_train_preprocessor,
                                       as_channels=False,
                                       final_slices=10,
                                       slices=(30, 70),
-                                      augment=True,
+                                      augment=False,
                                       training_type='Separation')
 
-    energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=800,
+    energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=100,
                                          preprocessor=gamma_validate_preprocessor,
                                          proton_paths=proton_indexes[1][0],
                                          proton_preprocessor=proton_train_preprocessor,
                                          as_channels=False,
                                          final_slices=10,
                                          slices=(30, 70),
-                                         augment=True,
+                                         augment=False,
                                          training_type='Separation')
 
     x_train, y_train = energy_train.__getitem__(0)
@@ -125,7 +125,7 @@ def create_model(x_train, y_train, x_test, y_test):
 
     separation_model = Sequential()
 
-    separation_model.add(ConvLSTM2D(32, kernel_size={{choice([1,2,3,4,5])}}, strides=1,
+    separation_model.add(ConvLSTM2D(16, kernel_size={{choice([1,2,3,4,5])}}, strides=1,
                                     padding='same',
                                     input_shape=[10,75,75,1],
                                     activation={{choice(['relu', 'tanh'])}},
@@ -134,15 +134,15 @@ def create_model(x_train, y_train, x_test, y_test):
                                     return_sequences=False,
                                     stateful=False))
     separation_model.add(MaxPooling2D())
-    separation_model.add(Conv2D(64, kernel_size={{choice([1,3,5])}}, strides=1,
+    separation_model.add(Conv2D(32, kernel_size={{choice([1,3,5])}}, strides=1,
                                 padding='same', activation={{choice(['relu', 'elu', 'sigmoid'])}}))
     separation_model.add(MaxPooling2D())
     separation_model.add(Dropout({{uniform(0, 0.75)}}))
     separation_model.add(Flatten())
-    separation_model.add(Dense(64))
+    separation_model.add(Dense(32))
     separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
     separation_model.add(Dropout({{uniform(0, 0.75)}}))
-    separation_model.add(Dense(32))
+    separation_model.add(Dense(16))
     separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
     separation_model.add(Dropout({{uniform(0, 0.75)}}))
 
@@ -154,7 +154,7 @@ def create_model(x_train, y_train, x_test, y_test):
     early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
                                                patience=10,
                                                verbose=0, mode='auto')
-    model_checkpoint = keras.callbacks.ModelCheckpoint("models/hyperas_thesis_sep_{val_loss:0.2}.hdf5",
+    model_checkpoint = keras.callbacks.ModelCheckpoint("models/hyperas_thesis_sep_{val_loss:0.4}.hdf5",
                                                        monitor='val_loss',
                                                        verbose=0,
                                                        save_best_only=True,
@@ -181,7 +181,7 @@ if __name__ == '__main__':
     best_run, best_model = optim.minimize(model=create_model,
                                           data=data,
                                           algo=tpe.suggest,
-                                          max_evals=10,
+                                          max_evals=5,
                                           trials=Trials())
     best_model.summary()
     best_model.save("models/hyperas_thesis_sep_best.hdf5")

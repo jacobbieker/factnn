@@ -1,16 +1,13 @@
-#import os
+# import os
 
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-from factnn import GammaPreprocessor, ProtonPreprocessor
-from factnn.generator.keras.eventfile_generator import EventFileGenerator
-from factnn.data.preprocess.eventfile_preprocessor import EventFilePreprocessor
 import os.path
+
+from factnn.data.preprocess.eventfile_preprocessor import EventFilePreprocessor
+from factnn.generator.keras.eventfile_generator import EventFileGenerator
 from factnn.utils import kfold
-from keras.models import load_model
-
-
 
 
 def data():
@@ -63,26 +60,12 @@ def data():
 
     gamma_validate_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
-    energy_gen_config = {
-        'seed': 1337,
-        'batch_size': 32,
-        'start_slice': 0,
-        'number_slices': shape[1] - shape[0],
-        'mode': 'train',
-        'chunked': False,
-        'augment': True,
-        'from_directory': True,
-        'input_shape': [-1, gamma_train_preprocessor.shape[3], gamma_train_preprocessor.shape[2],
-                        gamma_train_preprocessor.shape[1], 1],
-        'as_channels': False,
-    }
-
     energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=6000,
                                       preprocessor=gamma_train_preprocessor,
                                       as_channels=False,
                                       final_slices=10,
                                       slices=(30, 70),
-                                      augment=True,
+                                      augment=False,
                                       training_type='Disp')
 
     energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=160,
@@ -90,9 +73,8 @@ def data():
                                          as_channels=False,
                                          final_slices=10,
                                          slices=(30, 70),
-                                         augment=True,
+                                         augment=False,
                                          training_type='Disp')
-
 
     x_train, y_train = energy_train.__getitem__(0)
     x_test, y_test = energy_validate.__getitem__(0)
@@ -100,24 +82,19 @@ def data():
     return x_train, y_train, x_test, y_test
 
 
-from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D, Conv2D, MaxPooling2D, PReLU, \
-    BatchNormalization, ReLU
-from keras.models import Sequential
+from keras.layers import Flatten, ConvLSTM2D, MaxPooling2D
 import keras
 import numpy as np
 
 from hyperopt import Trials, STATUS_OK, tpe
-from keras.datasets import mnist
 from keras.layers.core import Dense, Dropout, Activation
 from keras.models import Sequential
-from keras.utils import np_utils
 
 from hyperas import optim
-from hyperas.distributions import choice, uniform, randint
+from hyperas.distributions import choice, uniform
 
 
 def create_model(x_train, y_train, x_test, y_test):
-
     def r2(y_true, y_pred):
         from keras import backend as K
         SS_res = K.sum(K.square(y_true - y_pred))
@@ -127,18 +104,18 @@ def create_model(x_train, y_train, x_test, y_test):
     separation_model = Sequential()
 
     # separation_model.add(BatchNormalization())
-    separation_model.add(ConvLSTM2D(64, kernel_size={{choice([1,2,3,4,5])}}, strides=1,
-                                padding='same',
-                                input_shape=[10,75,75,1],
-                                activation={{choice(['relu', 'tanh'])}},
-                                dropout={{uniform(0,0.7)}}, recurrent_dropout={{uniform(0,0.7)}},
-                                recurrent_activation={{choice(['relu', 'tanh', 'hard_sigmoid'])}},
-                                return_sequences=False,
-                                stateful=False))
+    separation_model.add(ConvLSTM2D(64, kernel_size={{choice([1, 2, 3, 4, 5])}}, strides=1,
+                                    padding='same',
+                                    input_shape=[10, 75, 75, 1],
+                                    activation={{choice(['relu', 'tanh'])}},
+                                    dropout={{uniform(0, 0.7)}}, recurrent_dropout={{uniform(0, 0.7)}},
+                                    recurrent_activation={{choice(['relu', 'tanh', 'hard_sigmoid'])}},
+                                    return_sequences=False,
+                                    stateful=False))
     # separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
     if {{choice(['pool', 'no_pool'])}} == "pool":
         separation_model.add(MaxPooling2D())
-    #separation_model.add(Dropout({{uniform(0, 1)}}))
+    # separation_model.add(Dropout({{uniform(0, 1)}}))
     separation_model.add(Flatten())
     separation_model.add(Dense(64))
     separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
@@ -156,7 +133,7 @@ def create_model(x_train, y_train, x_test, y_test):
     early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
                                                patience=5,
                                                verbose=0, mode='auto')
-    model_checkpoint = keras.callbacks.ModelCheckpoint("models/hyperas_thesis_disp_{val_loss:0.2}.hdf5",
+    model_checkpoint = keras.callbacks.ModelCheckpoint("models/hyperas_thesis_disp_{val_loss:0.4}.hdf5",
                                                        monitor='val_loss',
                                                        verbose=0,
                                                        save_best_only=True,
@@ -172,7 +149,7 @@ def create_model(x_train, y_train, x_test, y_test):
     # get the highest validation accuracy of the training epochs
     validation_acc = np.nanmin(result.history['val_loss'])
     if np.isnan(validation_acc):
-        validation_acc = 2**32-1
+        validation_acc = 2 ** 32 - 1
     print('Best validation acc of epoch:', validation_acc)
     return {'loss': validation_acc, 'status': STATUS_OK, 'model': separation_model}
 
