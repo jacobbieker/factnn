@@ -1,7 +1,7 @@
-# import os
+#import os
 
-# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-# os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import os.path
 
@@ -10,18 +10,19 @@ from factnn.generator.keras.eventfile_generator import EventFileGenerator
 from factnn.utils import kfold
 
 import GPy, GPyOpt
-from keras.layers import Flatten, ConvLSTM2D, MaxPooling2D, Dense, Activation, Dropout
+from keras.layers import Flatten, ConvLSTM2D, MaxPooling2D, Dense, Activation, Dropout, Conv2D
 from keras.models import Sequential
 import keras
 import numpy as np
 
+
 def data():
     base_dir = "/home/jacob/Development/event_files/"
     obs_dir = [base_dir + "public/"]
-    gamma_dir = [base_dir + "diffuse_gamma/"]
+    gamma_dir = [base_dir + "gamma/"]
     proton_dir = [base_dir + "proton/"]
 
-    shape = [30, 70]
+    shape = [70, 80]
     rebin_size = 5
 
     # Get paths from the directories
@@ -58,53 +59,54 @@ def data():
         'as_channels': False
     }
 
+    proton_train_preprocessor = EventFilePreprocessor(config=proton_configuration)
     gamma_train_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
     gamma_configuration['paths'] = gamma_indexes[1][0]
     proton_configuration['paths'] = proton_indexes[1][0]
 
+    proton_validate_preprocessor = EventFilePreprocessor(config=proton_configuration)
     gamma_validate_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
     energy_train = EventFileGenerator(paths=gamma_indexes[0][0], batch_size=8000,
                                       preprocessor=gamma_train_preprocessor,
+                                      proton_paths=proton_indexes[0][0],
+                                      proton_preprocessor=proton_train_preprocessor,
                                       as_channels=False,
-                                      final_slices=10,
-                                      slices=(30, 70),
-                                      augment=False,
-                                      training_type='Disp')
+                                      final_slices=5,
+                                      slices=(70, 80),
+                                      augment=True,
+                                      training_type='Separation')
 
     energy_validate = EventFileGenerator(paths=gamma_indexes[1][0], batch_size=2000,
+                                         proton_paths=proton_indexes[1][0],
+                                         proton_preprocessor=proton_validate_preprocessor,
                                          preprocessor=gamma_validate_preprocessor,
                                          as_channels=False,
-                                         final_slices=10,
-                                         slices=(30, 70),
+                                         final_slices=5,
+                                         slices=(70, 80),
                                          augment=False,
-                                         training_type='Disp')
+                                         training_type='Separation')
 
     x_train, y_train = energy_train.__getitem__(0)
     x_test, y_test = energy_validate.__getitem__(0)
 
     return x_train, y_train, x_test, y_test
 
+
 x_train, y_train, x_test, y_test = data()
 
 
-def create_model(shape=(10, 75, 75, 1), neuron_1=64, kernel_1=3, strides_1=1, act_1=3, drop_1=0.3, rec_drop_1=0.3,
+def create_model(shape=(5, 75, 75, 1), neuron_1=16, kernel_1=3, strides_1=1, act_1=3, drop_1=0.3, rec_drop_1=0.3,
                  rec_act_1=2, dense_neuron_1=64, dense_neuron_2=128, optimizer=0,
-                 pool=True, dense_act_1=0, dense_act_2=0, dense_drop_1=0.5, dense_drop_2=0.5):
-    def r2(y_true, y_pred):
-        from keras import backend as K
-        SS_res = K.sum(K.square(y_true - y_pred))
-        SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
-        return -1. * (1 - SS_res / (SS_tot + K.epsilon()))
-
+                 pool=True, dense_act_1=0, dense_act_2=0, dense_drop_1=0.5, dense_drop_2=0.5, neuron_2=16, kernel_2=3,
+                 strides_2=1, act_2=3, drop_2=0.5, three=False):
     # Convert nums to strings
     activations = ['relu', 'sigmoid', 'hard_sigmoid', 'tanh']
     optimzers = ['adam', 'rmsprop', 'sgd']
 
     separation_model = Sequential()
 
-    # separation_model.add(BatchNormalization())
     separation_model.add(ConvLSTM2D(neuron_1, kernel_size=kernel_1, strides=strides_1,
                                     padding='same',
                                     input_shape=shape,
@@ -113,10 +115,18 @@ def create_model(shape=(10, 75, 75, 1), neuron_1=64, kernel_1=3, strides_1=1, ac
                                     recurrent_activation=activations[rec_act_1],
                                     return_sequences=False,
                                     stateful=False))
-    # separation_model.add(Activation({{choice(['relu', 'sigmoid'])}}))
     if pool:
         separation_model.add(MaxPooling2D())
-    # separation_model.add(Dropout({{uniform(0, 1)}}))
+    separation_model.add(Conv2D(neuron_2, kernel_size=kernel_2, strides=strides_2,
+                                padding='same', activation=activations[act_2]))
+    separation_model.add(MaxPooling2D())
+    separation_model.add(Dropout(drop_2))
+
+    if three:
+        separation_model.add(Conv2D(neuron_2, kernel_size=kernel_2, strides=strides_2,
+                                    padding='same', activation=activations[act_2]))
+        separation_model.add(MaxPooling2D())
+    separation_model.add(Dropout(drop_2))
     separation_model.add(Flatten())
     separation_model.add(Dense(dense_neuron_1))
     separation_model.add(Activation(activations[dense_act_1]))
@@ -125,31 +135,30 @@ def create_model(shape=(10, 75, 75, 1), neuron_1=64, kernel_1=3, strides_1=1, ac
     separation_model.add(Activation(activations[dense_act_2]))
     separation_model.add(Dropout(dense_drop_2))
 
-    # For energy
+    separation_model.add(Dense(2, activation='softmax'))
+    separation_model.compile(optimizer=optimzers[optimizer], loss='categorical_crossentropy',
+                             metrics=['acc'])
 
-    separation_model.add(Dense(1, activation='linear'))
-    separation_model.compile(optimizer=optimzers[optimizer], loss='mse',
-                             metrics=['mae', r2])
     return separation_model
 
 
 def fit_model(separation_model, x_train, y_train):
-    early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
-                                               patience=5,
+    early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
+                                               patience=2,
                                                verbose=0, mode='auto',
-                                               restore_best_weights=True)
-    model_checkpoint = keras.callbacks.ModelCheckpoint("models/gpyopt_thesis_disp_{val_loss:0.4}.hdf5",
+                                               restore_best_weights=False)
+    model_checkpoint = keras.callbacks.ModelCheckpoint("models/gpyopt_thesis_sep_{val_loss:0.4}.hdf5",
                                                        monitor='val_loss',
                                                        verbose=0,
                                                        save_best_only=True,
                                                        save_weights_only=False,
                                                        mode='auto', period=1)
     separation_model.fit(x_train, y_train,
-                                  batch_size=8,
-                                  epochs=100,
-                                  verbose=2,
-                                  validation_split=0.2,
-                                  callbacks=[early_stop, model_checkpoint])
+                         batch_size=8,
+                         epochs=100,
+                         verbose=2,
+                         validation_split=0.2,
+                         callbacks=[early_stop, model_checkpoint])
     return separation_model
 
 
@@ -157,34 +166,48 @@ def model_evaluate(separation_model, x_test, y_test):
     evaluation = separation_model.evaluate(x_test, y_test, batch_size=8, verbose=2)
     return evaluation
 
+
 # function to run mnist class
 
-def run_mnist(x_train, y_train, x_test, y_test, shape=(10, 75, 75, 1), neuron_1=64, kernel_1=3, strides_1=1, act_1=3, drop_1=0.3, rec_drop_1=0.3,
+def run_mnist(x_train, y_train, x_test, y_test, shape=(5, 75, 75, 1), neuron_1=64, kernel_1=3, strides_1=1, act_1=3,
+              drop_1=0.3, rec_drop_1=0.3,
               rec_act_1=2, dense_neuron_1=64, dense_neuron_2=128, optimizer=0,
-              pool=True, dense_act_1=0, dense_act_2=0, dense_drop_1=0.5, dense_drop_2=0.5):
-    separation_model = create_model(shape=shape, neuron_1=neuron_1, kernel_1=kernel_1, strides_1=strides_1, act_1=act_1, drop_1=drop_1, rec_drop_1=rec_drop_1,
-                                    rec_act_1=rec_act_1, dense_neuron_1=dense_neuron_1, dense_neuron_2=dense_neuron_2, optimizer=optimizer,
-                                    pool=pool, dense_act_1=dense_act_1, dense_act_2=dense_act_2, dense_drop_1=dense_drop_1, dense_drop_2=dense_drop_2)
+              pool=True, dense_act_1=0, dense_act_2=0, dense_drop_1=0.5, dense_drop_2=0.5,
+              neuron_2=16, kernel_2=3,
+              strides_2=1, act_2=3, drop_2=0.5):
+    separation_model = create_model(shape=shape, neuron_1=neuron_1, kernel_1=kernel_1, strides_1=strides_1, act_1=act_1,
+                                    drop_1=drop_1, rec_drop_1=rec_drop_1,
+                                    rec_act_1=rec_act_1, dense_neuron_1=dense_neuron_1, dense_neuron_2=dense_neuron_2,
+                                    optimizer=optimizer,
+                                    pool=pool, dense_act_1=dense_act_1, dense_act_2=dense_act_2,
+                                    dense_drop_1=dense_drop_1, dense_drop_2=dense_drop_2,
+                                    neuron_2=neuron_2, kernel_2=kernel_2,
+                                    strides_2=strides_2, act_2=act_2, drop_2=drop_2)
     separation_model = fit_model(separation_model, x_train, y_train)
     evaluation = model_evaluate(separation_model, x_test, y_test)
     return evaluation
 
 
-bounds = [{'name': 'drop_1', 'type': 'continuous', 'domain': (0.0, 0.75)},
-          {'name': 'rec_drop_1', 'type': 'continuous', 'domain': (0.0, 0.75)},
-          {'name': 'dense_drop_1', 'type': 'continuous', 'domain': (0.0, 0.75)},
-          {'name': 'dense_drop_2', 'type': 'continuous', 'domain': (0.0, 0.75)},
+bounds = [{'name': 'drop_1', 'type': 'continuous', 'domain': (0.0, 0.99)},
+          {'name': 'rec_drop_1', 'type': 'continuous', 'domain': (0.0, 0.99)},
+          {'name': 'dense_drop_1', 'type': 'continuous', 'domain': (0.0, 0.99)},
+          {'name': 'dense_drop_2', 'type': 'continuous', 'domain': (0.0, 0.99)},
           {'name': 'neuron_1', 'type': 'discrete', 'domain': (8, 16, 32, 64)},
           {'name': 'kernel_1', 'type': 'discrete', 'domain': (1, 2, 3, 4, 5)},
           {'name': 'strides_1', 'type': 'discrete', 'domain': (1, 2, 3)},
-          {'name': 'dense_neuron_1', 'type': 'discrete', 'domain': (8, 16, 32, 64)},
-          {'name': 'dense_neuron_2', 'type': 'discrete', 'domain': (8, 16, 32, 64, 128)},
+          {'name': 'dense_neuron_1', 'type': 'discrete', 'domain': (8, 16, 32)},
+          {'name': 'dense_neuron_2', 'type': 'discrete', 'domain': (8, 16, 32, 64)},
           {'name': 'pool', 'type': 'discrete', 'domain': (True, False)},
           {'name': 'optimizer', 'type': 'discrete', 'domain': (0, 1, 2)},
           {'name': 'dense_act_1', 'type': 'discrete', 'domain': (0, 1)},
           {'name': 'dense_act_2', 'type': 'discrete', 'domain': (0, 1)},
           {'name': 'act_1', 'type': 'discrete', 'domain': (0, 1, 3)},
           {'name': 'rec_act_1', 'type': 'discrete', 'domain': (0, 2, 3)},
+          {'name': 'act_2', 'type': 'discrete', 'domain': (0, 1, 3)},
+          {'name': 'kernel_2', 'type': 'discrete', 'domain': (1, 2, 3, 4, 5)},
+          {'name': 'strides_2', 'type': 'discrete', 'domain': (1, 2, 3)},
+          {'name': 'neuron_2', 'type': 'discrete', 'domain': (8, 16, 32, 64)},
+          {'name': 'drop_2', 'type': 'continuous', 'domain': (0.0, 0.99)},
           ]
 
 
@@ -209,7 +232,12 @@ def f(x):
         dense_act_1=int(x[:, 11]),
         dense_act_2=int(x[:, 12]),
         dense_drop_1=float(x[:, 2]),
-        dense_drop_2=float(x[:, 3]))
+        dense_drop_2=float(x[:, 3]),
+        neuron_2=int(x[:, 18]),
+        kernel_2=int(x[:, 16]),
+        strides_2=int(x[:, 17]),
+        act_2=int(x[:, 15]),
+        drop_2=float(x[:, 19]), )
     print("LOSS:\t{0} \t ACCURACY:\t{1}".format(evaluation[0], evaluation[1]))
     print(evaluation)
     return evaluation[0]
