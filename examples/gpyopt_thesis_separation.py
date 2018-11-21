@@ -159,7 +159,7 @@ def create_model(shape=(5, 75, 75, 1), neuron_1=16, kernel_1=3, strides_1=1, act
 
 def fit_model(separation_model, train_gen, val_gen):
     early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
-                                               patience=2,
+                                               patience=5,
                                                verbose=0, mode='auto',
                                                restore_best_weights=False)
     model_checkpoint = keras.callbacks.ModelCheckpoint("models/gpyopt_thesis_sep_{val_loss:0.4}.hdf5",
@@ -184,7 +184,7 @@ def fit_model(separation_model, train_gen, val_gen):
 def model_evaluate(separation_model, test_gen):
     evaluation = separation_model.evaluate_generator(
         generator=test_gen,
-        verbose=1,
+        verbose=0,
         use_multiprocessing=True,
         workers=10,
         max_queue_size=300,
@@ -236,10 +236,10 @@ bounds = [{'name': 'drop_1', 'type': 'continuous', 'domain': (0.0, 0.99)},
           {'name': 'neuron_2', 'type': 'discrete', 'domain': (8, 16, 32, 64)},
           {'name': 'drop_2', 'type': 'continuous', 'domain': (0.0, 0.99)},
 
-          {'name': 'start_slice', 'type': 'discrete', 'domain': (30, 35, 40, 45, 50, 55, 60, 65, 70, 75)},
-          {'name': 'end_slice', 'type': 'discrete', 'domain': (40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100)},
-          {'name': 'final_slices', 'type': 'discrete', 'domain': (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)},
-          {'name': 'rebin_size', 'type': 'discrete', 'domain': (4, 5, 6, 7, 8, 9, 10)},
+          {'name': 'start_slice', 'type': 'discrete', 'domain': (30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85)},
+          {'name': 'end_slice', 'type': 'discrete', 'domain': (35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100)},
+          {'name': 'final_slices', 'type': 'discrete', 'domain': (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)},
+          {'name': 'rebin_size', 'type': 'discrete', 'domain': (3, 4, 5, 6, 7, 8, 9, 10)},
 
           ]
 
