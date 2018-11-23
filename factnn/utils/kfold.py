@@ -29,7 +29,7 @@ def split_data(indicies, kfolds, seeds=None):
     indicies = shuffle(indicies)
     indicies = np.asarray(indicies)
     # Now get KFOLD splits
-    kf = KFold(n_splits=kfolds)
+    kf = KFold(n_splits=kfolds, shuffle=True)
 
     for train_index, test_index in kf.split(indicies):
         # Need to split train_index into validation data
