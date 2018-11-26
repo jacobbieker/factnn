@@ -6,6 +6,17 @@ from photon_stream import plot as ps_plot
 from fact.plotting import camera
 
 
+def plot_event_distribution(events, feature):
+    """
+    Plot the distributions of a feature (i.e. Energy, Disp, etc) for a given set of files
+    :param events:
+    :param feature:
+    :return:
+    """
+
+
+
+
 def plot_image_representations(event, generated_images=()):
     """
     Plot the default FACT representation, as well as different outputs from generators or preprocessors
@@ -24,7 +35,6 @@ def plot_image_representations(event, generated_images=()):
     # Plot generated_image
     for image in generated_images:
         plt.imshow(image)
-
 
 
 def plot_event_compare(event, cleaned_event=None):

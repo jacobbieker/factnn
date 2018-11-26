@@ -14,6 +14,7 @@ class ProtonPreprocessor(BasePreprocessor):
     def event_processor(self, directory, clean_images=False):
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
+            file_name = file.split("/")[-1].split(".phs")[0]
             try:
                 sim_reader = ps.SimulationReader(
                     photon_stream_path=file,
@@ -22,6 +23,10 @@ class ProtonPreprocessor(BasePreprocessor):
                 counter = 0
                 for event in sim_reader:
                     counter += 1
+
+                    if os.path.isfile(os.path.join(directory, str(file_name) + "_" + str(counter))):
+                        continue
+
                     if clean_images:
                         event = self.clean_image(event)
                     # In the event chosen from the file
@@ -161,6 +166,7 @@ class GammaPreprocessor(BasePreprocessor):
     def event_processor(self, directory, clean_images=False):
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
+            file_name = file.split("/")[-1].split(".phs")[0]
             try:
                 sim_reader = ps.SimulationReader(
                     photon_stream_path=file,
@@ -169,6 +175,9 @@ class GammaPreprocessor(BasePreprocessor):
                 counter = 0
                 for event in sim_reader:
                     counter += 1
+
+                    if os.path.isfile(os.path.join(directory, str(file_name) + "_" + str(counter))):
+                        continue
 
                     if clean_images:
                         event = self.clean_image(event)
@@ -183,7 +192,7 @@ class GammaPreprocessor(BasePreprocessor):
                     data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
                                  {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3,'Phi': 4,
                                   'Theta': 5, }]
-                    with open(os.path.join(directory, str(index) + "_" + str(counter)), "wb") as event_file:
+                    with open(os.path.join(directory, str(file_name) + "_" + str(counter)), "wb") as event_file:
                         pickle.dump(data_dict, event_file)
             except Exception as e:
                 print(str(e))
@@ -317,6 +326,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
     def event_processor(self, directory, clean_images=False):
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
+            file_name = file.split("/")[-1].split(".phs")[0]
             try:
                 sim_reader = ps.SimulationReader(
                     photon_stream_path=file,
@@ -329,6 +339,10 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                                  (self.dl2_file['run_id'] == event.simulation_truth.run)]
                     if not df_event.empty:
                         counter += 1
+
+                        if os.path.isfile(os.path.join(directory, str(file_name) + "_" + str(counter))):
+                            continue
+
                         if clean_images:
                             event = self.clean_image(event)
                         # In the event chosen from the file
