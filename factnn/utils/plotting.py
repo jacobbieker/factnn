@@ -2,7 +2,29 @@ from sklearn.metrics import roc_auc_score, r2_score, roc_curve
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import numpy as np
+from photon_stream import plot as ps_plot
 
+
+def plot_event_compare(event, cleaned_event=None):
+    """
+    Plots some sanity checks of an event, potentially with the same plots for the cleaned event as well
+    :param event: PhotonStream Event
+    :param cleaned_event: Same PhotonStream Event after image cleaning
+    :return:
+    """
+
+    # First event plotting hist and image
+    hist_photons = event.photon_stream.image_sequence
+    plt.hist(np.sum(hist_photons, axis=0), histtype='step')
+    if cleaned_event is not None:
+        hist_cleaned_photons = cleaned_event.photon_stream.image_sequence
+        plt.hist(np.sum(hist_cleaned_photons, axis=0), histtype='step')
+    plt.show()
+
+    # Now the event itself
+    ps_plot.event(event)
+    plt.show()
+    ps_plot.event(cleaned_event)
 
 def plot_energy_confusion(prediction, truth, log_xy=True, log_z=True, ax=None):
     ax = ax or plt.gca()

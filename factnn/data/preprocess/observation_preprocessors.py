@@ -17,7 +17,7 @@ class ObservationPreprocessor(BasePreprocessor):
                                                                         "timestamp", "pointing_position_az",
                                                                         "pointing_position_zd"])
 
-    def batch_processor(self):
+    def batch_processor(self, clean_images=False):
         self.init()
         for index, file in enumerate(self.paths):
             print(file)
@@ -29,6 +29,8 @@ class ObservationPreprocessor(BasePreprocessor):
                                                  (self.dl2_file['night'] == event.observation_info.night) &
                                                  (self.dl2_file['run_id'] == event.observation_info.run)]
                     if not df_event.empty:
+                        if clean_images:
+                            event = self.clean_image(event)
                         # In the event chosen from the file
                         # Each event is the same as each line below
                         source_pos_x = df_event['source_position_x'].values[0]
@@ -64,7 +66,7 @@ class ObservationPreprocessor(BasePreprocessor):
             except Exception as e:
                 print(str(e))
 
-    def single_processor(self, normalize=False, collapse_time=False, final_slices=5, as_channels=False):
+    def single_processor(self, normalize=False, collapse_time=False, final_slices=5, as_channels=False, clean_images=False):
         while True:
             print("New Crab")
             for index, file in enumerate(self.paths):
@@ -76,6 +78,8 @@ class ObservationPreprocessor(BasePreprocessor):
                                                      (self.dl2_file['night'] == event.observation_info.night) &
                                                      (self.dl2_file['run_id'] == event.observation_info.run)]
                         if not df_event.empty:
+                            if clean_images:
+                                event = self.clean_image(event)
                             # In the event chosen from the file
                             # Each event is the same as each line below
                             source_pos_x = df_event['source_position_x'].values[0]

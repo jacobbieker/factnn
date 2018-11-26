@@ -36,7 +36,7 @@ class EventFilePreprocessor(BasePreprocessor):
         return all_data
 
 
-    def single_processor(self, normalize=False, collapse_time=False, final_slices=5):
+    def single_processor(self, normalize=False, collapse_time=False, final_slices=5, clean_images=False):
         pass
 
     def event_file_processor(self, filepath, normalize=False, collapse_time=False, final_slices=5):

@@ -1,6 +1,8 @@
 import numpy as np
+import fact
 from fact.instrument import get_pixel_coords
 from fact.instrument.constants import PIXEL_SPACING_MM
+from sklearn.cluster import DBSCAN
 import pickle
 import os
 
@@ -177,13 +179,13 @@ class BasePreprocessor(object):
         hex_to_grid = [chid_to_pixel, pixel_index_to_grid]
         return hex_to_grid
 
-    def batch_processor(self):
+    def batch_processor(self, clean_images=False):
         return NotImplemented
 
-    def single_processor(self, normalize=False, collapse_time=False, final_slices=5):
+    def single_processor(self, normalize=False, collapse_time=False, final_slices=5, clean_images=False):
         return NotImplemented
 
-    def on_batch_processor(self, filepath, size, sample=False, normalize=False, collapse_time=False, final_slices=5):
+    def on_batch_processor(self, filepath, size, sample=False, normalize=False, collapse_time=False, final_slices=5, clean_images=False):
         """
         Returns at most size-elements from the file at filepath, if sample=True, then does resevoir sampling of the entire
         file, otherwise takes the first size-elements
@@ -195,7 +197,7 @@ class BasePreprocessor(object):
         """
         return NotImplementedError
 
-    def event_processor(self, directory):
+    def event_processor(self, directory, clean_images=False):
         """
         Goes through each event in all the files specified in self.paths and returns each event individually, including the
         default photon-stream representation, and auxiliary data and saves it to a new file based on the
@@ -297,6 +299,107 @@ class BasePreprocessor(object):
             pass
 
         return NotImplementedError
+
+    def select_clustered_photons(self, dbscan, point_cloud):
+        """
+        Take DBSCAN output on the point cloud and translate it back to a list of lists of photons
+
+        Useful for using the clustering to reduce the noise in the image stacks later, image cleaning
+
+        The raw photons are stored in order of CHID, with 255 separating the different pixels and the
+        numbers indicating the arrival time of the photon
+
+        Can be found by using the core samples from DBSCAN aand only keeping those photons
+        Core smaples define the clusters, those that are not core samples are on the fringe of the sample
+        and we can test discarding them to clean the image further, so only dbscan.core_sample_indicies_ is
+        needed really
+
+        Raw to point cloud is given below where cx and cy are the geometry of the image, but not needed here
+
+        def raw_phs_to_point_cloud(raw_phs, cx, cy):
+            number_photons = len(raw_phs) - NUMBER_OF_PIXELS
+            cloud = np.zeros(shape=(number_photons, 3))
+            pixel_chid = 0
+            p = 0
+            for s in raw_phs:
+                if s == io.binary.LINEBREAK:
+                    pixel_chid += 1
+                else:
+                    cloud[p, 0] = cx[pixel_chid]
+                    cloud[p, 1] = cy[pixel_chid]
+                    cloud[p, 2] = s*TIME_SLICE_DURATION_S
+                    p += 1
+            return cloud
+
+        :param dbscan:
+        :param raw_photons:
+        :return:
+        """
+        TIME_SLICE_DURATION_S = 0.5e-9 # Taken from FACT magic constants
+
+        core_sample = dbscan.core_sample_indices_
+        print(core_sample)
+        # Now go backwards through the raw photons and gather those ones in a new raw photon format
+        # That format will be passed to raw_photons_to_list_of_lists to create a new list_of_lists repr
+
+        pixels = fact.instrument.get_pixel_dataframe()
+        pixels.sort_values('CHID', inplace=True)
+
+        x_angle = np.deg2rad(pixels.x_angle.values)
+        y_angle = np.deg2rad(pixels.y_angle.values)
+        new_list_of_list = [[] for _ in range(1440)]
+        for element in core_sample:
+            # Now have each index into the point cloud, so start backwards
+            current_photon = point_cloud[element]
+            for index in range(1440):
+                if np.isclose(current_photon[0], x_angle[index]) and np.isclose(current_photon[1], y_angle[index]):
+                    time_slice = int(np.round(current_photon[2] / TIME_SLICE_DURATION_S))
+                    # Now add to new_raw
+                    new_list_of_list[index].append(time_slice)
+
+        # Convert back to raw
+        new_raw = []
+        for sublist in new_list_of_list:
+            # Go through each sublist in order, adding 255 for each one
+            if not sublist:
+                new_raw.append(255)
+                # List is empty
+            else:
+                # Go through sublist, adding its stuff to it
+                for item in sublist:
+                    new_raw.append(item)
+                # Done with sublist, so add end one
+                new_raw.append(255)
+
+        return new_raw
+
+    def clean_image(self, event, min_samples=20, eps=0.1):
+        """
+        Clean the image with various methods, currently only DBSCAN
+
+        DBSCAN code is taken almost directly from pyfact
+
+
+        :param event: PhotonStream Event
+        :param min_samples: Min samples for DBSCAN
+        :param eps: maximal distance between two samples to be considered same neighborhood
+        :return: The same Photon Stream Event with only photons in a cluster
+        """
+
+        point_cloud = event.photon_stream.point_cloud
+
+        deg_over_s = 0.35e9
+        xyt = event.photon_stream.point_cloud.copy()
+        xyt[:, 2] *= np.deg2rad(deg_over_s)
+
+        fov_radius = np.deg2rad(fact.instrument.camera.FOV_RADIUS)
+        abs_eps = eps * (2.0*fov_radius)
+
+        dbscan = DBSCAN(eps=abs_eps, min_samples=min_samples).fit(xyt)
+
+        event.photon_stream.raw = self.select_clustered_photons(dbscan, point_cloud)
+
+        return event
 
     def format(self, batch):
         return NotImplemented
