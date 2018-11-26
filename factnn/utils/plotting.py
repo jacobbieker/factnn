@@ -3,6 +3,28 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import numpy as np
 from photon_stream import plot as ps_plot
+from fact.plotting import camera
+
+
+def plot_image_representations(event, generated_images=()):
+    """
+    Plot the default FACT representation, as well as different outputs from generators or preprocessors
+
+    Currently, generated images are assumed to be 2D representations
+
+    :param event:
+    :return:
+    """
+
+    # Plot default FACT plot
+
+    camera(event.photon_stream.list_of_lists)
+    plt.show()
+
+    # Plot generated_image
+    for image in generated_images:
+        plt.imshow(image)
+
 
 
 def plot_event_compare(event, cleaned_event=None):
