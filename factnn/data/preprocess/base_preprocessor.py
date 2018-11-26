@@ -134,14 +134,17 @@ class BasePreprocessor(object):
         hexagon = MultiPoint([p1, p2, p3, p4, p5, p6]).convex_hull
 
         square_start = 186
-        square_size = size
+
+        steps = size # Now size of 100 should make a 100x100 grid
+
+        square_size = np.abs(square_start * 2 / steps) # Now this is the size of the grid
+
         square = Polygon([(-square_start, square_start), (-square_start + square_size, square_start),
                           (-square_start + square_size, square_start - square_size),
                           (-square_start, square_start - square_size),
                           (-square_start, square_start)])
 
         list_of_squares = [square]
-        steps = int(np.ceil(np.abs(square_start * 2) / square_size))
 
         pixel_index_to_grid = {}
         pix_index = 0
