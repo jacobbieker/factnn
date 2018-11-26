@@ -1,7 +1,7 @@
-#import os
+# import os
 
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import os.path
 
@@ -10,7 +10,8 @@ from factnn.generator.keras.eventfile_generator import EventFileGenerator
 from factnn.utils import kfold
 
 import GPy, GPyOpt
-from keras.layers import Flatten, ConvLSTM2D, MaxPooling2D, Dense, Activation, Dropout, Conv2D
+from keras.layers import Flatten, ConvLSTM2D, MaxPooling2D, Dense, Activation, Dropout, MaxPooling3D, Conv2D, \
+    AveragePooling2D, AveragePooling3D
 from keras.models import Sequential
 import keras
 import numpy as np
@@ -27,22 +28,11 @@ for directory in gamma_dir:
         for file in files:
             gamma_paths.append(os.path.join(root, file))
 
-# Get paths from the directories
-crab_paths = []
-for directory in proton_dir:
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            crab_paths.append(os.path.join(root, file))
-
 # Now do the Kfold Cross validation Part for both sets of paths
-
 gamma_indexes = kfold.split_data(gamma_paths, kfolds=5)
-proton_indexes = kfold.split_data(crab_paths, kfolds=5)
 
-gamma_indexes[1][0] = gamma_indexes[1][0][0:1000]
-proton_indexes[1][0] = proton_indexes[1][0][0:1000]
 
-def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_train):
+def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, gamma_test, as_channels=False):
     shape = [start_slice, end_slice]
 
     gamma_configuration = {
@@ -53,95 +43,128 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
         'as_channels': False
     }
 
-    proton_configuration = {
-        'rebin_size': rebin_size,
-        'output_file': "../proton.hdf5",
-        'shape': shape,
-        'paths': proton_train[0][0],
-        'as_channels': False
-    }
-
-    proton_train_preprocessor = EventFilePreprocessor(config=proton_configuration)
     gamma_train_preprocessor = EventFilePreprocessor(config=gamma_configuration)
     print(gamma_train_preprocessor.shape)
 
     gamma_configuration['paths'] = gamma_train[1][0]
-    proton_configuration['paths'] = proton_train[1][0]
 
-    proton_validate_preprocessor = EventFilePreprocessor(config=proton_configuration)
     gamma_validate_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
-    gamma_configuration['paths'] = gamma_train[1][0]
-    proton_configuration['paths'] = proton_train[1][0]
+    gamma_configuration['paths'] = gamma_test[1][0]
 
-    proton_test_preprocessor = EventFilePreprocessor(config=proton_configuration)
     gamma_test_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
     energy_train = EventFileGenerator(paths=gamma_train[0][0], batch_size=8,
                                       preprocessor=gamma_train_preprocessor,
-                                      proton_paths=proton_train[0][0],
-                                      proton_preprocessor=proton_train_preprocessor,
-                                      as_channels=False,
+                                      as_channels=as_channels,
                                       final_slices=final_slices,
                                       slices=(start_slice, end_slice),
                                       augment=True,
-                                      training_type='Separation')
+                                      training_type='Energy')
 
     energy_validate = EventFileGenerator(paths=gamma_train[1][0], batch_size=8,
-                                         proton_paths=proton_train[1][0],
-                                         proton_preprocessor=proton_validate_preprocessor,
                                          preprocessor=gamma_validate_preprocessor,
-                                         as_channels=False,
+                                         as_channels=as_channels,
                                          final_slices=final_slices,
                                          slices=(start_slice, end_slice),
                                          augment=False,
-                                         training_type='Separation')
+                                         training_type='Energy')
 
-    energy_test = EventFileGenerator(paths=gamma_train[2][0], batch_size=8,
-                                     proton_paths=proton_train[2][0],
-                                     proton_preprocessor=proton_test_preprocessor,
+    energy_test = EventFileGenerator(paths=gamma_test[2][0], batch_size=8,
                                      preprocessor=gamma_test_preprocessor,
-                                     as_channels=False,
+                                     as_channels=as_channels,
                                      final_slices=final_slices,
                                      slices=(start_slice, end_slice),
                                      augment=False,
-                                     training_type='Separation')
+                                     training_type='Energy')
 
     final_shape = (final_slices, gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 1)
 
     return energy_train, energy_validate, energy_test, final_shape
 
 
-def create_model(shape=(5, 75, 75, 1), neuron_1=16, kernel_1=3, strides_1=1, act_1=3, drop_1=0.3, rec_drop_1=0.3,
+def create_model(shape=(10, 75, 75, 1), neuron_1=64, kernel_1=3, strides_1=1, act_1=3, drop_1=0.3, rec_drop_1=0.3,
                  rec_act_1=2, dense_neuron_1=64, dense_neuron_2=128, optimizer=0,
-                 pool=True, dense_act_1=0, dense_act_2=0, dense_drop_1=0.5, dense_drop_2=0.5, neuron_2=16, kernel_2=3,
-                 strides_2=1, act_2=3, drop_2=0.5, three=False):
+                 pool=True, dense_act_1=0, dense_act_2=0, dense_drop_1=0.5, dense_drop_2=0.5,
+                 second=False, neuron_2=32, kernel_2=3, strides_2=1, act_2=3, drop_2=0.3, rec_drop_2=0.3, rec_act_2=2,
+                 averagePool=False, as_channels=False):
+    def r2(y_true, y_pred):
+        from keras import backend as K
+        SS_res = K.sum(K.square(y_true - y_pred))
+        SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
+        return -1. * (1 - SS_res / (SS_tot + K.epsilon()))
+
     # Convert nums to strings
     activations = ['relu', 'sigmoid', 'hard_sigmoid', 'tanh']
     optimzers = ['adam', 'rmsprop', 'sgd']
 
     separation_model = Sequential()
 
-    separation_model.add(ConvLSTM2D(neuron_1, kernel_size=kernel_1, strides=strides_1,
-                                    padding='same',
+    if as_channels:
+        separation_model.add(Conv2D(neuron_1, kernel_size=kernel_1,
+                                    strides=strides_1, padding='same',
                                     input_shape=shape,
-                                    activation=activations[act_1],
-                                    dropout=drop_1, recurrent_dropout=rec_drop_1,
-                                    recurrent_activation=activations[rec_act_1],
-                                    return_sequences=False,
-                                    stateful=False))
-    if pool:
-        separation_model.add(MaxPooling2D())
-    separation_model.add(Conv2D(neuron_2, kernel_size=kernel_2, strides=strides_2,
-                                padding='same', activation=activations[act_2]))
-    separation_model.add(MaxPooling2D())
-    separation_model.add(Dropout(drop_2))
+                                    activation=activations[act_1]))
+        separation_model.add(Dropout(drop_1))
 
-    if three:
-        separation_model.add(Conv2D(neuron_2, kernel_size=kernel_2, strides=strides_2,
-                                    padding='same', activation=activations[act_2]))
-        separation_model.add(MaxPooling2D())
-        separation_model.add(Dropout(drop_2))
+        if pool:
+            if averagePool:
+                separation_model.add(AveragePooling2D())
+            else:
+                separation_model.add(MaxPooling2D())
+
+        if second:
+            separation_model.add(Conv2D(neuron_2, kernel_size=kernel_2, strides=strides_2,
+                                        padding='same',
+                                        activation=activations[act_2],
+                                        ))
+            separation_model.add(Dropout(drop_2))
+            if averagePool:
+                separation_model.add(AveragePooling2D())
+            else:
+                separation_model.add(MaxPooling2D())
+
+
+    else:
+        # separation_model.add(BatchNormalization())
+        separation_model.add(ConvLSTM2D(neuron_1, kernel_size=kernel_1, strides=strides_1,
+                                        padding='same',
+                                        input_shape=shape,
+                                        activation=activations[act_1],
+                                        dropout=drop_1, recurrent_dropout=rec_drop_1,
+                                        recurrent_activation=activations[rec_act_1],
+                                        return_sequences=second,
+                                        stateful=False))
+        if pool:
+            if second:
+                if shape[0] > 1:
+                    if averagePool:
+                        separation_model.add(AveragePooling3D())
+                    else:
+                        separation_model.add(MaxPooling3D())
+                else:
+                    if averagePool:
+                        separation_model.add(AveragePooling2D())
+                    else:
+                        separation_model.add(MaxPooling2D())
+            else:
+                if averagePool:
+                    separation_model.add(AveragePooling2D())
+                else:
+                    separation_model.add(MaxPooling2D())
+        if second:
+            separation_model.add(ConvLSTM2D(neuron_2, kernel_size=kernel_2, strides=strides_2,
+                                            padding='same',
+                                            activation=activations[act_2],
+                                            dropout=drop_2, recurrent_dropout=rec_drop_2,
+                                            recurrent_activation=activations[rec_act_2],
+                                            return_sequences=False,
+                                            stateful=False))
+            if averagePool:
+                separation_model.add(AveragePooling2D())
+            else:
+                separation_model.add(MaxPooling2D())
+
     separation_model.add(Flatten())
     separation_model.add(Dense(dense_neuron_1))
     separation_model.add(Activation(activations[dense_act_1]))
@@ -150,15 +173,16 @@ def create_model(shape=(5, 75, 75, 1), neuron_1=16, kernel_1=3, strides_1=1, act
     separation_model.add(Activation(activations[dense_act_2]))
     separation_model.add(Dropout(dense_drop_2))
 
-    separation_model.add(Dense(2, activation='softmax'))
-    separation_model.compile(optimizer=optimzers[optimizer], loss='categorical_crossentropy',
-                             metrics=['acc'])
+    # For energy
 
+    separation_model.add(Dense(1, activation='linear'))
+    separation_model.compile(optimizer=optimzers[optimizer], loss='mse',
+                             metrics=['mae', r2])
     return separation_model
 
 
 def fit_model(separation_model, train_gen, val_gen):
-    early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
+    early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
                                                patience=5,
                                                verbose=0, mode='auto',
                                                restore_best_weights=False)
@@ -166,7 +190,6 @@ def fit_model(separation_model, train_gen, val_gen):
         generator=train_gen,
         epochs=200,
         verbose=2,
-        steps_per_epoch=1000,
         validation_data=val_gen,
         callbacks=[early_stop],
         use_multiprocessing=True,
@@ -189,24 +212,24 @@ def model_evaluate(separation_model, test_gen):
 
 # function to run mnist class
 
-def run_mnist(neuron_1=64, kernel_1=3, strides_1=1, act_1=3,
-              drop_1=0.3, rec_drop_1=0.3,
+def run_mnist(neuron_1=64, kernel_1=3, strides_1=1, act_1=3, drop_1=0.3, rec_drop_1=0.3,
               rec_act_1=2, dense_neuron_1=64, dense_neuron_2=128, optimizer=0,
-              pool=True, dense_act_1=0, dense_act_2=0, dense_drop_1=0.5, dense_drop_2=0.5,
-              neuron_2=16, kernel_2=3,
-              strides_2=1, act_2=3, drop_2=0.5,
-              start_slice=30, end_slice=70, final_slices=5, rebin_size=5):
+              pool=True, dense_act_1=0, dense_act_2=0, dense_drop_1=0.5, dense_drop_2=0.5, start_slice=30, end_slice=70,
+              final_slices=5, rebin_size=5,
+              second=False, neuron_2=32, kernel_2=3, strides_2=1, act_2=3, drop_2=0.3, rec_drop_2=0.3, rec_act_2=2,
+              averagePool=False):
     train_gen, val_gen, test_gen, shape = data(start_slice=start_slice, end_slice=end_slice, final_slices=final_slices,
                                                rebin_size=rebin_size, gamma_train=gamma_indexes,
-                                               proton_train=proton_indexes)
+                                               gamma_test=gamma_indexes)
     separation_model = create_model(shape=shape, neuron_1=neuron_1, kernel_1=kernel_1, strides_1=strides_1, act_1=act_1,
                                     drop_1=drop_1, rec_drop_1=rec_drop_1,
                                     rec_act_1=rec_act_1, dense_neuron_1=dense_neuron_1, dense_neuron_2=dense_neuron_2,
                                     optimizer=optimizer,
                                     pool=pool, dense_act_1=dense_act_1, dense_act_2=dense_act_2,
                                     dense_drop_1=dense_drop_1, dense_drop_2=dense_drop_2,
-                                    neuron_2=neuron_2, kernel_2=kernel_2,
-                                    strides_2=strides_2, act_2=act_2, drop_2=drop_2)
+                                    second=second, neuron_2=neuron_2, kernel_2=kernel_2, strides_2=strides_2,
+                                    act_2=act_2, drop_2=drop_2, rec_drop_2=rec_drop_2, rec_act_2=rec_act_2,
+                                    averagePool=averagePool)
     separation_model = fit_model(separation_model, train_gen, val_gen)
     evaluation = model_evaluate(separation_model, test_gen)
     return evaluation
@@ -219,7 +242,7 @@ bounds = [{'name': 'drop_1', 'type': 'continuous', 'domain': (0.0, 0.75)},
           {'name': 'neuron_1', 'type': 'continuous', 'domain': (8, 64)},
           {'name': 'kernel_1', 'type': 'discrete', 'domain': (1, 2, 3, 4, 5)},
           {'name': 'strides_1', 'type': 'discrete', 'domain': (1, 2, 3)},
-          {'name': 'dense_neuron_1', 'type': 'continuous', 'domain': (8, 32)},
+          {'name': 'dense_neuron_1', 'type': 'continuous', 'domain': (8, 64)},
           {'name': 'dense_neuron_2', 'type': 'continuous', 'domain': (8, 64)},
           {'name': 'pool', 'type': 'discrete', 'domain': (True, False)},
           {'name': 'optimizer', 'type': 'discrete', 'domain': (0, 1, 2)},
@@ -227,52 +250,91 @@ bounds = [{'name': 'drop_1', 'type': 'continuous', 'domain': (0.0, 0.75)},
           {'name': 'dense_act_2', 'type': 'discrete', 'domain': (0, 1)},
           {'name': 'act_1', 'type': 'discrete', 'domain': (0, 1, 3)},
           {'name': 'rec_act_1', 'type': 'discrete', 'domain': (0, 2, 3)},
-          {'name': 'act_2', 'type': 'discrete', 'domain': (0, 1, 3)},
-          {'name': 'kernel_2', 'type': 'discrete', 'domain': (1, 2, 3, 4, 5)},
-          {'name': 'strides_2', 'type': 'discrete', 'domain': (1, 2, 3)},
-          {'name': 'neuron_2', 'type': 'continuous', 'domain': (8, 64)},
-          {'name': 'drop_2', 'type': 'continuous', 'domain': (0.0, 0.75)},
 
           {'name': 'start_slice', 'type': 'continuous', 'domain': (0, 85)},
           {'name': 'end_slice', 'type': 'continuous', 'domain': (35, 100)},
-          {'name': 'final_slices', 'type': 'discrete', 'domain': (1, 2, 3, 4, 5, )},#6, 7, 8, 9, 10,)},
-          # 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)},
+          {'name': 'final_slices', 'type': 'discrete', 'domain': (1, 2, 3, 4, 5, 6,)},
+          # 6, 7, 8, 9, 10,)},# 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)},
           {'name': 'rebin_size', 'type': 'discrete', 'domain': (4, 5, 6, 7, 8, 9, 10)},
+
+          {'name': 'drop_2', 'type': 'continuous', 'domain': (0.0, 0.75)},
+          {'name': 'rec_drop_2', 'type': 'continuous', 'domain': (0.0, 0.75)},
+          {'name': 'neuron_2', 'type': 'continuous', 'domain': (8, 32)},
+          {'name': 'kernel_2', 'type': 'discrete', 'domain': (1, 2, 3, 4, 5)},
+          {'name': 'strides_2', 'type': 'discrete', 'domain': (1, 2, 3)},
+          {'name': 'act_2', 'type': 'discrete', 'domain': (0, 1, 3)},
+          {'name': 'rec_act_2', 'type': 'discrete', 'domain': (0, 2, 3)},
+          {'name': 'second', 'type': 'discrete', 'domain': (True, False)},
+          {'name': 'averagePool', 'type': 'discrete', 'domain': (True, False)},
 
           ]
 
-constraints = [{'name': 'constr_1', 'constraint': 'x[:,20] - x[:,21] + x[:,22]'},
+constraints = [{'name': 'constr_1', 'constraint': 'x[:,15] - x[:,16] + x[:,17]'},
+               {'name': 'constr_2', 'constraint': 'x[:,26] - x[:,9]'},
                ]
 
+context = [    	{"drop_1":	0.23271055822706482},
+                   {"rec_drop_1":	0.4397624128611096},
+                   {"dense_drop_1":	0.7408856122192335},
+                   {"dense_drop_2":	0.03439886938504222},
+                   {"neuron_1":	11.529806544139634},
+                   {"kernel_1":	5.0},
+                   {"strides_1":	3.0},
+                   {"dense_neuron_1":	9.173896233069687},
+                   {"dense_neuron_2":	22.62830704893814},
+                   {"pool":	1.0},
+                   {"optimizer":	2.0},
+                   {"dense_act_1":	1.0},
+                   {"dense_act_2":	1.0},
+                   {"act_1":	0.0},
+                   {"rec_act_1":	0.0},
+                   {"start_slice":	37.02582464030974},
+                   {"end_slice":	71.24911327339774},
+                   {"final_slices":	5.0},
+                   {"rebin_size":	6.0},
+                   {"drop_2":	0.28628480077600754},
+                   {"rec_drop_2":	0.4576720299790051},
+                   {"neuron_2":	21.816669966315366},
+                   {"kernel_2":	5.0},
+                   {"strides_2":	1.0},
+                   {"act_2":	0.0},
+                   {"rec_act_2":	3.0},
+                   {"second":	0.0},
+                   {"averagePool":	1.0}
+
+]
 
 def f(x):
     print(x)
     evaluation = run_mnist(
-        neuron_1=int(x[:, 4]),
+        neuron_1=int(np.round(x[:, 4])),
         kernel_1=int(x[:, 5]),
         strides_1=int(x[:, 6]),
         act_1=int(x[:, 13]),
         drop_1=float(x[:, 0]),
         rec_drop_1=float(x[:, 1]),
         rec_act_1=int(x[:, 14]),
-        dense_neuron_1=int(x[:, 7]),
-        dense_neuron_2=int(x[:, 8]),
+        dense_neuron_1=int(np.round(x[:, 7])),
+        dense_neuron_2=int(np.round(x[:, 8])),
         optimizer=int(x[:, 10]),
         pool=bool(x[:, 9]),
         dense_act_1=int(x[:, 11]),
         dense_act_2=int(x[:, 12]),
         dense_drop_1=float(x[:, 2]),
         dense_drop_2=float(x[:, 3]),
-        neuron_2=int(x[:, 18]),
-        kernel_2=int(x[:, 16]),
-        strides_2=int(x[:, 17]),
-        act_2=int(x[:, 15]),
+        start_slice=int(np.round(x[:, 15])),
+        end_slice=int(np.round(x[:, 16])),
+        final_slices=int(x[:, 17]),
+        rebin_size=int(x[:, 18]),
+        neuron_2=int(np.round(x[:, 21])),
+        kernel_2=int(x[:, 22]),
+        strides_2=int(x[:, 23]),
+        act_2=int(x[:, 24]),
         drop_2=float(x[:, 19]),
-        start_slice=int(x[:, 20]),
-        end_slice=int(x[:, 21]),
-        final_slices=int(x[:, 22]),
-        rebin_size=int(x[:, 23])
-    )
+        rec_drop_2=float(x[:, 20]),
+        rec_act_2=int(x[:, 25]),
+        second=bool(x[:, 26]),
+        averagePool=bool(x[:, 27]))
     print("LOSS:\t{0} \t ACCURACY:\t{1}".format(evaluation[0], evaluation[1]))
     print(evaluation)
     return evaluation[0]
@@ -281,7 +343,7 @@ def f(x):
 if __name__ == '__main__':
     opt_mnist = GPyOpt.methods.BayesianOptimization(f=f, domain=bounds, constraints=constraints)
 
-    opt_mnist.run_optimization(max_iter=50)
+    opt_mnist.run_optimization(max_iter=1, context=context)
 
     print("""
     Optimized Parameters:
@@ -309,6 +371,10 @@ if __name__ == '__main__':
     \t{42}:\t{43}
     \t{44}:\t{45}
     \t{46}:\t{47}
+    \t{48}:\t{49}
+    \t{50}:\t{51}
+    \t{52}:\t{53}
+    \t{54}:\t{55}
     """.format(bounds[0]["name"], opt_mnist.x_opt[0],
                bounds[1]["name"], opt_mnist.x_opt[1],
                bounds[2]["name"], opt_mnist.x_opt[2],
@@ -332,4 +398,8 @@ if __name__ == '__main__':
                bounds[20]["name"], opt_mnist.x_opt[20],
                bounds[21]["name"], opt_mnist.x_opt[21],
                bounds[22]["name"], opt_mnist.x_opt[22],
-               bounds[23]["name"], opt_mnist.x_opt[23], ))
+               bounds[23]["name"], opt_mnist.x_opt[23],
+               bounds[24]["name"], opt_mnist.x_opt[24],
+               bounds[25]["name"], opt_mnist.x_opt[25],
+               bounds[26]["name"], opt_mnist.x_opt[26],
+               bounds[27]["name"], opt_mnist.x_opt[27], ))

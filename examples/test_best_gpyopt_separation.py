@@ -39,10 +39,8 @@ for directory in proton_dir:
 gamma_indexes = kfold.split_data(gamma_paths, kfolds=5)
 proton_indexes = kfold.split_data(crab_paths, kfolds=5)
 
-gamma_indexes[1][0] = gamma_indexes[1][0][0:1000]
-proton_indexes[1][0] = proton_indexes[1][0][0:1000]
 
-def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_train):
+def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_train, batch_size=8):
     shape = [start_slice, end_slice]
 
     gamma_configuration = {
@@ -77,7 +75,7 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
     proton_test_preprocessor = EventFilePreprocessor(config=proton_configuration)
     gamma_test_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
-    energy_train = EventFileGenerator(paths=gamma_train[0][0], batch_size=8,
+    energy_train = EventFileGenerator(paths=gamma_train[0][0], batch_size=batch_size,
                                       preprocessor=gamma_train_preprocessor,
                                       proton_paths=proton_train[0][0],
                                       proton_preprocessor=proton_train_preprocessor,
@@ -87,7 +85,7 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                       augment=True,
                                       training_type='Separation')
 
-    energy_validate = EventFileGenerator(paths=gamma_train[1][0], batch_size=8,
+    energy_validate = EventFileGenerator(paths=gamma_train[1][0], batch_size=batch_size,
                                          proton_paths=proton_train[1][0],
                                          proton_preprocessor=proton_validate_preprocessor,
                                          preprocessor=gamma_validate_preprocessor,
@@ -97,7 +95,7 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                          augment=False,
                                          training_type='Separation')
 
-    energy_test = EventFileGenerator(paths=gamma_train[2][0], batch_size=8,
+    energy_test = EventFileGenerator(paths=gamma_train[2][0], batch_size=batch_size,
                                      proton_paths=proton_train[2][0],
                                      proton_preprocessor=proton_test_preprocessor,
                                      preprocessor=gamma_test_preprocessor,
@@ -166,7 +164,6 @@ def fit_model(separation_model, train_gen, val_gen):
         generator=train_gen,
         epochs=200,
         verbose=2,
-        steps_per_epoch=1000,
         validation_data=val_gen,
         callbacks=[early_stop],
         use_multiprocessing=True,
@@ -195,10 +192,11 @@ def run_mnist(neuron_1=64, kernel_1=3, strides_1=1, act_1=3,
               pool=True, dense_act_1=0, dense_act_2=0, dense_drop_1=0.5, dense_drop_2=0.5,
               neuron_2=16, kernel_2=3,
               strides_2=1, act_2=3, drop_2=0.5,
-              start_slice=30, end_slice=70, final_slices=5, rebin_size=5):
+              start_slice=30, end_slice=70, final_slices=5, rebin_size=5,
+              batch_size=8):
     train_gen, val_gen, test_gen, shape = data(start_slice=start_slice, end_slice=end_slice, final_slices=final_slices,
                                                rebin_size=rebin_size, gamma_train=gamma_indexes,
-                                               proton_train=proton_indexes)
+                                               proton_train=proton_indexes, batch_size=batch_size)
     separation_model = create_model(shape=shape, neuron_1=neuron_1, kernel_1=kernel_1, strides_1=strides_1, act_1=act_1,
                                     drop_1=drop_1, rec_drop_1=rec_drop_1,
                                     rec_act_1=rec_act_1, dense_neuron_1=dense_neuron_1, dense_neuron_2=dense_neuron_2,
@@ -238,6 +236,7 @@ bounds = [{'name': 'drop_1', 'type': 'continuous', 'domain': (0.0, 0.75)},
           {'name': 'final_slices', 'type': 'discrete', 'domain': (1, 2, 3, 4, 5, )},#6, 7, 8, 9, 10,)},
           # 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)},
           {'name': 'rebin_size', 'type': 'discrete', 'domain': (4, 5, 6, 7, 8, 9, 10)},
+          {'name': 'batch_size', 'type': 'continuous', 'domain': (8, 32)},
 
           ]
 
@@ -271,17 +270,47 @@ def f(x):
         start_slice=int(x[:, 20]),
         end_slice=int(x[:, 21]),
         final_slices=int(x[:, 22]),
-        rebin_size=int(x[:, 23])
+        rebin_size=int(x[:, 23]),
+        batch_size=int(np.round(x[:, 24]))
     )
     print("LOSS:\t{0} \t ACCURACY:\t{1}".format(evaluation[0], evaluation[1]))
     print(evaluation)
     return evaluation[0]
 
 
+context = [{'drop_1': 3.36995943e-02},
+           {'rec_drop_1': 1.90304080e-01},
+           {'dense_drop_1': 3.70293053e-01},
+           {'dense_drop_2': 3.97860484e-01},
+           {'neuron_1': 10},
+           {'kernel_1': 3},
+           {'strides_1': 2},
+           {'dense_neuron_1': 10},
+           {'dense_neuron_2': 52},
+           {'pool': True},
+           {'optimizer': 1},
+           {'dense_act_1': 1},
+           {'dense_act_2': 0},
+           {'act_1': 1},
+           {'rec_act_1': 3},
+           {'act_2': 3},
+           {'kernel_2': 4},
+           {'strides_2': 2},
+           {'neuron_2': 48},
+           {'drop_2': 1.32235231e-02},
+
+           {'start_slice': 32},
+           {'end_slice': 71},
+           {'final_slices': 3},#6, 7, 8, 9, 10,)},
+           # 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)},
+           {'rebin_size': 8},
+           ]
+
 if __name__ == '__main__':
     opt_mnist = GPyOpt.methods.BayesianOptimization(f=f, domain=bounds, constraints=constraints)
 
-    opt_mnist.run_optimization(max_iter=50)
+    opt_mnist.run_optimization(max_iter=10,
+                               context=context)
 
     print("""
     Optimized Parameters:
@@ -309,6 +338,7 @@ if __name__ == '__main__':
     \t{42}:\t{43}
     \t{44}:\t{45}
     \t{46}:\t{47}
+    \t{48}:\t{49}
     """.format(bounds[0]["name"], opt_mnist.x_opt[0],
                bounds[1]["name"], opt_mnist.x_opt[1],
                bounds[2]["name"], opt_mnist.x_opt[2],
@@ -332,4 +362,5 @@ if __name__ == '__main__':
                bounds[20]["name"], opt_mnist.x_opt[20],
                bounds[21]["name"], opt_mnist.x_opt[21],
                bounds[22]["name"], opt_mnist.x_opt[22],
-               bounds[23]["name"], opt_mnist.x_opt[23], ))
+               bounds[23]["name"], opt_mnist.x_opt[23],
+               bounds[24]["name"], opt_mnist.x_opt[24],))

@@ -1,7 +1,7 @@
-#import os
+# import os
 
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import os.path
 
@@ -10,7 +10,8 @@ from factnn.generator.keras.eventfile_generator import EventFileGenerator
 from factnn.utils import kfold
 
 import GPy, GPyOpt
-from keras.layers import Flatten, ConvLSTM2D, MaxPooling2D, Dense, Activation, Dropout, MaxPooling3D, Conv2D, AveragePooling2D, AveragePooling3D
+from keras.layers import Flatten, ConvLSTM2D, MaxPooling2D, Dense, Activation, Dropout, MaxPooling3D, Conv2D, \
+    AveragePooling2D, AveragePooling3D
 from keras.models import Sequential
 import keras
 import numpy as np
@@ -31,7 +32,8 @@ for directory in gamma_dir:
 gamma_indexes = kfold.split_data(gamma_paths, kfolds=5)
 gamma_indexes[1][0] = gamma_indexes[1][0][0:1000]
 
-def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, gamma_test):
+
+def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, gamma_test, as_channels=False):
     shape = [start_slice, end_slice]
 
     gamma_configuration = {
@@ -55,7 +57,7 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, gamma_te
 
     energy_train = EventFileGenerator(paths=gamma_train[0][0], batch_size=8,
                                       preprocessor=gamma_train_preprocessor,
-                                      as_channels=False,
+                                      as_channels=as_channels,
                                       final_slices=final_slices,
                                       slices=(start_slice, end_slice),
                                       augment=True,
@@ -63,7 +65,7 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, gamma_te
 
     energy_validate = EventFileGenerator(paths=gamma_train[1][0], batch_size=8,
                                          preprocessor=gamma_validate_preprocessor,
-                                         as_channels=False,
+                                         as_channels=as_channels,
                                          final_slices=final_slices,
                                          slices=(start_slice, end_slice),
                                          augment=False,
@@ -71,7 +73,7 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, gamma_te
 
     energy_test = EventFileGenerator(paths=gamma_test[2][0], batch_size=8,
                                      preprocessor=gamma_test_preprocessor,
-                                     as_channels=False,
+                                     as_channels=as_channels,
                                      final_slices=final_slices,
                                      slices=(start_slice, end_slice),
                                      augment=False,
@@ -86,7 +88,7 @@ def create_model(shape=(10, 75, 75, 1), neuron_1=64, kernel_1=3, strides_1=1, ac
                  rec_act_1=2, dense_neuron_1=64, dense_neuron_2=128, optimizer=0,
                  pool=True, dense_act_1=0, dense_act_2=0, dense_drop_1=0.5, dense_drop_2=0.5,
                  second=False, neuron_2=32, kernel_2=3, strides_2=1, act_2=3, drop_2=0.3, rec_drop_2=0.3, rec_act_2=2,
-                 averagePool=False):
+                 averagePool=False, as_channels=False):
     def r2(y_true, y_pred):
         from keras import backend as K
         SS_res = K.sum(K.square(y_true - y_pred))
@@ -99,34 +101,59 @@ def create_model(shape=(10, 75, 75, 1), neuron_1=64, kernel_1=3, strides_1=1, ac
 
     separation_model = Sequential()
 
-    # separation_model.add(BatchNormalization())
-    separation_model.add(ConvLSTM2D(neuron_1, kernel_size=kernel_1, strides=strides_1,
-                                    padding='same',
+    if as_channels:
+        separation_model.add(Conv2D(neuron_1, kernel_size=kernel_1,
+                                    strides=strides_1, padding='same',
                                     input_shape=shape,
-                                    activation=activations[act_1],
-                                    dropout=drop_1, recurrent_dropout=rec_drop_1,
-                                    recurrent_activation=activations[rec_act_1],
-                                    return_sequences=second,
-                                    stateful=False))
-    if pool:
+                                    activation=activations[act_1]))
+        separation_model.add(Dropout(drop_1))
+
+        if pool:
+            if averagePool:
+                separation_model.add(AveragePooling2D())
+            else:
+                separation_model.add(MaxPooling2D())
+
         if second:
-            if shape[0] > 1:
-                if averagePool:
-                    separation_model.add(AveragePooling3D())
+            separation_model.add(Conv2D(neuron_2, kernel_size=kernel_2, strides=strides_2,
+                                        padding='same',
+                                        activation=activations[act_2],
+                                        ))
+            separation_model.add(Dropout(drop_2))
+            if averagePool:
+                separation_model.add(AveragePooling2D())
+            else:
+                separation_model.add(MaxPooling2D())
+
+
+    else:
+        # separation_model.add(BatchNormalization())
+        separation_model.add(ConvLSTM2D(neuron_1, kernel_size=kernel_1, strides=strides_1,
+                                        padding='same',
+                                        input_shape=shape,
+                                        activation=activations[act_1],
+                                        dropout=drop_1, recurrent_dropout=rec_drop_1,
+                                        recurrent_activation=activations[rec_act_1],
+                                        return_sequences=second,
+                                        stateful=False))
+        if pool:
+            if second:
+                if shape[0] > 1:
+                    if averagePool:
+                        separation_model.add(AveragePooling3D())
+                    else:
+                        separation_model.add(MaxPooling3D())
                 else:
-                    separation_model.add(MaxPooling3D())
+                    if averagePool:
+                        separation_model.add(AveragePooling2D())
+                    else:
+                        separation_model.add(MaxPooling2D())
             else:
                 if averagePool:
                     separation_model.add(AveragePooling2D())
                 else:
                     separation_model.add(MaxPooling2D())
-        else:
-            if averagePool:
-                separation_model.add(AveragePooling2D())
-            else:
-                separation_model.add(MaxPooling2D())
-    if second:
-        if shape[0] > 1:
+        if second:
             separation_model.add(ConvLSTM2D(neuron_2, kernel_size=kernel_2, strides=strides_2,
                                             padding='same',
                                             activation=activations[act_2],
@@ -134,17 +161,11 @@ def create_model(shape=(10, 75, 75, 1), neuron_1=64, kernel_1=3, strides_1=1, ac
                                             recurrent_activation=activations[rec_act_2],
                                             return_sequences=False,
                                             stateful=False))
-        else:
-            separation_model.add(Conv2D(neuron_2,
-                                        kernel_size=kernel_2,
-                                        strides=strides_2,
-                                        padding='same',
-                                        activation=activations[act_2]))
-            separation_model.add(Dropout(drop_2))
-        if averagePool:
-            separation_model.add(AveragePooling2D())
-        else:
-            separation_model.add(MaxPooling2D())
+            if averagePool:
+                separation_model.add(AveragePooling2D())
+            else:
+                separation_model.add(MaxPooling2D())
+
     separation_model.add(Flatten())
     separation_model.add(Dense(dense_neuron_1))
     separation_model.add(Activation(activations[dense_act_1]))
@@ -170,7 +191,7 @@ def fit_model(separation_model, train_gen, val_gen):
         generator=train_gen,
         epochs=200,
         verbose=2,
-        steps_per_epoch=5000,
+        steps_per_epoch=1000,
         validation_data=val_gen,
         callbacks=[early_stop],
         use_multiprocessing=True,
@@ -190,17 +211,27 @@ def model_evaluate(separation_model, test_gen):
     )
     return evaluation
 
+
 # function to run mnist class
 
 def run_mnist(neuron_1=64, kernel_1=3, strides_1=1, act_1=3, drop_1=0.3, rec_drop_1=0.3,
               rec_act_1=2, dense_neuron_1=64, dense_neuron_2=128, optimizer=0,
-              pool=True, dense_act_1=0, dense_act_2=0, dense_drop_1=0.5, dense_drop_2=0.5, start_slice=30, end_slice=70, final_slices=5, rebin_size=5,
-              second=False, neuron_2=32, kernel_2=3, strides_2=1, act_2=3, drop_2=0.3, rec_drop_2=0.3, rec_act_2=2, averagePool=False):
-    train_gen, val_gen, test_gen, shape = data(start_slice=start_slice, end_slice=end_slice, final_slices=final_slices, rebin_size=rebin_size, gamma_train=gamma_indexes, gamma_test=gamma_indexes)
-    separation_model = create_model(shape=shape, neuron_1=neuron_1, kernel_1=kernel_1, strides_1=strides_1, act_1=act_1, drop_1=drop_1, rec_drop_1=rec_drop_1,
-                                    rec_act_1=rec_act_1, dense_neuron_1=dense_neuron_1, dense_neuron_2=dense_neuron_2, optimizer=optimizer,
-                                    pool=pool, dense_act_1=dense_act_1, dense_act_2=dense_act_2, dense_drop_1=dense_drop_1, dense_drop_2=dense_drop_2,
-                                    second=second, neuron_2=neuron_2, kernel_2=kernel_2, strides_2=strides_2, act_2=act_2, drop_2=drop_2, rec_drop_2=rec_drop_2, rec_act_2=rec_act_2, averagePool=averagePool)
+              pool=True, dense_act_1=0, dense_act_2=0, dense_drop_1=0.5, dense_drop_2=0.5, start_slice=30, end_slice=70,
+              final_slices=5, rebin_size=5,
+              second=False, neuron_2=32, kernel_2=3, strides_2=1, act_2=3, drop_2=0.3, rec_drop_2=0.3, rec_act_2=2,
+              averagePool=False):
+    train_gen, val_gen, test_gen, shape = data(start_slice=start_slice, end_slice=end_slice, final_slices=final_slices,
+                                               rebin_size=rebin_size, gamma_train=gamma_indexes,
+                                               gamma_test=gamma_indexes)
+    separation_model = create_model(shape=shape, neuron_1=neuron_1, kernel_1=kernel_1, strides_1=strides_1, act_1=act_1,
+                                    drop_1=drop_1, rec_drop_1=rec_drop_1,
+                                    rec_act_1=rec_act_1, dense_neuron_1=dense_neuron_1, dense_neuron_2=dense_neuron_2,
+                                    optimizer=optimizer,
+                                    pool=pool, dense_act_1=dense_act_1, dense_act_2=dense_act_2,
+                                    dense_drop_1=dense_drop_1, dense_drop_2=dense_drop_2,
+                                    second=second, neuron_2=neuron_2, kernel_2=kernel_2, strides_2=strides_2,
+                                    act_2=act_2, drop_2=drop_2, rec_drop_2=rec_drop_2, rec_act_2=rec_act_2,
+                                    averagePool=averagePool)
     separation_model = fit_model(separation_model, train_gen, val_gen)
     evaluation = model_evaluate(separation_model, test_gen)
     return evaluation
@@ -224,7 +255,8 @@ bounds = [{'name': 'drop_1', 'type': 'continuous', 'domain': (0.0, 0.75)},
 
           {'name': 'start_slice', 'type': 'continuous', 'domain': (0, 85)},
           {'name': 'end_slice', 'type': 'continuous', 'domain': (35, 100)},
-          {'name': 'final_slices', 'type': 'discrete', 'domain': (1, 2, 3, 4, 5, 6, )},#6, 7, 8, 9, 10,)},# 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)},
+          {'name': 'final_slices', 'type': 'discrete', 'domain': (1, 2, 3, 4, 5, 6,)},
+          # 6, 7, 8, 9, 10,)},# 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)},
           {'name': 'rebin_size', 'type': 'discrete', 'domain': (4, 5, 6, 7, 8, 9, 10)},
 
           {'name': 'drop_2', 'type': 'continuous', 'domain': (0.0, 0.75)},
@@ -242,6 +274,7 @@ bounds = [{'name': 'drop_1', 'type': 'continuous', 'domain': (0.0, 0.75)},
 constraints = [{'name': 'constr_1', 'constraint': 'x[:,15] - x[:,16] + x[:,17]'},
                {'name': 'constr_2', 'constraint': 'x[:,26] - x[:,9]'},
                ]
+
 
 def f(x):
     print(x)
@@ -261,10 +294,10 @@ def f(x):
         dense_act_2=int(x[:, 12]),
         dense_drop_1=float(x[:, 2]),
         dense_drop_2=float(x[:, 3]),
-        start_slice=int(np.round(x[:,15])),
-        end_slice=int(np.round(x[:,16])),
-        final_slices=int(x[:,17]),
-        rebin_size=int(x[:,18]),
+        start_slice=int(np.round(x[:, 15])),
+        end_slice=int(np.round(x[:, 16])),
+        final_slices=int(x[:, 17]),
+        rebin_size=int(x[:, 18]),
         neuron_2=int(np.round(x[:, 21])),
         kernel_2=int(x[:, 22]),
         strides_2=int(x[:, 23]),
@@ -282,7 +315,7 @@ def f(x):
 if __name__ == '__main__':
     opt_mnist = GPyOpt.methods.BayesianOptimization(f=f, domain=bounds, constraints=constraints)
 
-    opt_mnist.run_optimization(max_iter=10)
+    opt_mnist.run_optimization(max_iter=40)
 
     print("""
     Optimized Parameters:
@@ -341,4 +374,4 @@ if __name__ == '__main__':
                bounds[24]["name"], opt_mnist.x_opt[24],
                bounds[25]["name"], opt_mnist.x_opt[25],
                bounds[26]["name"], opt_mnist.x_opt[26],
-               bounds[27]["name"], opt_mnist.x_opt[27],))
+               bounds[27]["name"], opt_mnist.x_opt[27], ))

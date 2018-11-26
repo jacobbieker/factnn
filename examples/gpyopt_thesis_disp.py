@@ -163,7 +163,7 @@ def fit_model(separation_model, train_gen, val_gen):
         generator=train_gen,
         epochs=200,
         verbose=2,
-        steps_per_epoch=5000,
+        steps_per_epoch=1000,
         validation_data=val_gen,
         callbacks=[early_stop],
         use_multiprocessing=True,
@@ -275,7 +275,7 @@ def f(x):
 if __name__ == '__main__':
     opt_mnist = GPyOpt.methods.BayesianOptimization(f=f, domain=bounds, constraints=constraints)
 
-    opt_mnist.run_optimization(max_iter=10)
+    opt_mnist.run_optimization(max_iter=100)
 
     print("""
     Optimized Parameters:

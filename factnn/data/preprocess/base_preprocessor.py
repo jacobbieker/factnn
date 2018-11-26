@@ -1,5 +1,6 @@
 import numpy as np
 from fact.instrument import get_pixel_coords
+from fact.instrument.constants import PIXEL_SPACING_MM
 import pickle
 import os
 
@@ -36,6 +37,10 @@ class BasePreprocessor(object):
         else:
             self.rebinning = self.generate_rebinning(5)
 
+        if 'gaussian' in config:
+            if config['gaussian']:
+                self.rebinning = self.generate_rebin_fractions()
+
         if 'shape' in config:
             self.start = config['shape'][0]
             self.end = config['shape'][1]
@@ -68,19 +73,43 @@ class BasePreprocessor(object):
         """
         return NotImplemented
 
-    def generate_rebinning(self, size):
-        new_x = []
-        new_y = []
-
+    def generate_rebin_fractions(self):
+        """
+        Generates the fraction where each CHID pixel needs to go for the Gaussian rebin
+        :return: Fractions for x and y pixel values, can be then used with any grid size
+        """
         x, y = get_pixel_coords()
-        for i in range(1440):
-            if i != 0:
-                for j in range(i):
-                    new_x.append(x[i])
-                    new_y.append(y[i])
-            else:
-                new_x.append(x[0])
-                new_y.append(y[0])
+
+        # Need to know the fractional dependence in each direction, and the difference between the x and y directions
+
+        range_x = np.abs(np.min(x) - np.max(x))
+        range_y = np.abs(np.min(y) - np.max(y))
+
+        # Ratio is 1.02... X/Y so to create correct image on square grid, need to change center of Gaussian so that
+        # X/Y so multiply Y coordinates by 1.02... to make a square grid
+
+        # So now need to get the fractional point, scale Y fraction by 1.02... and then put in the square grid
+
+        x += np.min(x)
+        y += np.min(y)
+
+        # Now can scale just by fraction of whole
+
+        x /= np.max(x)
+        y /= np.max(y)
+
+        ratio = (range_x/range_y)
+        y *= ratio
+
+        pixel_fractions = []
+
+        for index in range(1440):
+            pixel_fractions.append((x[index], y[index]))
+
+        pixel_fractions = np.asarray(pixel_fractions)
+        return pixel_fractions
+
+    def generate_rebinning(self, size):
 
         from shapely.geometry import Point, Polygon, MultiPoint
         from shapely.affinity import translate
@@ -248,6 +277,26 @@ class BasePreprocessor(object):
         dataset = np.swapaxes(image, 1, 3)
         dataset = np.array(dataset).reshape((self.shape[0], self.shape[3], self.shape[2], self.shape[1])).astype(np.float32)
         return dataset
+
+    def convert_to_gaussian_image(self, phs_photons, sigma, size, delta=PIXEL_SPACING_MM/2, normalize=None, as_channels=False):
+        """
+        Converts a list of lists of number of photons to create a final gaussian image
+        :param phs_photons: e.g. for final slices = 2, would be similar to [[2,3,4,...],[5,1,2,...]]
+        So each final slice add another sublist to the lists, while a final slice of 1 is = [[1,2,3,5,...]]
+        :param sigma: Width of the gaussian, default should be delta/2
+        :param delta: Pixel physcal distance/pixel size
+        :param size: Size of one side of square grid, i.e. 100 => 100x100
+        :param normalize: Whether to normalize to each grid or not, one of None, 'slice' for per_slice normalization,
+        and 'full' for normalization over the full image
+        :param as_channels: Whether to return with time_slice as channels or not
+        :return: The Gaussian image made up of final_slices slices and possibly normalized
+        """
+
+        image = np.zeros(shape=(size, size, len(phs_photons)))
+        for slice_index, single_slice in enumerate(phs_photons):
+            pass
+
+        return NotImplementedError
 
     def format(self, batch):
         return NotImplemented
