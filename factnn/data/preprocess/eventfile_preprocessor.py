@@ -7,7 +7,7 @@ class EventFilePreprocessor(BasePreprocessor):
     def init(self):
         pass
 
-    def on_files_processor(self, paths, collapse_time=True, final_slices=5):
+    def on_files_processor(self, paths, collapse_time=True, final_slices=5, normalize=False):
         all_data = []
         for index, file in enumerate(paths):
             # load the pickled file from the disk
@@ -27,6 +27,10 @@ class EventFilePreprocessor(BasePreprocessor):
                 data[data_format["Image"]] = np.fliplr(np.rot90(input_matrix, 3))
                 # need to do the format thing here, and add auxiliary structure
                 data = self.format([data, data_format])
+                if normalize:
+                    data = list(data)
+                    data[0] = self.normalize_image(data[0], per_slice=False)
+                    data = tuple(data)
                 if collapse_time:
                     data = list(data)
                     data[0] = self.collapse_image_time(data[0], final_slices, self.as_channels)

@@ -5,6 +5,8 @@ from fact.instrument.constants import PIXEL_SPACING_MM
 from sklearn.cluster import DBSCAN
 import pickle
 import os
+import pkg_resources as res
+
 
 class BasePreprocessor(object):
 
@@ -28,16 +30,16 @@ class BasePreprocessor(object):
             self.dl2_file = None
 
         if 'rebin_size' in config:
-            if config['rebin_size'] <= 10:
+            if config['rebin_size'] <= 300:
                 try:
-                    with open(os.path.join("..","factnn", "resources", "rebinning_" + str(config['rebin_size']) + ".p"), "rb") as rebinning_file:
+                    with open(res.resource_filename('factnn.data.resources', "rebinning_" + str(config['rebin_size']) + ".p"), "rb") as rebinning_file:
                         self.rebinning = pickle.load(rebinning_file)
                 except Exception as e:
                     self.rebinning = self.generate_rebinning(config['rebin_size'])
             else:
                 self.rebinning = self.generate_rebinning(config['rebin_size'])
         else:
-            self.rebinning = self.generate_rebinning(5)
+            self.rebinning = self.generate_rebinning(50)
 
         if 'gaussian' in config:
             if config['gaussian']:
@@ -51,7 +53,7 @@ class BasePreprocessor(object):
             self.end = 100
             self.start = 0
 
-        self.shape = [-1, int(np.ceil(np.abs(186 * 2) / config['rebin_size'])), int(np.ceil(np.abs(186 * 2) / config['rebin_size'])), self.end - self.start]
+        self.shape = [-1, config['rebin_size'], config['rebin_size'], self.end - self.start]
 
         self.dataset = None
         if 'output_file' in config:
@@ -214,22 +216,32 @@ class BasePreprocessor(object):
         """
         return NotImplementedError
 
-    def normalize_image(self, image):
+    def normalize_image(self, image, per_slice=True):
         """
         Assumes Image in the format given by reformat, and designed for single processor
+        :param per_slice: Whether to nrom along each time slice or through the whole data cube
         :param image:
         :return:
         """
         # Now have the whole data image, go through an normalize each slice
         temp_matrix = []
+        # Should be just one datacube per image
         for data_cube in image:
-            for image_slice in data_cube:
-                # Each time slice you normalize
-                mean = np.mean(image_slice)
-                stddev = np.std(image_slice)
-                denom = np.max([stddev, 1.0/np.sqrt(image_slice.size)])
-                image_slice = (image_slice - mean) / denom
-                temp_matrix.append(image_slice)
+            if per_slice:
+                for image_slice in data_cube:
+                    # Each time slice you normalize
+                    mean = np.mean(image_slice)
+                    stddev = np.std(image_slice)
+                    denom = np.max([stddev, 1.0/np.sqrt(image_slice.size)])
+                    image_slice = (image_slice - mean) / denom
+                    temp_matrix.append(image_slice)
+            else:
+                # Do it over the whole timeslice/channels
+                mean = np.mean(data_cube)
+                stddev = np.std(data_cube)
+                denom = np.max([stddev, 1.0/np.sqrt(data_cube.size)])
+                data_cube = (data_cube - mean) / denom
+                temp_matrix = data_cube
         # Should be normalized now
         temp_matrix = np.array(temp_matrix)
         temp_matrix = temp_matrix.reshape(1, temp_matrix.shape[0], temp_matrix.shape[1], temp_matrix.shape[2])
@@ -341,7 +353,6 @@ class BasePreprocessor(object):
         TIME_SLICE_DURATION_S = 0.5e-9 # Taken from FACT magic constants
 
         core_sample = dbscan.core_sample_indices_
-        print(core_sample)
         # Now go backwards through the raw photons and gather those ones in a new raw photon format
         # That format will be passed to raw_photons_to_list_of_lists to create a new list_of_lists repr
 

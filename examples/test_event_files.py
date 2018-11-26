@@ -25,14 +25,15 @@ for directory in gamma_dir:
 
 print(gamma_paths)
 
-gamma_configuration = {
-    'rebin_size': rebin_size,
-    'output_file': "../gamma.hdf5",
-    'shape': shape,
-    'paths': ['/home/jacob/Development/FACT-NN-Analysis/010910.phs.jsonl.gz']
-}
+for size in range(1,2):
+    gamma_configuration = {
+        'rebin_size': size,
+        'output_file': "../gamma.hdf5",
+        'shape': shape,
+        'paths': ['/home/jacob/Development/FACT-NN-Analysis/010910.phs.jsonl.gz']
+    }
 
-gamma_train_preprocessor = GammaPreprocessor(config=gamma_configuration)
+    gamma_train_preprocessor = GammaPreprocessor(config=gamma_configuration)
 gamma_train_preprocessor.event_processor(os.path.join(output_path, "gamma"))
 
 # Get paths from the directories

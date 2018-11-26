@@ -8,7 +8,8 @@ class EventFileGenerator(Sequence):
 
     def __init__(self, paths, batch_size, preprocessor=None, proton_preprocessor=None, proton_paths=None,
                  as_channels=False,
-                 final_slices=5, slices=(30, 70), augment=False, training_type=None):
+                 final_slices=5, slices=(30, 70), augment=False, training_type=None,
+                 normalize=False):
         self.paths = paths
         self.batch_size = batch_size
         self.preprocessor = preprocessor
@@ -19,6 +20,7 @@ class EventFileGenerator(Sequence):
         self.augment = augment
         self.training_type = training_type
         self.proton_paths = proton_paths
+        self.normalize = normalize
 
     def __getitem__(self, index):
         """
@@ -29,10 +31,10 @@ class EventFileGenerator(Sequence):
         batch_files = self.paths[index * self.batch_size:(index + 1) * self.batch_size]
         if self.proton_paths is not None:
             proton_batch_files = self.proton_paths[index * self.batch_size:(index + 1) * self.batch_size]
-            proton_images = self.proton_preprocessor.on_files_processor(paths=proton_batch_files, final_slices=self.final_slices)
+            proton_images = self.proton_preprocessor.on_files_processor(paths=proton_batch_files, final_slices=self.final_slices, normalize=self.normalize)
         else:
             proton_images = None
-        images = self.preprocessor.on_files_processor(paths=batch_files, final_slices=self.final_slices)
+        images = self.preprocessor.on_files_processor(paths=batch_files, final_slices=self.final_slices, normalize=self.normalize)
         images, labels = augment_image_batch(images, proton_images=proton_images,
                                              type_training=self.training_type,
                                              augment=self.augment,
