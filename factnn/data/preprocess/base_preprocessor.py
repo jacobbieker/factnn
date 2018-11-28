@@ -315,7 +315,7 @@ class BasePreprocessor(object):
 
         return NotImplementedError
 
-    def select_clustered_photons(self, dbscan, point_cloud):
+    def select_clustered_photons(self, dbscan, point_cloud, debug=True):
         """
         Take DBSCAN output on the point cloud and translate it back to a list of lists of photons
 
@@ -348,11 +348,12 @@ class BasePreprocessor(object):
 
         :param dbscan:
         :param raw_photons:
-        :return:
+        :return: New raw photon event, or None if no clumps are found
         """
         TIME_SLICE_DURATION_S = 0.5e-9 # Taken from FACT magic constants
 
         core_sample = dbscan.core_sample_indices_
+        number = len(set(dbscan.labels_)) - (1 if -1 in dbscan.labels_ else 0)
         # Now go backwards through the raw photons and gather those ones in a new raw photon format
         # That format will be passed to raw_photons_to_list_of_lists to create a new list_of_lists repr
 
@@ -362,12 +363,14 @@ class BasePreprocessor(object):
         x_angle = np.deg2rad(pixels.x_angle.values)
         y_angle = np.deg2rad(pixels.y_angle.values)
         new_list_of_list = [[] for _ in range(1440)]
+        list_of_slices = []
         for element in core_sample:
             # Now have each index into the point cloud, so start backwards
             current_photon = point_cloud[element]
             for index in range(1440):
                 if np.isclose(current_photon[0], x_angle[index]) and np.isclose(current_photon[1], y_angle[index]):
                     time_slice = int(np.round(current_photon[2] / TIME_SLICE_DURATION_S))
+                    list_of_slices.append(time_slice)
                     # Now add to new_raw
                     new_list_of_list[index].append(time_slice)
 
@@ -384,7 +387,11 @@ class BasePreprocessor(object):
                     new_raw.append(item)
                 # Done with sublist, so add end one
                 new_raw.append(255)
-
+        if number == 0:
+            # No clumps, so returns None
+            return None
+        if debug:
+            print("Start: {}, End: {}, Mean: {}, Std: {} Clumps: {}".format(np.min(list_of_slices), np.max(list_of_slices), np.mean(list_of_slices), np.std(list_of_slices), number))
         return new_raw
 
     def clean_image(self, event, min_samples=20, eps=0.1):
@@ -414,6 +421,21 @@ class BasePreprocessor(object):
         event.photon_stream.raw = self.select_clustered_photons(dbscan, point_cloud)
 
         return event
+
+    def dynamic_size(self, photon_stream):
+        """
+        Takes a photon stream list of lists representation and finds the start and end of the photons in that and returns the indexes
+        :param photon_stream:
+        :return: (start,end)
+        """
+
+        length = len(sorted(photon_stream,key=len, reverse=True)[0])
+        arr = np.array([xi+[None]*(length-len(xi)) for xi in photon_stream])
+
+        start = np.min(arr)
+        end = np.max(arr)
+
+        return (start, end)
 
     def format(self, batch):
         return NotImplemented

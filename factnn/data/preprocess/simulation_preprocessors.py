@@ -25,10 +25,14 @@ class ProtonPreprocessor(BasePreprocessor):
                     counter += 1
 
                     if os.path.isfile(os.path.join(directory, str(file_name) + "_" + str(counter))):
+                        print("True: " + str(file_name) + "_" + str(counter))
                         continue
 
                     if clean_images:
                         event = self.clean_image(event)
+                        if event.photon_stream.raw is None:
+                            print("No Clumps, skip")
+                            continue
                     # In the event chosen from the file
                     # Each event is the same as each line below
                     energy = event.simulation_truth.air_shower.energy
@@ -40,7 +44,7 @@ class ProtonPreprocessor(BasePreprocessor):
                     data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
                                  {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5,
                                   'Theta': 6, }]
-                    with open(os.path.join(directory, str(index) + "_" + str(counter)), "wb") as event_file:
+                    with open(os.path.join(directory, str(file_name) + "_" + str(counter)), "wb") as event_file:
                         pickle.dump(data_dict, event_file)
             except Exception as e:
                 print(str(e))
@@ -58,6 +62,9 @@ class ProtonPreprocessor(BasePreprocessor):
                 for event in sim_reader:
                     if clean_images:
                         event = self.clean_image(event)
+                        if event.photon_stream.raw is None:
+                            print("No Clumps, skip")
+                            continue
                     # In the event chosen from the file
                     # Each event is the same as each line below
                     energy = event.simulation_truth.air_shower.energy
@@ -96,6 +103,9 @@ class ProtonPreprocessor(BasePreprocessor):
                         data = []
                         if clean_images:
                             event = self.clean_image(event)
+                            if event.photon_stream.raw is None:
+                                print("No Clumps, skip")
+                                continue
                         # In the event chosen from the file
                         # Each event is the same as each line below
                         energy = event.simulation_truth.air_shower.energy
@@ -181,6 +191,9 @@ class GammaPreprocessor(BasePreprocessor):
 
                     if clean_images:
                         event = self.clean_image(event)
+                        if event.photon_stream.raw is None:
+                            print("No Clumps, skip")
+                            continue
                     # In the event chosen from the file
                     # Each event is the same as each line below
                     energy = event.simulation_truth.air_shower.energy
@@ -210,6 +223,9 @@ class GammaPreprocessor(BasePreprocessor):
                 for event in sim_reader:
                     if clean_images:
                         event = self.clean_image(event)
+                        if event.photon_stream.raw is None:
+                            print("No Clumps, skip")
+                            continue
                     # In the event chosen from the file
                     # Each event is the same as each line below
                     energy = event.simulation_truth.air_shower.energy
@@ -248,6 +264,9 @@ class GammaPreprocessor(BasePreprocessor):
                         data = []
                         if clean_images:
                             event = self.clean_image(event)
+                            if event.photon_stream.raw is None:
+                                print("No Clumps, skip")
+                                continue
                         # In the event chosen from the file
                         # Each event is the same as each line below
                         energy = event.simulation_truth.air_shower.energy
@@ -345,6 +364,9 @@ class GammaDiffusePreprocessor(BasePreprocessor):
 
                         if clean_images:
                             event = self.clean_image(event)
+                            if event.photon_stream.raw is None:
+                                print("No Clumps, skip")
+                                continue
                         # In the event chosen from the file
                         # Each event is the same as each line below
                         cog_x = df_event['cog_x'].values[0]
@@ -367,7 +389,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                       'Az_Deg': 6,
                                       'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11,
                                       'Pointing_Az': 12}]
-                        with open(os.path.join(directory, str(index) + "_" + str(counter)), "wb") as event_file:
+                        with open(os.path.join(directory, str(file_name) + "_" + str(counter)), "wb") as event_file:
                             pickle.dump(data_dict, event_file)
             except Exception as e:
                 print(str(e))
@@ -439,6 +461,9 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                         if not df_event.empty:
                             if clean_images:
                                 event = self.clean_image(event)
+                                if event.photon_stream.raw is None:
+                                    print("No Clumps, skip")
+                                    continue
                             # In the event chosen from the file
                             # Each event is the same as each line below
                             cog_x = df_event['cog_x'].values[0]
