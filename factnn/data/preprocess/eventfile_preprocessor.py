@@ -47,6 +47,11 @@ class EventFilePreprocessor(BasePreprocessor):
                                             # In the range of the slice, add to it
                                             input_matrix[coords[0]][coords[1]][idx] += element[1] * 1
                                             break
+                                elif not truncate:
+                                    # Now sum up last one, as equal already used
+                                    if value - self.start > self.shape[3]:
+                                        value = self.end
+                                    input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
                                 else:
                                     input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
 
