@@ -7,7 +7,7 @@ class EventFilePreprocessor(BasePreprocessor):
     def init(self):
         pass
 
-    def on_files_processor(self, paths, collapse_time=True, final_slices=5, normalize=False, dynamic_resize=False):
+    def on_files_processor(self, paths, collapse_time=True, final_slices=5, normalize=False, dynamic_resize=False, truncate=False, equal_slices=False):
         all_data = []
         for index, file in enumerate(paths):
             # load the pickled file from the disk
@@ -16,16 +16,39 @@ class EventFilePreprocessor(BasePreprocessor):
                 input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
                 chid_to_pixel = self.rebinning[0]
                 pixel_index_to_grid = self.rebinning[1]
-
                 # Do dynamic resizing if wanted, so start and end are only within the bounds, potentially saving memory
                 if dynamic_resize:
                     self.start, self.end = self.dynamic_size(data[data_format['Image']])
+
+                if truncate:
+                    # Truncates the images at x timesteps in, each slice is one temporal slice
+                    self.end = self.start + self.shape[3]
+
+                if equal_slices:
+                    # Creates a slice size that then assignes all values in those set of slices to a single slice to fit
+                    # within the orignal constraints, each slice is an equal number of timeslices summed up
+                    slice_size = int(np.ceil((self.end - self.start) / self.shape[3]))
+                    slice_sizes = []
+                    for i in range(self.shape[3]):
+                        # Organized smallest to largest
+                        slice_sizes.append(((i)*slice_size)+self.start)
+
                 for index in range(1440):
                     for element in chid_to_pixel[index]:
                         coords = pixel_index_to_grid[element[0]]
                         for value in data[data_format['Image']][index]:
                             if self.end > value > self.start:
-                                input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
+                                # Now add more logic for the other cases
+                                # Nothing for truncate, end is already specified
+                                # Equal slices is only real one
+                                if equal_slices:
+                                    for idx, number in enumerate(slice_sizes):
+                                        if (idx*slice_size) < value <= number:
+                                            # In the range of the slice, add to it
+                                            input_matrix[coords[0]][coords[1]][idx] += element[1] * 1
+                                            break
+                                else:
+                                    input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
 
                 # Now have image in resized format, all other data is set
                 data[data_format["Image"]] = np.fliplr(np.rot90(input_matrix, 3))

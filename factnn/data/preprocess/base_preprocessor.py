@@ -432,10 +432,9 @@ class BasePreprocessor(object):
         """
 
         length = len(sorted(photon_stream,key=len, reverse=True)[0])
-        arr = np.array([xi+[None]*(length-len(xi)) for xi in photon_stream])
-
-        start = np.min(arr)
-        end = np.max(arr)
+        arr = np.array([xi+[np.nan]*(length-len(xi)) for xi in photon_stream])
+        start = np.nanmin(arr)
+        end = np.nanmax(arr)
 
         return (start, end)
 
