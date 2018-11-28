@@ -425,6 +425,8 @@ class BasePreprocessor(object):
     def dynamic_size(self, photon_stream):
         """
         Takes a photon stream list of lists representation and finds the start and end of the photons in that and returns the indexes
+
+        If the start and end is less than the number of slices wanted, then the extra is added to the end to ensure constant size
         :param photon_stream:
         :return: (start,end)
         """
@@ -434,6 +436,9 @@ class BasePreprocessor(object):
 
         start = np.min(arr)
         end = np.max(arr)
+
+        if end - start < self.shape[3]:
+            end += self.shape[3] - (end-start)
 
         return (start, end)
 
