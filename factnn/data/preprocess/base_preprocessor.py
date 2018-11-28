@@ -437,9 +437,6 @@ class BasePreprocessor(object):
         start = np.min(arr)
         end = np.max(arr)
 
-        if end - start < self.shape[3]:
-            end += self.shape[3] - (end-start)
-
         return (start, end)
 
     def format(self, batch):
