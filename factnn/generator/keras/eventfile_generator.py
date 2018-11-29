@@ -22,6 +22,12 @@ class EventFileGenerator(Sequence):
         self.proton_paths = proton_paths
         self.normalize = normalize
 
+        failed_paths = self.proton_preprocessor.check_files(self.paths, "Gamma")
+        self.paths = [x for x in self.paths if x not in failed_paths]
+        sfailed_paths = self.proton_preprocessor.check_files(self.proton_paths, "Proton")
+        self.proton_paths = [x for x in self.proton_paths if x not in sfailed_paths]
+
+
     def __getitem__(self, index):
         """
         Go through each set of files and augment them as needed
@@ -31,10 +37,14 @@ class EventFileGenerator(Sequence):
         batch_files = self.paths[index * self.batch_size:(index + 1) * self.batch_size]
         if self.proton_paths is not None:
             proton_batch_files = self.proton_paths[index * self.batch_size:(index + 1) * self.batch_size]
-            proton_images = self.proton_preprocessor.on_files_processor(paths=proton_batch_files, final_slices=self.final_slices, normalize=self.normalize)
+            proton_images = self.proton_preprocessor.on_files_processor(paths=proton_batch_files,
+                                                                        final_slices=self.final_slices,
+                                                                        normalize=self.normalize,
+                                                                        dynamic_resize=True, truncate=True)
         else:
             proton_images = None
-        images = self.preprocessor.on_files_processor(paths=batch_files, final_slices=self.final_slices, normalize=self.normalize)
+        images = self.preprocessor.on_files_processor(paths=batch_files, final_slices=self.final_slices,
+                                                      normalize=self.normalize, dynamic_resize=True, truncate=True)
         images, labels = augment_image_batch(images, proton_images=proton_images,
                                              type_training=self.training_type,
                                              augment=self.augment,
@@ -51,7 +61,8 @@ class EventFileGenerator(Sequence):
         :return:
         """
         if self.proton_paths is not None:
-            return int(np.ceil(len(self.proton_paths) / float(self.batch_size)))
+            min_paths = np.min([len(self.proton_paths), len(self.paths)])
+            return int(np.ceil(min_paths / float(self.batch_size)))
         else:
             return int(np.ceil(len(self.paths) / float(self.batch_size)))
 

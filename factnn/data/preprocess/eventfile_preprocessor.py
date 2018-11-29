@@ -1,13 +1,60 @@
 import numpy as np
 from factnn.data.preprocess.base_preprocessor import BasePreprocessor
 import pickle
+import os
 
 
 class EventFilePreprocessor(BasePreprocessor):
     def init(self):
         pass
 
-    def on_files_processor(self, paths, collapse_time=True, final_slices=5, normalize=False, dynamic_resize=False, truncate=False, equal_slices=False):
+    def check_files(self, paths, title):
+        """
+        Check various things on the given paths, like non-null photons, and overall distribution of starting and end points
+        :param paths:
+        :return:
+        """
+        starts = []
+        ends = []
+        means = []
+        stds = []
+        failed_paths = []
+        import matplotlib.pyplot as plt
+        for index, file in enumerate(paths):
+            with open(file, "rb") as pickled_event:
+                data, data_format = pickle.load(pickled_event)
+                self.start, self.end, mean, std = self.dynamic_size(data[data_format['Image']])
+                if self.start < 0:
+                    failed_paths.append(file)
+                else:
+                    # Real paths
+                    starts.append(self.start)
+                    ends.append(self.end)
+                    means.append(mean)
+                    stds.append(std)
+
+        for path in failed_paths:
+            os.remove(path)
+        #    print("Removed: ", path)
+        #print("Number of failed paths: ", len(failed_paths))
+        #plt.hist(starts)
+        #plt.title("Start Spots: " + str(title) + " Mean/STD: " + str(np.round(np.mean(starts), 2)) + "+-" + str(np.round(np.std(starts), 2)))
+        #plt.show()
+        #plt.hist(ends)
+        #plt.title("End Spots: " + str(title) + " Mean/STD: " + str(np.round(np.mean(ends), 2)) + "+-" + str(np.round(np.std(ends), 2)))
+        #plt.show()
+        #plt.hist(means)
+        #plt.title("Mean: " + str(title) + " Mean/STD: " + str(np.round(np.mean(means), 2)) + "+-" + str(np.round(np.std(means), 2)))
+        #plt.show()
+        #plt.hist(std)
+        #plt.title("Std: " + str(title) + " Mean/STD: " + str(np.round(np.mean(stds), 2)) + "+-" + str(np.round(np.std(stds), 2)))
+        #plt.show()
+
+        return failed_paths
+
+
+    def on_files_processor(self, paths, collapse_time=True, final_slices=5, normalize=False, dynamic_resize=False,
+                           truncate=False, equal_slices=False):
         all_data = []
         for index, file in enumerate(paths):
             # load the pickled file from the disk
@@ -18,7 +65,7 @@ class EventFilePreprocessor(BasePreprocessor):
                 pixel_index_to_grid = self.rebinning[1]
                 # Do dynamic resizing if wanted, so start and end are only within the bounds, potentially saving memory
                 if dynamic_resize:
-                    self.start, self.end = self.dynamic_size(data[data_format['Image']])
+                    self.start, self.end, _, _ = self.dynamic_size(data[data_format['Image']])
 
                 if truncate:
                     # Truncates the images at x timesteps in, each slice is one temporal slice
@@ -48,10 +95,11 @@ class EventFilePreprocessor(BasePreprocessor):
                                             input_matrix[coords[0]][coords[1]][idx] += element[1] * 1
                                             break
                                 elif not truncate:
-                                    # Now sum up last one, as equal already used
-                                    if value - self.start > self.shape[3]:
-                                        value = self.end
-                                    input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
+                                    # Now sum up last one, as equal already used, so last frame has all the rest of the frames
+                                    if value - self.start >= self.shape[3]:
+                                        input_matrix[coords[0]][coords[1]][self.shape[3]-1] += element[1] * 1
+                                    else:
+                                        input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
                                 else:
                                     input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
 

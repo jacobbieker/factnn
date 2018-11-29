@@ -1,7 +1,7 @@
-#import os
+import os
 
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import os.path
 
@@ -15,7 +15,7 @@ from keras.models import Sequential
 import keras
 import numpy as np
 
-base_dir = "/home/jacob/Development/event_files/"
+base_dir = "/home/jacob/Documents/cleaned_event_files_test/"
 obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "gamma/"]
 proton_dir = [base_dir + "proton/"]
@@ -75,9 +75,9 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
     proton_test_preprocessor = EventFilePreprocessor(config=proton_configuration)
     gamma_test_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
-    energy_train = EventFileGenerator(paths=gamma_train[0][0], batch_size=batch_size,
+    energy_train = EventFileGenerator(paths=gamma_paths, batch_size=batch_size,
                                       preprocessor=gamma_train_preprocessor,
-                                      proton_paths=proton_train[0][0],
+                                      proton_paths=crab_paths,
                                       proton_preprocessor=proton_train_preprocessor,
                                       as_channels=False,
                                       final_slices=final_slices,
@@ -157,17 +157,18 @@ def create_model(shape=(5, 75, 75, 1), neuron_1=16, kernel_1=3, strides_1=1, act
 
 def fit_model(separation_model, train_gen, val_gen):
     early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
-                                               patience=5,
+                                               patience=40,
                                                verbose=0, mode='auto',
                                                restore_best_weights=False)
     separation_model.fit_generator(
         generator=train_gen,
         epochs=200,
         verbose=2,
+        steps_per_epoch=500,
         validation_data=val_gen,
         callbacks=[early_stop],
         use_multiprocessing=True,
-        workers=10,
+        workers=1,
         max_queue_size=50,
     )
     return separation_model
@@ -235,7 +236,7 @@ bounds = [{'name': 'drop_1', 'type': 'continuous', 'domain': (0.0, 0.75)},
           {'name': 'end_slice', 'type': 'continuous', 'domain': (35, 100)},
           {'name': 'final_slices', 'type': 'discrete', 'domain': (1, 2, 3, 4, 5, )},#6, 7, 8, 9, 10,)},
           # 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)},
-          {'name': 'rebin_size', 'type': 'discrete', 'domain': (4, 5, 6, 7, 8, 9, 10)},
+          {'name': 'rebin_size', 'type': 'discrete', 'domain': (50, 75, 100)},
           {'name': 'batch_size', 'type': 'continuous', 'domain': (8, 32)},
 
           ]
@@ -303,7 +304,7 @@ context = [{'drop_1': 3.36995943e-02},
            {'end_slice': 71},
            {'final_slices': 3},#6, 7, 8, 9, 10,)},
            # 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)},
-           {'rebin_size': 8},
+           {'rebin_size': 75},
            ]
 
 if __name__ == '__main__':

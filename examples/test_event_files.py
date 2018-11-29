@@ -64,9 +64,9 @@ def d(path):
 
 
 if __name__ == '__main__':
-
-    with Pool(10) as p:
+    with Pool(8) as p:
         p.map(f, gamma_paths)
-    with Pool(10) as p:
+    with Pool(8) as p:
         p.map(d, crab_paths)
+
 

@@ -226,22 +226,24 @@ class BasePreprocessor(object):
         # Now have the whole data image, go through an normalize each slice
         temp_matrix = []
         # Should be just one datacube per image
-        for data_cube in image:
-            if per_slice:
-                for image_slice in data_cube:
-                    # Each time slice you normalize
-                    mean = np.mean(image_slice)
-                    stddev = np.std(image_slice)
-                    denom = np.max([stddev, 1.0/np.sqrt(image_slice.size)])
-                    image_slice = (image_slice - mean) / denom
-                    temp_matrix.append(image_slice)
-            else:
-                # Do it over the whole timeslice/channels
-                mean = np.mean(data_cube)
-                stddev = np.std(data_cube)
-                denom = np.max([stddev, 1.0/np.sqrt(data_cube.size)])
-                data_cube = (data_cube - mean) / denom
-                temp_matrix = data_cube
+        if per_slice:
+            for data_cube in image:
+                print("Data Cube Shape: " + str(data_cube.shape))
+                if per_slice:
+                    for image_slice in data_cube:
+                        # Each time slice you normalize
+                        mean = np.mean(image_slice)
+                        stddev = np.std(image_slice)
+                        denom = np.max([stddev, 1.0/np.sqrt(image_slice.size)])
+                        image_slice = (image_slice - mean) / denom
+                        temp_matrix.append(image_slice)
+        else:
+            # Do it over the whole timeslice/channels
+            mean = np.mean(image)
+            stddev = np.std(image)
+            denom = np.max([stddev, 1.0/np.sqrt(image.size)])
+            image = (image - mean) / denom
+            return image
         # Should be normalized now
         temp_matrix = np.array(temp_matrix)
         temp_matrix = temp_matrix.reshape(1, temp_matrix.shape[0], temp_matrix.shape[1], temp_matrix.shape[2])
@@ -433,10 +435,21 @@ class BasePreprocessor(object):
 
         length = len(sorted(photon_stream,key=len, reverse=True)[0])
         arr = np.array([xi+[np.nan]*(length-len(xi)) for xi in photon_stream])
-        start = np.nanmin(arr)
-        end = np.nanmax(arr)
+        try:
+            start = int(np.nanmin(arr))
+            end = int(np.nanmax(arr))
+            mean = np.nanmean(arr)
+            std = np.nanstd(arr)
+        except Exception as e:
+            # Should only fail if no photons are present
+            #print("Failed")
+            #print(photon_stream)
+            #print(len(photon_stream))
+            start = self.start
+            end = self.end
+            return -1, -1, -1, -1
 
-        return (start, end)
+        return (start, end, mean, std)
 
     def format(self, batch):
         return NotImplemented
