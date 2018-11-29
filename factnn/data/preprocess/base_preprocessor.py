@@ -317,7 +317,7 @@ class BasePreprocessor(object):
 
         return NotImplementedError
 
-    def select_clustered_photons(self, dbscan, point_cloud, debug=True):
+    def select_clustered_photons(self, dbscan, point_cloud, debug=True, only_core=True):
         """
         Take DBSCAN output on the point cloud and translate it back to a list of lists of photons
 
@@ -366,15 +366,27 @@ class BasePreprocessor(object):
         y_angle = np.deg2rad(pixels.y_angle.values)
         new_list_of_list = [[] for _ in range(1440)]
         list_of_slices = []
-        for element in core_sample:
-            # Now have each index into the point cloud, so start backwards
-            current_photon = point_cloud[element]
-            for index in range(1440):
-                if np.isclose(current_photon[0], x_angle[index]) and np.isclose(current_photon[1], y_angle[index]):
-                    time_slice = int(np.round(current_photon[2] / TIME_SLICE_DURATION_S))
-                    list_of_slices.append(time_slice)
-                    # Now add to new_raw
-                    new_list_of_list[index].append(time_slice)
+        if only_core:
+            for element in core_sample:
+                # Now have each index into the point cloud, so start backwards
+                current_photon = point_cloud[element]
+                for index in range(1440):
+                    if np.isclose(current_photon[0], x_angle[index]) and np.isclose(current_photon[1], y_angle[index]):
+                        time_slice = int(np.round(current_photon[2] / TIME_SLICE_DURATION_S))
+                        list_of_slices.append(time_slice)
+                        # Now add to new_raw
+                        new_list_of_list[index].append(time_slice)
+        else:
+            for idx, element in enumerate(dbscan.labels_):
+                if element >= 0:
+                    # Now have each index into the point cloud, so start backwards, include all those not with -1
+                    current_photon = point_cloud[idx]
+                    for index in range(1440):
+                        if np.isclose(current_photon[0], x_angle[index]) and np.isclose(current_photon[1], y_angle[index]):
+                            time_slice = int(np.round(current_photon[2] / TIME_SLICE_DURATION_S))
+                            list_of_slices.append(time_slice)
+                            # Now add to new_raw
+                            new_list_of_list[index].append(time_slice)
 
         # Convert back to raw
         new_raw = []
@@ -396,7 +408,7 @@ class BasePreprocessor(object):
             print("Start: {}, End: {}, Mean: {}, Std: {} Clumps: {}".format(np.min(list_of_slices), np.max(list_of_slices), np.mean(list_of_slices), np.std(list_of_slices), number))
         return new_raw
 
-    def clean_image(self, event, min_samples=20, eps=0.1):
+    def clean_image(self, event, min_samples=20, eps=0.1, only_core=True):
         """
         Clean the image with various methods, currently only DBSCAN
 
@@ -420,7 +432,7 @@ class BasePreprocessor(object):
 
         dbscan = DBSCAN(eps=abs_eps, min_samples=min_samples).fit(xyt)
 
-        event.photon_stream.raw = self.select_clustered_photons(dbscan, point_cloud)
+        event.photon_stream.raw = self.select_clustered_photons(dbscan, point_cloud, only_core)
 
         return event
 

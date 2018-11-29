@@ -14,7 +14,7 @@ gamma_dir = [base_dir + "sim/gamma/"]
 proton_dir = [base_dir + "sim/proton/"]
 gamma_dl2 = "../gamma_simulations_diffuse_facttools_dl2.hdf5"
 
-output_path = "/home/jacob/Documents/cleaned_event_files_test"
+output_path = "/home/jacob/Documents/cleaned_event_files_all"
 
 shape = [30,70]
 rebin_size = 5
@@ -37,7 +37,7 @@ def f(path):
     }
 
     gamma_train_preprocessor = GammaPreprocessor(config=gamma_configuration)
-    gamma_train_preprocessor.event_processor(os.path.join(output_path, "gamma"), clean_images=True)
+    gamma_train_preprocessor.event_processor(os.path.join(output_path, "gamma"), clean_images=True, only_core=False)
 
 # Get paths from the directories
 crab_paths = []
@@ -57,16 +57,17 @@ def d(path):
     }
 
     proton_train_preprocessor = ProtonPreprocessor(config=proton_configuration)
-    proton_train_preprocessor.event_processor(os.path.join(output_path, "proton"), clean_images=True)
+    proton_train_preprocessor.event_processor(os.path.join(output_path, "proton"), clean_images=True, only_core=False)
 
 
 # Now do the Kfold Cross validation Part for both sets of paths
 
 
 if __name__ == '__main__':
-    with Pool(8) as p:
+    with Pool(4) as p:
         p.map(f, gamma_paths)
-    with Pool(8) as p:
+    with Pool(4) as p:
         p.map(d, crab_paths)
+
 
 

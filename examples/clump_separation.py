@@ -85,7 +85,7 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                       final_slices=final_slices,
                                       slices=(start_slice, end_slice),
                                       augment=True,
-                                      normalize=True,
+                                      normalize=False,
                                       training_type='Separation')
 
     energy_validate = EventFileGenerator(paths=gamma_train[1][0], batch_size=batch_size,
@@ -96,7 +96,7 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                          final_slices=final_slices,
                                          slices=(start_slice, end_slice),
                                          augment=False,
-                                         normalize=True,
+                                         normalize=False,
                                          training_type='Separation')
 
     energy_test = EventFileGenerator(paths=gamma_train[2][0], batch_size=batch_size,
@@ -118,7 +118,7 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
 def create_model(shape):
     separation_model = Sequential()
 
-    separation_model.add(ConvLSTM2D(16, kernel_size=3, strides=1,
+    separation_model.add(ConvLSTM2D(32, kernel_size=3, strides=1,
                                     padding='same',
                                     input_shape=shape,
                                     activation='tanh',
@@ -126,7 +126,7 @@ def create_model(shape):
                                     recurrent_activation='hard_sigmoid',
                                     return_sequences=True,
                                     stateful=False))
-    separation_model.add(AveragePooling3D())
+    separation_model.add(MaxPooling3D())
     separation_model.add(ConvLSTM2D(32, kernel_size=3, strides=1,
                                     padding='same',
                                     activation='tanh',
@@ -134,7 +134,7 @@ def create_model(shape):
                                     recurrent_activation='hard_sigmoid',
                                     return_sequences=True,
                                     stateful=False))
-    separation_model.add(AveragePooling3D())
+    separation_model.add(MaxPooling3D())
     separation_model.add(ConvLSTM2D(64, kernel_size=3, strides=1,
                                     padding='same',
                                     activation='tanh',
@@ -142,23 +142,23 @@ def create_model(shape):
                                     recurrent_activation='hard_sigmoid',
                                     return_sequences=False,
                                     stateful=False))
-    separation_model.add(AveragePooling2D())
+    separation_model.add(MaxPooling2D())
     separation_model.add(Conv2D(128, kernel_size=3, strides=1,
                                 padding='same'))
     #separation_model.add(BatchNormalization())
     separation_model.add(Activation('relu'))
-    separation_model.add(AveragePooling2D())
-    separation_model.add(Dropout(0.2))
+    separation_model.add(MaxPooling2D())
+    separation_model.add(Dropout(0.1))
 
     separation_model.add(Flatten())
     separation_model.add(Dense(128))
     #separation_model.add(BatchNormalization())
     separation_model.add(Activation('relu'))
-    separation_model.add(Dropout(0.3))
+    separation_model.add(Dropout(0.1))
     separation_model.add(Dense(256))
     #separation_model.add(BatchNormalization())
     separation_model.add(Activation('relu'))
-    separation_model.add(Dropout(0.3))
+    separation_model.add(Dropout(0.1))
 
     separation_model.add(Dense(2, activation='softmax'))
     separation_model.compile(optimizer='adam', loss='categorical_crossentropy',
@@ -181,7 +181,7 @@ def fit_model(separation_model, train_gen, val_gen):
         validation_data=val_gen,
         callbacks=[early_stop],
         use_multiprocessing=True,
-        workers=5,
+        workers=12,
         max_queue_size=50,
     )
     return separation_model
@@ -198,7 +198,7 @@ def model_evaluate(separation_model, test_gen):
     return evaluation
 
 
-def run_mnist(start_slice=40, end_slice=60, final_slices=20, rebin_size=100,
+def run_mnist(start_slice=40, end_slice=60, final_slices=20, rebin_size=75,
               batch_size=8):
     train_gen, val_gen, test_gen, shape = data(start_slice=start_slice, end_slice=end_slice, final_slices=final_slices,
                                                rebin_size=rebin_size, gamma_train=gamma_indexes,

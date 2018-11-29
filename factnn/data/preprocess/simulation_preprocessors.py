@@ -11,7 +11,7 @@ import os
 
 class ProtonPreprocessor(BasePreprocessor):
 
-    def event_processor(self, directory, clean_images=False):
+    def event_processor(self, directory, clean_images=False, only_core=True):
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
             file_name = file.split("/")[-1].split(".phs")[0]
@@ -29,7 +29,7 @@ class ProtonPreprocessor(BasePreprocessor):
                         continue
 
                     if clean_images:
-                        event = self.clean_image(event)
+                        event = self.clean_image(event, only_core)
                         if event.photon_stream.raw is None:
                             print("No Clumps, skip")
                             continue
@@ -173,7 +173,7 @@ class ProtonPreprocessor(BasePreprocessor):
 
 class GammaPreprocessor(BasePreprocessor):
 
-    def event_processor(self, directory, clean_images=False):
+    def event_processor(self, directory, clean_images=False, only_core=True):
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
             file_name = file.split("/")[-1].split(".phs")[0]
@@ -190,7 +190,7 @@ class GammaPreprocessor(BasePreprocessor):
                         continue
 
                     if clean_images:
-                        event = self.clean_image(event)
+                        event = self.clean_image(event, only_core)
                         if event.photon_stream.raw is None:
                             print("No Clumps, skip")
                             continue
