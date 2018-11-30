@@ -11,7 +11,7 @@ import os
 
 class ProtonPreprocessor(BasePreprocessor):
 
-    def event_processor(self, directory, clean_images=False, only_core=True, min_samples=20):
+    def event_processor(self, directory, clean_images=False, only_core=True, clump_size=20):
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
             file_name = file.split("/")[-1].split(".phs")[0]
@@ -24,9 +24,8 @@ class ProtonPreprocessor(BasePreprocessor):
                 for event in sim_reader:
                     counter += 1
 
-                    if os.path.isfile(os.path.join(directory, "no_clean", str(file_name) + "_" + str(counter)))\
-                            or os.path.isfile(os.path.join(directory, "clump", str(file_name) + "_" + str(counter))) \
-                            or os.path.isfile(os.path.join(directory, "core", str(file_name) + "_" + str(counter))):
+                    if os.path.isfile(os.path.join(directory, "clump"+str(clump_size), str(file_name) + "_" + str(counter))) \
+                            or os.path.isfile(os.path.join(directory, "core"+str(clump_size), str(file_name) + "_" + str(counter))):
                         print("True: " + str(file_name) + "_" + str(counter))
                         continue
 
@@ -49,21 +48,27 @@ class ProtonPreprocessor(BasePreprocessor):
                             data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
                                          {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5,
                                           'Theta': 6, }]
-                            with open(os.path.join(directory, key, str(file_name) + "_" + str(counter)), "wb") as event_file:
-                                pickle.dump(data_dict, event_file)
-                    # In the event chosen from the file
-                    # Each event is the same as each line below
-                    energy = event.simulation_truth.air_shower.energy
-                    event_photons = event.photon_stream.list_of_lists
-                    zd_deg = event.zd
-                    az_deg = event.az
-                    act_phi = event.simulation_truth.air_shower.phi
-                    act_theta = event.simulation_truth.air_shower.theta
-                    data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
-                                 {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5,
-                                  'Theta': 6, }]
-                    with open(os.path.join(directory, str(file_name) + "_" + str(counter)), "wb") as event_file:
-                        pickle.dump(data_dict, event_file)
+                            if key != "no_clean":
+                                with open(os.path.join(directory, key+str(clump_size), str(file_name) + "_" + str(counter)), "wb") as event_file:
+                                    pickle.dump(data_dict, event_file)
+                            else:
+                                if not os.path.isfile(os.path.join(directory, key, str(file_name) + "_" + str(counter))):
+                                    with open(os.path.join(directory, key, str(file_name) + "_" + str(counter)), "wb") as event_file:
+                                            pickle.dump(data_dict, event_file)
+                    else:
+                        # In the event chosen from the file
+                        # Each event is the same as each line below
+                        energy = event.simulation_truth.air_shower.energy
+                        event_photons = event.photon_stream.list_of_lists
+                        zd_deg = event.zd
+                        az_deg = event.az
+                        act_phi = event.simulation_truth.air_shower.phi
+                        act_theta = event.simulation_truth.air_shower.theta
+                        data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
+                                     {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5,
+                                      'Theta': 6, }]
+                        with open(os.path.join(directory, str(file_name) + "_" + str(counter)), "wb") as event_file:
+                            pickle.dump(data_dict, event_file)
             except Exception as e:
                 print(str(e))
                 pass
@@ -191,7 +196,7 @@ class ProtonPreprocessor(BasePreprocessor):
 
 class GammaPreprocessor(BasePreprocessor):
 
-    def event_processor(self, directory, clean_images=False, only_core=True):
+    def event_processor(self, directory, clean_images=False, only_core=True, clump_size=20):
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
             file_name = file.split("/")[-1].split(".phs")[0]
@@ -204,15 +209,14 @@ class GammaPreprocessor(BasePreprocessor):
                 for event in sim_reader:
                     counter += 1
 
-                    if os.path.isfile(os.path.join(directory, "no_clean", str(file_name) + "_" + str(counter))) \
-                            or os.path.isfile(os.path.join(directory, "clump", str(file_name) + "_" + str(counter))) \
-                            or os.path.isfile(os.path.join(directory, "core", str(file_name) + "_" + str(counter))):
+                    if os.path.isfile(os.path.join(directory, "clump"+str(clump_size), str(file_name) + "_" + str(counter))) \
+                            or os.path.isfile(os.path.join(directory, "core"+str(clump_size), str(file_name) + "_" + str(counter))):
                         print("True: " + str(file_name) + "_" + str(counter))
                         continue
 
                     if clean_images:
                         # Do it for no clumps, all clump, and only core into different subfolders
-                        all_photons, clump_photons, core_photons = self.clean_image(event, only_core=only_core)
+                        all_photons, clump_photons, core_photons = self.clean_image(event, only_core=only_core, min_samples=clump_size)
                         if core_photons is None:
                             print("No Clumps, skip")
                             continue
@@ -230,21 +234,27 @@ class GammaPreprocessor(BasePreprocessor):
                                 data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
                                              {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3,'Phi': 4,
                                               'Theta': 5, }]
-                                with open(os.path.join(directory, key, str(file_name) + "_" + str(counter)), "wb") as event_file:
-                                    pickle.dump(data_dict, event_file)
-                    # In the event chosen from the file
-                    # Each event is the same as each line below
-                    energy = event.simulation_truth.air_shower.energy
-                    event_photons = event.photon_stream.list_of_lists
-                    zd_deg = event.zd
-                    az_deg = event.az
-                    act_phi = event.simulation_truth.air_shower.phi
-                    act_theta = event.simulation_truth.air_shower.theta
-                    data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
-                                 {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3,'Phi': 4,
-                                  'Theta': 5, }]
-                    with open(os.path.join(directory, str(file_name) + "_" + str(counter)), "wb") as event_file:
-                        pickle.dump(data_dict, event_file)
+                                if key != "no_clean":
+                                    with open(os.path.join(directory, key+str(clump_size), str(file_name) + "_" + str(counter)), "wb") as event_file:
+                                        pickle.dump(data_dict, event_file)
+                                else:
+                                    if not os.path.isfile(os.path.join(directory, key, str(file_name) + "_" + str(counter))):
+                                        with open(os.path.join(directory, key, str(file_name) + "_" + str(counter)), "wb") as event_file:
+                                            pickle.dump(data_dict, event_file)
+                    else:
+                        # In the event chosen from the file
+                        # Each event is the same as each line below
+                        energy = event.simulation_truth.air_shower.energy
+                        event_photons = event.photon_stream.list_of_lists
+                        zd_deg = event.zd
+                        az_deg = event.az
+                        act_phi = event.simulation_truth.air_shower.phi
+                        act_theta = event.simulation_truth.air_shower.theta
+                        data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
+                                     {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3,'Phi': 4,
+                                      'Theta': 5, }]
+                        with open(os.path.join(directory, str(file_name) + "_" + str(counter)), "wb") as event_file:
+                            pickle.dump(data_dict, event_file)
             except Exception as e:
                 print(str(e))
                 pass

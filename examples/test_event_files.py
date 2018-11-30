@@ -6,6 +6,7 @@ import os
 
 import multiprocessing
 from multiprocessing import Pool
+from functools import partial
 
 
 base_dir = "/home/jacob/ihp-pc41.ethz.ch/public/phs/"
@@ -30,8 +31,9 @@ for directory in gamma_dir:
                 gamma_paths.append(os.path.join(root, file))
 
 
-def f(path):
+def f(clump_size, path):
     print("Gamma")
+    print("Size: ", clump_size)
     gamma_configuration = {
         'rebin_size': 5,
         'output_file': "../gamma.hdf5",
@@ -40,7 +42,7 @@ def f(path):
     }
 
     gamma_train_preprocessor = GammaPreprocessor(config=gamma_configuration)
-    gamma_train_preprocessor.event_processor(os.path.join(output_path, "gamma"), clean_images=True, only_core=True)
+    gamma_train_preprocessor.event_processor(os.path.join(output_path, "gamma"), clean_images=True, only_core=True, clump_size=clump_size)
 
 # Get paths from the directories
 crab_paths = []
@@ -50,7 +52,7 @@ for directory in proton_dir:
             if file.endswith("phs.jsonl.gz"):
                 crab_paths.append(os.path.join(root, file))
 
-def d(path):
+def d(clump_size, path):
     print(len(path))
     proton_configuration = {
         'rebin_size': rebin_size,
@@ -60,21 +62,54 @@ def d(path):
     }
 
     proton_train_preprocessor = ProtonPreprocessor(config=proton_configuration)
-    proton_train_preprocessor.event_processor(os.path.join(output_path, "proton"), clean_images=True, only_core=True)
+    proton_train_preprocessor.event_processor(os.path.join(output_path, "proton"), clean_images=True, only_core=True, clump_size=clump_size)
 
 
 # Now do the Kfold Cross validation Part for both sets of paths
 
 
 if __name__ == '__main__':
-    output_paths = [os.path.join(output_path, "proton", "no_clean"),os.path.join(output_path, "proton", "clump"),os.path.join(output_path, "proton", "core"),
-                    os.path.join(output_path, "gamma", "no_clean"),os.path.join(output_path, "gamma", "clump"),os.path.join(output_path, "gamma", "core")]
+    clump_size = 20
+    output_paths = [os.path.join(output_path, "proton", "no_clean"),os.path.join(output_path, "proton", "clump"+str(clump_size)),os.path.join(output_path, "proton", "core"+str(clump_size)),
+                    os.path.join(output_path, "gamma", "no_clean"),os.path.join(output_path, "gamma", "clump"+str(clump_size)),os.path.join(output_path, "gamma", "core"+str(clump_size))]
     for path in output_paths:
         if not os.path.exists(path):
             os.makedirs(path)
     with Pool(12) as p:
-        r = p.map_async(f, gamma_paths)
-        g = p.map_async(d, crab_paths)
+        func = partial(f, clump_size)
+        dunc = partial(d, clump_size)
+        r = p.map_async(func, gamma_paths)
+        g = p.map_async(dunc, crab_paths)
+
+        r.wait()
+        g.wait()
+
+    clump_size = 15
+    output_paths = [os.path.join(output_path, "proton", "no_clean"),os.path.join(output_path, "proton", "clump"+str(clump_size)),os.path.join(output_path, "proton", "core"+str(clump_size)),
+                    os.path.join(output_path, "gamma", "no_clean"),os.path.join(output_path, "gamma", "clump"+str(clump_size)),os.path.join(output_path, "gamma", "core"+str(clump_size))]
+    for path in output_paths:
+        if not os.path.exists(path):
+            os.makedirs(path)
+    with Pool(12) as p:
+        func = partial(f, clump_size)
+        dunc = partial(d, clump_size)
+        r = p.map_async(func, gamma_paths)
+        g = p.map_async(dunc, crab_paths)
+
+        r.wait()
+        g.wait()
+
+    clump_size = 10
+    output_paths = [os.path.join(output_path, "proton", "no_clean"),os.path.join(output_path, "proton", "clump"+str(clump_size)),os.path.join(output_path, "proton", "core"+str(clump_size)),
+                    os.path.join(output_path, "gamma", "no_clean"),os.path.join(output_path, "gamma", "clump"+str(clump_size)),os.path.join(output_path, "gamma", "core"+str(clump_size))]
+    for path in output_paths:
+        if not os.path.exists(path):
+            os.makedirs(path)
+    with Pool(12) as p:
+        func = partial(f, clump_size)
+        dunc = partial(d, clump_size)
+        r = p.map_async(func, gamma_paths)
+        g = p.map_async(dunc, crab_paths)
 
         r.wait()
         g.wait()
