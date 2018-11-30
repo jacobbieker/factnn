@@ -11,7 +11,7 @@ import os
 
 class ProtonPreprocessor(BasePreprocessor):
 
-    def event_processor(self, directory, clean_images=False, only_core=True):
+    def event_processor(self, directory, clean_images=False, only_core=True, min_samples=20):
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
             file_name = file.split("/")[-1].split(".phs")[0]
@@ -24,15 +24,33 @@ class ProtonPreprocessor(BasePreprocessor):
                 for event in sim_reader:
                     counter += 1
 
-                    if os.path.isfile(os.path.join(directory, str(file_name) + "_" + str(counter))):
+                    if os.path.isfile(os.path.join(directory, "no_clean", str(file_name) + "_" + str(counter)))\
+                            or os.path.isfile(os.path.join(directory, "clump", str(file_name) + "_" + str(counter))) \
+                            or os.path.isfile(os.path.join(directory, "core", str(file_name) + "_" + str(counter))):
                         print("True: " + str(file_name) + "_" + str(counter))
                         continue
 
                     if clean_images:
-                        event = self.clean_image(event, only_core)
-                        if event.photon_stream.raw is None:
+                        # Do it for no clumps, all clump, and only core into different subfolders
+                        all_photons, clump_photons, core_photons = self.clean_image(event, only_core=only_core)
+                        if core_photons is None:
                             print("No Clumps, skip")
                             continue
+                        for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}.items():
+                            event.photon_stream.raw = photon_set
+                            # In the event chosen from the file
+                            # Each event is the same as each line below
+                            energy = event.simulation_truth.air_shower.energy
+                            event_photons = event.photon_stream.list_of_lists
+                            zd_deg = event.zd
+                            az_deg = event.az
+                            act_phi = event.simulation_truth.air_shower.phi
+                            act_theta = event.simulation_truth.air_shower.theta
+                            data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
+                                         {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5,
+                                          'Theta': 6, }]
+                            with open(os.path.join(directory, key, str(file_name) + "_" + str(counter)), "wb") as event_file:
+                                pickle.dump(data_dict, event_file)
                     # In the event chosen from the file
                     # Each event is the same as each line below
                     energy = event.simulation_truth.air_shower.energy
@@ -50,7 +68,7 @@ class ProtonPreprocessor(BasePreprocessor):
                 print(str(e))
                 pass
 
-    def batch_processor(self, clean_images=False):
+    def batch_processor(self, clean_images=False, only_core=True):
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
             try:
@@ -61,7 +79,7 @@ class ProtonPreprocessor(BasePreprocessor):
                 data = []
                 for event in sim_reader:
                     if clean_images:
-                        event = self.clean_image(event)
+                        event = self.clean_image(event, only_core=only_core)
                         if event.photon_stream.raw is None:
                             print("No Clumps, skip")
                             continue
@@ -88,7 +106,7 @@ class ProtonPreprocessor(BasePreprocessor):
             except Exception as e:
                 print(str(e))
 
-    def single_processor(self, normalize=False, collapse_time=False, final_slices=5, as_channels=False, clean_images=False):
+    def single_processor(self, normalize=False, collapse_time=False, final_slices=5, as_channels=False, clean_images=False, only_core=True):
         while True:
             self.paths = shuffle(self.paths)
             print("\nNew Proton")
@@ -102,7 +120,7 @@ class ProtonPreprocessor(BasePreprocessor):
                     for event in sim_reader:
                         data = []
                         if clean_images:
-                            event = self.clean_image(event)
+                            event = self.clean_image(event, only_core=only_core)
                             if event.photon_stream.raw is None:
                                 print("No Clumps, skip")
                                 continue
@@ -186,14 +204,34 @@ class GammaPreprocessor(BasePreprocessor):
                 for event in sim_reader:
                     counter += 1
 
-                    if os.path.isfile(os.path.join(directory, str(file_name) + "_" + str(counter))):
+                    if os.path.isfile(os.path.join(directory, "no_clean", str(file_name) + "_" + str(counter))) \
+                            or os.path.isfile(os.path.join(directory, "clump", str(file_name) + "_" + str(counter))) \
+                            or os.path.isfile(os.path.join(directory, "core", str(file_name) + "_" + str(counter))):
+                        print("True: " + str(file_name) + "_" + str(counter))
                         continue
 
                     if clean_images:
-                        event = self.clean_image(event, only_core)
-                        if event.photon_stream.raw is None:
+                        # Do it for no clumps, all clump, and only core into different subfolders
+                        all_photons, clump_photons, core_photons = self.clean_image(event, only_core=only_core)
+                        if core_photons is None:
                             print("No Clumps, skip")
                             continue
+                        else:
+                            for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}.items():
+                                event.photon_stream.raw = photon_set
+                                # In the event chosen from the file
+                                # Each event is the same as each line below
+                                energy = event.simulation_truth.air_shower.energy
+                                event_photons = event.photon_stream.list_of_lists
+                                zd_deg = event.zd
+                                az_deg = event.az
+                                act_phi = event.simulation_truth.air_shower.phi
+                                act_theta = event.simulation_truth.air_shower.theta
+                                data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
+                                             {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3,'Phi': 4,
+                                              'Theta': 5, }]
+                                with open(os.path.join(directory, key, str(file_name) + "_" + str(counter)), "wb") as event_file:
+                                    pickle.dump(data_dict, event_file)
                     # In the event chosen from the file
                     # Each event is the same as each line below
                     energy = event.simulation_truth.air_shower.energy
@@ -342,7 +380,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                            "aux_pointing_position_az", "aux_pointing_position_zd",
                                            "corsika_event_header_total_energy", "corsika_event_header_az", "run_id"])
 
-    def event_processor(self, directory, clean_images=False):
+    def event_processor(self, directory, clean_images=False, only_core=True):
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
             file_name = file.split("/")[-1].split(".phs")[0]
@@ -363,10 +401,36 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                             continue
 
                         if clean_images:
-                            event = self.clean_image(event)
-                            if event.photon_stream.raw is None:
+                            all_photons, clump_photons, core_photons = self.clean_image(event, only_core=only_core)
+                            if core_photons is None:
                                 print("No Clumps, skip")
                                 continue
+                            for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}:
+                                event.photon_stream.raw = photon_set
+                                # In the event chosen from the file
+                                # Each event is the same as each line below
+                                cog_x = df_event['cog_x'].values[0]
+                                cog_y = df_event['cog_y'].values[0]
+                                act_sky_source_zero = df_event['source_position_x'].values[0]
+                                act_sky_source_one = df_event['source_position_y'].values[0]
+                                event_photons = event.photon_stream.list_of_lists
+                                zd_deg = event.zd
+                                az_deg = event.az
+                                delta = df_event['delta'].values[0]
+                                energy = event.simulation_truth.air_shower.energy
+                                sky_source_zd = df_event['source_position_zd'].values[0]
+                                sky_source_az = df_event['source_position_az'].values[0]
+                                zd_deg1 = df_event['aux_pointing_position_az'].values[0]
+                                az_deg1 = df_event['aux_pointing_position_zd'].values[0]
+                                data_dict = [[event_photons, act_sky_source_zero, act_sky_source_one,
+                                              cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
+                                              energy, zd_deg1, az_deg1],
+                                             {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5,
+                                              'Az_Deg': 6,
+                                              'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11,
+                                              'Pointing_Az': 12}]
+                                with open(os.path.join(directory, key, str(file_name) + "_" + str(counter)), "wb") as event_file:
+                                    pickle.dump(data_dict, event_file)
                         # In the event chosen from the file
                         # Each event is the same as each line below
                         cog_x = df_event['cog_x'].values[0]

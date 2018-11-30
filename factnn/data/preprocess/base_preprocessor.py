@@ -348,6 +348,16 @@ class BasePreprocessor(object):
                     p += 1
             return cloud
 
+               # Now have each index into the point cloud, so start backwards, include all those not with -1
+                    current_photon = point_cloud[idx]
+                    for index in range(1440):
+                        if np.isclose(current_photon[0], x_angle[index]) and np.isclose(current_photon[1], y_angle[index]):
+                            time_slice = int(np.round(current_photon[2] / TIME_SLICE_DURATION_S))
+                            list_of_slices.append(time_slice)
+                            # Now add to new_raw
+                            new_list_of_list[index].append(time_slice)
+        # Convert back to raw
+
         :param dbscan:
         :param raw_photons:
         :return: New raw photon event, or None if no clumps are found
@@ -355,6 +365,7 @@ class BasePreprocessor(object):
         TIME_SLICE_DURATION_S = 0.5e-9 # Taken from FACT magic constants
 
         core_sample = dbscan.core_sample_indices_
+        labels = dbscan.labels_
         number = len(set(dbscan.labels_)) - (1 if -1 in dbscan.labels_ else 0)
         # Now go backwards through the raw photons and gather those ones in a new raw photon format
         # That format will be passed to raw_photons_to_list_of_lists to create a new list_of_lists repr
@@ -367,27 +378,22 @@ class BasePreprocessor(object):
         new_list_of_list = [[] for _ in range(1440)]
         list_of_slices = []
         if only_core:
-            for element in core_sample:
-                # Now have each index into the point cloud, so start backwards
-                current_photon = point_cloud[element]
+            used_labels = core_sample
+        else:
+            used_labels = labels
+        for idx, element in enumerate(used_labels):
+            # Now have each index into the point cloud, so start backwards
+            if element >= 0:
+                if only_core:
+                    current_photon = point_cloud[element]
+                else:
+                    current_photon = point_cloud[idx]
                 for index in range(1440):
                     if np.isclose(current_photon[0], x_angle[index]) and np.isclose(current_photon[1], y_angle[index]):
                         time_slice = int(np.round(current_photon[2] / TIME_SLICE_DURATION_S))
                         list_of_slices.append(time_slice)
                         # Now add to new_raw
                         new_list_of_list[index].append(time_slice)
-        else:
-            for idx, element in enumerate(dbscan.labels_):
-                if element >= 0:
-                    # Now have each index into the point cloud, so start backwards, include all those not with -1
-                    current_photon = point_cloud[idx]
-                    for index in range(1440):
-                        if np.isclose(current_photon[0], x_angle[index]) and np.isclose(current_photon[1], y_angle[index]):
-                            time_slice = int(np.round(current_photon[2] / TIME_SLICE_DURATION_S))
-                            list_of_slices.append(time_slice)
-                            # Now add to new_raw
-                            new_list_of_list[index].append(time_slice)
-
         # Convert back to raw
         new_raw = []
         for sublist in new_list_of_list:
@@ -405,7 +411,7 @@ class BasePreprocessor(object):
             # No clumps, so returns None
             return None
         if debug:
-            print("Start: {}, End: {}, Mean: {}, Std: {} Clumps: {}".format(np.min(list_of_slices), np.max(list_of_slices), np.mean(list_of_slices), np.std(list_of_slices), number))
+            print("Start: {}, End: {}, Mean: {}, Std: {} Clumps: {} Photons Before: {} Photons Saved: {}".format(np.min(list_of_slices), np.max(list_of_slices), np.round(np.mean(list_of_slices),3), np.round(np.std(list_of_slices),3), number, len(point_cloud), len(new_raw)-1440))
         return new_raw
 
     def clean_image(self, event, min_samples=20, eps=0.1, only_core=True):
@@ -423,8 +429,17 @@ class BasePreprocessor(object):
 
         point_cloud = event.photon_stream.point_cloud
 
+        dbscan = self.find_clumps(point_cloud, min_samples, eps)
+
+        core_photons = self.select_clustered_photons(dbscan, point_cloud, only_core=True)
+        clump_photons = self.select_clustered_photons(dbscan, point_cloud, only_core=False)
+        all_photons = event.photon_stream.raw
+
+        return all_photons, clump_photons, core_photons
+
+    def find_clumps(self, point_cloud, min_samples=20, eps=0.1):
         deg_over_s = 0.35e9
-        xyt = event.photon_stream.point_cloud.copy()
+        xyt = point_cloud.copy()
         xyt[:, 2] *= np.deg2rad(deg_over_s)
 
         fov_radius = np.deg2rad(fact.instrument.camera.FOV_RADIUS)
@@ -432,9 +447,7 @@ class BasePreprocessor(object):
 
         dbscan = DBSCAN(eps=abs_eps, min_samples=min_samples).fit(xyt)
 
-        event.photon_stream.raw = self.select_clustered_photons(dbscan, point_cloud, only_core)
-
-        return event
+        return dbscan
 
     def dynamic_size(self, photon_stream):
         """

@@ -21,18 +21,23 @@ class EventFilePreprocessor(BasePreprocessor):
         failed_paths = []
         import matplotlib.pyplot as plt
         for index, file in enumerate(paths):
-            with open(file, "rb") as pickled_event:
-                data, data_format = pickle.load(pickled_event)
-                self.start, self.end, mean, std = self.dynamic_size(data[data_format['Image']])
-                if self.start < 0:
-                    failed_paths.append(file)
-                else:
-                    # Real paths
-                    starts.append(self.start)
-                    ends.append(self.end)
-                    means.append(mean)
-                    stds.append(std)
-
+            try:
+                with open(file, "rb") as pickled_event:
+                    data, data_format = pickle.load(pickled_event)
+                    self.start, self.end, mean, std = self.dynamic_size(data[data_format['Image']])
+                    if self.start < 0:
+                        failed_paths.append(file)
+                    else:
+                        # Real paths
+                        starts.append(self.start)
+                        ends.append(self.end)
+                        means.append(mean)
+                        stds.append(std)
+            except Exception as e:
+                print(e)
+                print(file)
+                print(paths)
+                failed_paths.append(file)
         for path in failed_paths:
             os.remove(path)
         #    print("Removed: ", path)

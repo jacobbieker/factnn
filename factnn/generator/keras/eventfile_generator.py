@@ -22,10 +22,10 @@ class EventFileGenerator(Sequence):
         self.proton_paths = proton_paths
         self.normalize = normalize
 
-        failed_paths = self.proton_preprocessor.check_files(self.paths, "Gamma")
-        self.paths = [x for x in self.paths if x not in failed_paths]
-        sfailed_paths = self.proton_preprocessor.check_files(self.proton_paths, "Proton")
-        self.proton_paths = [x for x in self.proton_paths if x not in sfailed_paths]
+        #failed_paths = self.proton_preprocessor.check_files(self.paths, "Gamma")
+        #self.paths = [x for x in self.paths if x not in failed_paths]
+        #sfailed_paths = self.proton_preprocessor.check_files(self.proton_paths, "Proton")
+        #self.proton_paths = [x for x in self.proton_paths if x not in sfailed_paths]
 
 
     def __getitem__(self, index):
