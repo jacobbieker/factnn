@@ -25,7 +25,7 @@ class ProtonPreprocessor(BasePreprocessor):
                     counter += 1
 
                     if os.path.isfile(os.path.join(directory, "clump"+str(clump_size), str(file_name) + "_" + str(counter))) \
-                            or os.path.isfile(os.path.join(directory, "core"+str(clump_size), str(file_name) + "_" + str(counter))):
+                            and os.path.isfile(os.path.join(directory, "core"+str(clump_size), str(file_name) + "_" + str(counter))):
                         print("True: " + str(file_name) + "_" + str(counter))
                         continue
 
@@ -210,7 +210,7 @@ class GammaPreprocessor(BasePreprocessor):
                     counter += 1
 
                     if os.path.isfile(os.path.join(directory, "clump"+str(clump_size), str(file_name) + "_" + str(counter))) \
-                            or os.path.isfile(os.path.join(directory, "core"+str(clump_size), str(file_name) + "_" + str(counter))):
+                            and os.path.isfile(os.path.join(directory, "core"+str(clump_size), str(file_name) + "_" + str(counter))):
                         print("True: " + str(file_name) + "_" + str(counter))
                         continue
 
