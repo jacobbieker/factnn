@@ -21,7 +21,7 @@ def split_data(indicies, kfolds, seeds=None):
     if seeds is None:
         seeds = []
         for fold in range(kfolds):
-            seeds.append(np.random.randint(0,2**32-1))
+            seeds.append(np.random.randint(0, 2 ** 32 - 1))
 
     # Now split into kfolds,
     list_of_training = []
@@ -35,7 +35,8 @@ def split_data(indicies, kfolds, seeds=None):
 
     for train_index, test_index in kf.split(indicies):
         # Need to split train_index into validation data
-        train_data, validate_data = train_test_split(indicies[train_index], train_size=(1.0-validate_fraction), test_size=validate_fraction)
+        train_data, validate_data = train_test_split(indicies[train_index], train_size=(1.0 - validate_fraction),
+                                                     test_size=validate_fraction)
         list_of_training.append(train_data)
         list_of_validate.append(validate_data)
         list_of_testing.append(indicies[test_index])
@@ -73,67 +74,67 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
         proton_configuration['paths'] = proton_train[1][kfold_index]
         proton_test_preprocessor = EventFilePreprocessor(config=proton_configuration)
 
-        energy_train = EventFileGenerator(paths=gamma_train[0][kfold_index], batch_size=batch_size,
-                                          preprocessor=gamma_train_preprocessor,
-                                          proton_paths=proton_train[0][kfold_index],
-                                          proton_preprocessor=proton_train_preprocessor,
-                                          as_channels=as_channels,
-                                          final_slices=final_slices,
-                                          slices=(start_slice, end_slice),
-                                          augment=True,
-                                          normalize=normalize,
-                                          training_type=model_type)
-        energy_validate = EventFileGenerator(paths=gamma_train[1][kfold_index], batch_size=batch_size,
-                                             proton_paths=proton_train[1][kfold_index],
-                                             proton_preprocessor=proton_validate_preprocessor,
-                                             preprocessor=gamma_validate_preprocessor,
-                                             as_channels=as_channels,
-                                             final_slices=final_slices,
-                                             slices=(start_slice, end_slice),
-                                             augment=False,
-                                             normalize=normalize,
-                                             training_type=model_type)
-        energy_test = EventFileGenerator(paths=gamma_train[2][kfold_index], batch_size=batch_size,
-                                         proton_paths=proton_train[2][kfold_index],
-                                         proton_preprocessor=proton_test_preprocessor,
-                                         preprocessor=gamma_test_preprocessor,
-                                         as_channels=as_channels,
-                                         final_slices=final_slices,
-                                         slices=(start_slice, end_slice),
-                                         augment=False,
-                                         normalize=normalize,
-                                         training_type=model_type)
+        train = EventFileGenerator(paths=gamma_train[0][kfold_index], batch_size=batch_size,
+                                   preprocessor=gamma_train_preprocessor,
+                                   proton_paths=proton_train[0][kfold_index],
+                                   proton_preprocessor=proton_train_preprocessor,
+                                   as_channels=as_channels,
+                                   final_slices=final_slices,
+                                   slices=(start_slice, end_slice),
+                                   augment=True,
+                                   normalize=normalize,
+                                   training_type=model_type)
+        validate = EventFileGenerator(paths=gamma_train[1][kfold_index], batch_size=batch_size,
+                                      proton_paths=proton_train[1][kfold_index],
+                                      proton_preprocessor=proton_validate_preprocessor,
+                                      preprocessor=gamma_validate_preprocessor,
+                                      as_channels=as_channels,
+                                      final_slices=final_slices,
+                                      slices=(start_slice, end_slice),
+                                      augment=False,
+                                      normalize=normalize,
+                                      training_type=model_type)
+        test = EventFileGenerator(paths=gamma_train[2][kfold_index], batch_size=batch_size,
+                                  proton_paths=proton_train[2][kfold_index],
+                                  proton_preprocessor=proton_test_preprocessor,
+                                  preprocessor=gamma_test_preprocessor,
+                                  as_channels=as_channels,
+                                  final_slices=final_slices,
+                                  slices=(start_slice, end_slice),
+                                  augment=False,
+                                  normalize=normalize,
+                                  training_type=model_type)
     else:
-        energy_train = EventFileGenerator(paths=gamma_train[0][kfold_index], batch_size=batch_size,
-                                          preprocessor=gamma_train_preprocessor,
-                                          as_channels=as_channels,
-                                          final_slices=final_slices,
-                                          slices=(start_slice, end_slice),
-                                          augment=True,
-                                          normalize=normalize,
-                                          training_type=model_type)
-        energy_validate = EventFileGenerator(paths=gamma_train[1][kfold_index], batch_size=batch_size,
-                                             preprocessor=gamma_validate_preprocessor,
-                                             as_channels=as_channels,
-                                             final_slices=final_slices,
-                                             slices=(start_slice, end_slice),
-                                             augment=False,
-                                             normalize=normalize,
-                                             training_type=model_type)
-        energy_test = EventFileGenerator(paths=gamma_train[2][kfold_index], batch_size=batch_size,
-                                         preprocessor=gamma_test_preprocessor,
-                                         as_channels=as_channels,
-                                         final_slices=final_slices,
-                                         slices=(start_slice, end_slice),
-                                         augment=False,
-                                         normalize=normalize,
-                                         training_type=model_type)
+        train = EventFileGenerator(paths=gamma_train[0][kfold_index], batch_size=batch_size,
+                                   preprocessor=gamma_train_preprocessor,
+                                   as_channels=as_channels,
+                                   final_slices=final_slices,
+                                   slices=(start_slice, end_slice),
+                                   augment=True,
+                                   normalize=normalize,
+                                   training_type=model_type)
+        validate = EventFileGenerator(paths=gamma_train[1][kfold_index], batch_size=batch_size,
+                                      preprocessor=gamma_validate_preprocessor,
+                                      as_channels=as_channels,
+                                      final_slices=final_slices,
+                                      slices=(start_slice, end_slice),
+                                      augment=False,
+                                      normalize=normalize,
+                                      training_type=model_type)
+        test = EventFileGenerator(paths=gamma_train[2][kfold_index], batch_size=batch_size,
+                                  preprocessor=gamma_test_preprocessor,
+                                  as_channels=as_channels,
+                                  final_slices=final_slices,
+                                  slices=(start_slice, end_slice),
+                                  augment=False,
+                                  normalize=normalize,
+                                  training_type=model_type)
 
     if as_channels:
         final_shape = (gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], final_slices)
     else:
         final_shape = (final_slices, gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 1)
-    return energy_train, energy_validate, energy_test, final_shape
+    return train, validate, test, final_shape
 
 
 def fit_model(model, train_gen, val_gen, workers=10, verbose=1):
@@ -141,12 +142,14 @@ def fit_model(model, train_gen, val_gen, workers=10, verbose=1):
                                                patience=5,
                                                verbose=0, mode='auto',
                                                restore_best_weights=False)
+    nan_stop = keras.callbacks.TerminateOnNaN()
+
     model.fit_generator(
         generator=train_gen,
         epochs=500,
         verbose=verbose,
         validation_data=val_gen,
-        callbacks=[early_stop],
+        callbacks=[early_stop, nan_stop],
         use_multiprocessing=True,
         workers=workers,
         max_queue_size=50,
@@ -171,8 +174,8 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
     """
 
     :param model: Keras Model
-    :param directory: Directory of Gamma events
-    :param proton_directory: Directory of Proton events
+    :param directory: Directory of Gamma events in EventFile format
+    :param proton_directory: Directory of Proton events, in EventFile format
     :param indicies: In (start, end, final slices) order
     :param rebin: Rebin size
     :param as_channels: Whether to do it as channels or as time slices
@@ -190,8 +193,7 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
     for source_dir in directory:
         for root, dirs, files in os.walk(source_dir):
             for file in files:
-                if file.endswith("phs.jsonl.gz"):
-                    paths.append(os.path.join(root, file))
+                paths.append(os.path.join(root, file))
     gamma_paths = split_data(paths, kfolds=kfolds)
 
     if model_type == "Separation":
@@ -199,18 +201,20 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
         for source_dir in proton_directory:
             for root, dirs, files in os.walk(source_dir):
                 for file in files:
-                    if file.endswith("phs.jsonl.gz"):
-                        proton_paths.append(os.path.join(root, file))
+                    proton_paths.append(os.path.join(root, file))
         proton_paths = split_data(proton_paths, kfolds=kfolds)
 
-        train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1], final_slices=indicies[2],
+        train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
+                                                   final_slices=indicies[2],
                                                    rebin_size=rebin, gamma_train=gamma_paths,
-                                                   proton_train=proton_paths, batch_size=batch_size, normalize=normalize,
+                                                   proton_train=proton_paths, batch_size=batch_size,
+                                                   normalize=normalize,
                                                    model_type=model_type, as_channels=as_channels)
     else:
-        train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1], final_slices=indicies[2],
+        train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
+                                                   final_slices=indicies[2],
                                                    rebin_size=rebin, gamma_train=gamma_paths,
-                                                    batch_size=batch_size, normalize=normalize,
+                                                   batch_size=batch_size, normalize=normalize,
                                                    model_type=model_type, as_channels=as_channels)
 
     model = fit_model(model, train_gen, val_gen, workers=workers, verbose=verbose)
