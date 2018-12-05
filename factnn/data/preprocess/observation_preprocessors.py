@@ -64,7 +64,7 @@ class ObservationPreprocessor(BasePreprocessor):
                                     night = event.observation_info.night
                                     run = event.observation_info.run
                                     data_dict = [[event_photons, timestamp, zd_deg, az_deg, cog_x, cog_y, sky_source_az, sky_source_zd, zd_deg1, az_deg1, source_pos_x, source_pos_y, event_num, night, run],
-                                                 {'Image': 0, 'Timestamp': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'Cog_X': 4, 'Cog_Y': 5, 'Source_Position_Az': 6, 'Source_Position_Zd': 7,
+                                                 {'Image': 0, 'Timestamp': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_X': 4, 'COG_Y': 5, 'Source_Position_Az': 6, 'Source_Position_Zd': 7,
                                                   'Pointing_Position_Zd': 8, 'Pointing_Position_Az': 9, 'Source_Position_X': 10, 'Source_Position_Y': 11, 'Event_Number': 12, 'Night': 13, 'Run': 14}]
                                     if key != "no_clean":
                                         with open(os.path.join(directory, key+str(clump_size), str(file_name) + "_" + str(counter)), "wb") as event_file:
@@ -93,7 +93,7 @@ class ObservationPreprocessor(BasePreprocessor):
                             night = event.observation_info.night
                             run = event.observation_info.run
                             data_dict = [[event_photons, timestamp, zd_deg, az_deg, cog_x, cog_y, sky_source_az, sky_source_zd, zd_deg1, az_deg1, source_pos_x, source_pos_y, event_num, night, run],
-                                         {'Image': 0, 'Timestamp': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'Cog_X': 4, 'Cog_Y': 5, 'Source_Position_Az': 6, 'Source_Position_Zd': 7,
+                                         {'Image': 0, 'Timestamp': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_X': 4, 'COG_Y': 5, 'Source_Position_Az': 6, 'Source_Position_Zd': 7,
                                           'Pointing_Position_Zd': 8, 'Pointing_Position_Az': 9, 'Source_Position_X': 10, 'Source_Position_Y': 11, 'Event_Number': 12, 'Night': 13, 'Run': 14}]
                             with open(os.path.join(directory, str(file_name) + "_" + str(counter)), "wb") as event_file:
                                 pickle.dump(data_dict, event_file)

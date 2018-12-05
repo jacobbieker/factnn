@@ -75,44 +75,46 @@ if __name__ == '__main__':
     for path in output_paths:
         if not os.path.exists(path):
             os.makedirs(path)
-    with Pool(12) as p:
-        func = partial(f, clump_size)
-        dunc = partial(d, clump_size)
-        r = p.map_async(func, gamma_paths)
-        g = p.map_async(dunc, crab_paths)
 
-        r.wait()
-        g.wait()
+    proton_pool = Pool(8)
+    gamma_pool = Pool(10)
+    dunc = partial(d, clump_size)
+    g = proton_pool.map_async(dunc, crab_paths)
+    func = partial(f, clump_size)
+    r = gamma_pool.map_async(func, gamma_paths)
 
-    clump_size = 15
+    g.wait()
+
+    clump_size_2 = 10
     output_paths = [os.path.join(output_path, "proton", "no_clean"),os.path.join(output_path, "proton", "clump"+str(clump_size)),os.path.join(output_path, "proton", "core"+str(clump_size)),
                     os.path.join(output_path, "gamma", "no_clean"),os.path.join(output_path, "gamma", "clump"+str(clump_size)),os.path.join(output_path, "gamma", "core"+str(clump_size))]
     for path in output_paths:
         if not os.path.exists(path):
             os.makedirs(path)
-    with Pool(12) as p:
-        func = partial(f, clump_size)
-        dunc = partial(d, clump_size)
-        r = p.map_async(func, gamma_paths)
-        g = p.map_async(dunc, crab_paths)
 
-        r.wait()
-        g.wait()
+    dunc = partial(d, clump_size_2)
+    g = proton_pool.map_async(dunc, crab_paths)
+    r.wait()
 
-    clump_size = 10
+    func = partial(f, clump_size_2)
+    r = gamma_pool.map_async(func, gamma_paths)
+
+    r.wait()
+    g.wait()
+
+    clump_size_3 = 15
     output_paths = [os.path.join(output_path, "proton", "no_clean"),os.path.join(output_path, "proton", "clump"+str(clump_size)),os.path.join(output_path, "proton", "core"+str(clump_size)),
                     os.path.join(output_path, "gamma", "no_clean"),os.path.join(output_path, "gamma", "clump"+str(clump_size)),os.path.join(output_path, "gamma", "core"+str(clump_size))]
     for path in output_paths:
         if not os.path.exists(path):
             os.makedirs(path)
-    with Pool(12) as p:
-        func = partial(f, clump_size)
-        dunc = partial(d, clump_size)
-        r = p.map_async(func, gamma_paths)
-        g = p.map_async(dunc, crab_paths)
+    func = partial(f, clump_size_3)
+    dunc = partial(d, clump_size_3)
+    r = gamma_pool.map_async(func, gamma_paths)
+    g = proton_pool.map_async(dunc, crab_paths)
 
-        r.wait()
-        g.wait()
+    r.wait()
+    g.wait()
 
 
 
