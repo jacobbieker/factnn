@@ -46,7 +46,7 @@ def split_data(indicies, kfolds, seeds=None):
 
 
 def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_train=None, model_type="Separation",
-         batch_size=8, as_channels=True, normalize=False, kfold_index=0):
+         batch_size=8, as_channels=True, normalize=False, kfold_index=0, truncate=True, dynamic_resize=True, equal_slices=False):
     shape = [start_slice, end_slice]
 
     gamma_configuration = {
@@ -83,7 +83,10 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                    slices=(start_slice, end_slice),
                                    augment=True,
                                    normalize=normalize,
-                                   training_type=model_type)
+                                   training_type=model_type,
+                                   truncate=truncate,
+                                   dynamic_resize=dynamic_resize,
+                                   equal_slices=equal_slices)
         validate = EventFileGenerator(paths=gamma_train[1][kfold_index], batch_size=batch_size,
                                       proton_paths=proton_train[1][kfold_index],
                                       proton_preprocessor=proton_validate_preprocessor,
@@ -93,7 +96,10 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                       slices=(start_slice, end_slice),
                                       augment=False,
                                       normalize=normalize,
-                                      training_type=model_type)
+                                      training_type=model_type,
+                                      truncate=truncate,
+                                      dynamic_resize=dynamic_resize,
+                                      equal_slices=equal_slices)
         test = EventFileGenerator(paths=gamma_train[2][kfold_index], batch_size=batch_size,
                                   proton_paths=proton_train[2][kfold_index],
                                   proton_preprocessor=proton_test_preprocessor,
@@ -103,7 +109,10 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                   slices=(start_slice, end_slice),
                                   augment=False,
                                   normalize=normalize,
-                                  training_type=model_type)
+                                  training_type=model_type,
+                                  truncate=truncate,
+                                  dynamic_resize=dynamic_resize,
+                                  equal_slices=equal_slices)
     else:
         train = EventFileGenerator(paths=gamma_train[0][kfold_index], batch_size=batch_size,
                                    preprocessor=gamma_train_preprocessor,
@@ -112,7 +121,10 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                    slices=(start_slice, end_slice),
                                    augment=True,
                                    normalize=normalize,
-                                   training_type=model_type)
+                                   training_type=model_type,
+                                   truncate=truncate,
+                                   dynamic_resize=dynamic_resize,
+                                   equal_slices=equal_slices)
         validate = EventFileGenerator(paths=gamma_train[1][kfold_index], batch_size=batch_size,
                                       preprocessor=gamma_validate_preprocessor,
                                       as_channels=as_channels,
@@ -120,7 +132,10 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                       slices=(start_slice, end_slice),
                                       augment=False,
                                       normalize=normalize,
-                                      training_type=model_type)
+                                      training_type=model_type,
+                                      truncate=truncate,
+                                      dynamic_resize=dynamic_resize,
+                                      equal_slices=equal_slices)
         test = EventFileGenerator(paths=gamma_train[2][kfold_index], batch_size=batch_size,
                                   preprocessor=gamma_test_preprocessor,
                                   as_channels=as_channels,
@@ -128,7 +143,10 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                   slices=(start_slice, end_slice),
                                   augment=False,
                                   normalize=normalize,
-                                  training_type=model_type)
+                                  training_type=model_type,
+                                  truncate=truncate,
+                                  dynamic_resize=dynamic_resize,
+                                  equal_slices=equal_slices)
 
     if as_channels:
         final_shape = (gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], final_slices)
@@ -170,7 +188,7 @@ def model_evaluate(model, test_gen, workers=10, verbose=0):
 
 def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3), rebin=50,
                    as_channels=False, kfolds=5, model_type="Separation", normalize=False, batch_size=32,
-                   workers=10, verbose=1, plot=False):
+                   workers=10, verbose=1, truncate=True, dynamic_resize=True, equal_slices=False, plot=False):
     """
 
     :param model: Keras Model
@@ -204,20 +222,31 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
                     proton_paths.append(os.path.join(root, file))
         proton_paths = split_data(proton_paths, kfolds=kfolds)
 
-        train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
-                                                   final_slices=indicies[2],
-                                                   rebin_size=rebin, gamma_train=gamma_paths,
-                                                   proton_train=proton_paths, batch_size=batch_size,
-                                                   normalize=normalize,
-                                                   model_type=model_type, as_channels=as_channels)
-    else:
-        train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
-                                                   final_slices=indicies[2],
-                                                   rebin_size=rebin, gamma_train=gamma_paths,
-                                                   batch_size=batch_size, normalize=normalize,
-                                                   model_type=model_type, as_channels=as_channels)
+    evaluations = []
+    for i in range(kfolds):
+        if model_type == "Separation":
+            train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
+                                                       final_slices=indicies[2],
+                                                       rebin_size=rebin, gamma_train=gamma_paths,
+                                                       proton_train=proton_paths, batch_size=batch_size,
+                                                       normalize=normalize,
+                                                       model_type=model_type, as_channels=as_channels,
+                                                       truncate=truncate,
+                                                       dynamic_resize=dynamic_resize,
+                                                       equal_slices=equal_slices)
+        else:
+            train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
+                                                       final_slices=indicies[2],
+                                                       rebin_size=rebin, gamma_train=gamma_paths,
+                                                       batch_size=batch_size, normalize=normalize,
+                                                       model_type=model_type, as_channels=as_channels,
+                                                       truncate=truncate,
+                                                       dynamic_resize=dynamic_resize,
+                                                       equal_slices=equal_slices)
 
-    model = fit_model(model, train_gen, val_gen, workers=workers, verbose=verbose)
-    evaluation = model_evaluate(model, test_gen, workers=workers, verbose=verbose)
+        model = fit_model(model, train_gen, val_gen, workers=workers, verbose=verbose)
+        evaluation = model_evaluate(model, test_gen, workers=workers, verbose=verbose)
+        print("Evaluation: " + str(evaluation))
+        evaluations.append(evaluation)
 
-    return model, evaluation
+    return model, evaluations
