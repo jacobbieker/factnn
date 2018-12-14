@@ -7,7 +7,7 @@ from ..generator.keras.eventfile_generator import EventFileGenerator
 import os
 
 
-def split_data(indicies, kfolds, seeds=None):
+def split_data(indicies, kfolds, seed=None):
     """
     Splits the data into the indicies for kfold validation
     :param indicies: Int or Array, if int, assumed to be the size of the dataset
@@ -18,25 +18,23 @@ def split_data(indicies, kfolds, seeds=None):
     if type(indicies) is int:
         indicies = np.arange(0, indicies)
 
-    if seeds is None:
-        seeds = []
-        for fold in range(kfolds):
-            seeds.append(np.random.randint(0, 2 ** 32 - 1))
+    if seed is None:
+        seed = np.random.randint(0, 2 ** 32 - 1)
 
     # Now split into kfolds,
     list_of_training = []
     list_of_validate = []
     list_of_testing = []
     validate_fraction = 0.2
-    indicies = shuffle(indicies)
+    #indicies = shuffle(indicies)
     indicies = np.asarray(indicies)
     # Now get KFOLD splits
-    kf = KFold(n_splits=kfolds, shuffle=True)
+    kf = KFold(n_splits=kfolds, shuffle=True, random_state=seed)
 
     for train_index, test_index in kf.split(indicies):
         # Need to split train_index into validation data
         train_data, validate_data = train_test_split(indicies[train_index], train_size=(1.0 - validate_fraction),
-                                                     test_size=validate_fraction)
+                                                     test_size=validate_fraction, random_state=seed)
         list_of_training.append(train_data)
         list_of_validate.append(validate_data)
         list_of_testing.append(indicies[test_index])
@@ -159,7 +157,7 @@ def fit_model(model, train_gen, val_gen, workers=10, verbose=1):
     early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
                                                patience=5,
                                                verbose=0, mode='auto',
-                                               restore_best_weights=False)
+                                               restore_best_weights=True)
     nan_stop = keras.callbacks.TerminateOnNaN()
 
     model.fit_generator(
@@ -188,7 +186,7 @@ def model_evaluate(model, test_gen, workers=10, verbose=0):
 
 def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3), rebin=50,
                    as_channels=False, kfolds=5, model_type="Separation", normalize=False, batch_size=32,
-                   workers=10, verbose=1, truncate=True, dynamic_resize=True, equal_slices=False, plot=False):
+                   workers=10, verbose=1, truncate=True, dynamic_resize=True, equal_slices=False, seed=1337, plot=False):
     """
 
     :param model: Keras Model
@@ -212,7 +210,7 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
         for root, dirs, files in os.walk(source_dir):
             for file in files:
                 paths.append(os.path.join(root, file))
-    gamma_paths = split_data(paths, kfolds=kfolds)
+    gamma_paths = split_data(paths, kfolds=kfolds, seeds=seed)
 
     if model_type == "Separation":
         proton_paths = []
@@ -220,10 +218,13 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
             for root, dirs, files in os.walk(source_dir):
                 for file in files:
                     proton_paths.append(os.path.join(root, file))
-        proton_paths = split_data(proton_paths, kfolds=kfolds)
+        proton_paths = split_data(proton_paths, kfolds=kfolds, seeds=seed)
 
     evaluations = []
+    # Save default weights for reuse
+    model.save_weights("cv_default.h5")
     for i in range(kfolds):
+        model.load_weights("cv_default.h5")
         if model_type == "Separation":
             train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
                                                        final_slices=indicies[2],
