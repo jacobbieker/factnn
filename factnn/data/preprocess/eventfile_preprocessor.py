@@ -89,7 +89,7 @@ class EventFilePreprocessor(BasePreprocessor):
                     for element in chid_to_pixel[index]:
                         coords = pixel_index_to_grid[element[0]]
                         for value in data[data_format['Image']][index]:
-                            if self.end >= value >= self.start:
+                            if self.end > value >= self.start:
                                 # Now add more logic for the other cases
                                 # Nothing for truncate, end is already specified
                                 # Equal slices is only real one
@@ -147,7 +147,7 @@ class EventFilePreprocessor(BasePreprocessor):
                 for element in chid_to_pixel[index]:
                     coords = pixel_index_to_grid[element[0]]
                     for value in data[data_format['Image']][index]:
-                        if self.end >= value >= self.start:
+                        if self.end > value >= self.start:
                             input_matrix[coords[0]][coords[1]][value - self.start] += element[1] * 1
 
             # Now have image in resized format, all other data is set

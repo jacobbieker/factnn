@@ -30,6 +30,20 @@ for directory in gamma_dir:
             if file.endswith("phs.jsonl.gz"):
                 gamma_paths.append(os.path.join(root, file))
 
+def gf(clump_size, path):
+    print("Gamma_Diffuse")
+    print("Size: ", clump_size)
+    gamma_configuration = {
+        'rebin_size': 5,
+        'output_file': "../gamma.hdf5",
+        'shape': shape,
+        'paths': [path],
+        'dl2_file': gamma_dl2
+    }
+
+    gamma_train_preprocessor = GammaDiffusePreprocessor(config=gamma_configuration)
+    gamma_train_preprocessor.event_processor(directory=os.path.join(output_path, "gamma_diffuse"), clean_images=True, only_core=True, clump_size=clump_size)
+
 
 def f(clump_size, path):
     print("Gamma")
@@ -71,19 +85,23 @@ def d(clump_size, path):
 if __name__ == '__main__':
     clump_size = 20
     output_paths = [os.path.join(output_path, "proton", "no_clean"),os.path.join(output_path, "proton", "clump"+str(clump_size)),os.path.join(output_path, "proton", "core"+str(clump_size)),
-                    os.path.join(output_path, "gamma", "no_clean"),os.path.join(output_path, "gamma", "clump"+str(clump_size)),os.path.join(output_path, "gamma", "core"+str(clump_size))]
+                    os.path.join(output_path, "gamma", "no_clean"),os.path.join(output_path, "gamma", "clump"+str(clump_size)),os.path.join(output_path, "gamma", "core"+str(clump_size)),
+                    os.path.join(output_path, "gamma_diffuse", "no_clean"),os.path.join(output_path, "gamma_diffuse", "clump"+str(clump_size)),os.path.join(output_path, "gamma_diffuse", "core"+str(clump_size))]
     for path in output_paths:
         if not os.path.exists(path):
             os.makedirs(path)
 
-    proton_pool = Pool(8)
-    gamma_pool = Pool(10)
-    dunc = partial(d, clump_size)
-    g = proton_pool.map_async(dunc, crab_paths)
+    proton_pool = Pool(10)
+    gamma_pool = Pool(6)
+    #dunc = partial(d, clump_size)
+    gunc = partial(gf, clump_size)
+    g = proton_pool.map_async(gunc, gamma_paths)
     func = partial(f, clump_size)
     r = gamma_pool.map_async(func, gamma_paths)
 
     g.wait()
+    print("\n\n\n\n\n\n\n----------------------------------Done Proton------------------------------------------------\n\n\n\n\n\n\n\n")
+    r.wait()
 
     clump_size_2 = 10
     output_paths = [os.path.join(output_path, "proton", "no_clean"),os.path.join(output_path, "proton", "clump"+str(clump_size)),os.path.join(output_path, "proton", "core"+str(clump_size)),

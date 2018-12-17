@@ -26,15 +26,14 @@ def split_data(indicies, kfolds, seed=None):
     list_of_validate = []
     list_of_testing = []
     validate_fraction = 0.2
-    #indicies = shuffle(indicies)
     indicies = np.asarray(indicies)
     # Now get KFOLD splits
     kf = KFold(n_splits=kfolds, shuffle=True, random_state=seed)
 
     for train_index, test_index in kf.split(indicies):
         # Need to split train_index into validation data
-        train_data, validate_data = train_test_split(indicies[train_index], train_size=(1.0 - validate_fraction),
-                                                     test_size=validate_fraction, random_state=seed)
+        train_data, validate_data = train_test_split(indicies[train_index],
+                                                     test_size=validate_fraction, random_state=seed, shuffle=True)
         list_of_training.append(train_data)
         list_of_validate.append(validate_data)
         list_of_testing.append(indicies[test_index])
@@ -210,7 +209,7 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
         for root, dirs, files in os.walk(source_dir):
             for file in files:
                 paths.append(os.path.join(root, file))
-    gamma_paths = split_data(paths, kfolds=kfolds, seeds=seed)
+    gamma_paths = split_data(paths, kfolds=kfolds, seed=seed)
 
     if model_type == "Separation":
         proton_paths = []
@@ -218,7 +217,7 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
             for root, dirs, files in os.walk(source_dir):
                 for file in files:
                     proton_paths.append(os.path.join(root, file))
-        proton_paths = split_data(proton_paths, kfolds=kfolds, seeds=seed)
+        proton_paths = split_data(proton_paths, kfolds=kfolds, seed=seed)
 
     evaluations = []
     # Save default weights for reuse
