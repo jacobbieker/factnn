@@ -7,7 +7,6 @@ import os.path
 
 from factnn.data.preprocess.eventfile_preprocessor import EventFilePreprocessor
 from factnn.generator.keras.eventfile_generator import EventFileGenerator
-from factnn.utils import kfold
 
 import GPy, GPyOpt
 from keras.layers import Flatten, ConvLSTM2D, MaxPooling2D, Dense, Activation, Dropout, Conv2D
@@ -19,96 +18,6 @@ base_dir = "/home/jacob/Documents/cleaned_event_files_test/"
 obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "gamma/"]
 proton_dir = [base_dir + "proton/"]
-
-# Get paths from the directories
-gamma_paths = []
-for directory in gamma_dir:
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            gamma_paths.append(os.path.join(root, file))
-
-# Get paths from the directories
-crab_paths = []
-for directory in proton_dir:
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            crab_paths.append(os.path.join(root, file))
-
-# Now do the Kfold Cross validation Part for both sets of paths
-
-gamma_indexes = kfold.split_data(gamma_paths, kfolds=5)
-proton_indexes = kfold.split_data(crab_paths, kfolds=5)
-
-
-def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_train, batch_size=8):
-    shape = [start_slice, end_slice]
-
-    gamma_configuration = {
-        'rebin_size': rebin_size,
-        'output_file': "../gamma.hdf5",
-        'shape': shape,
-        'paths': gamma_train[0][0],
-        'as_channels': False
-    }
-
-    proton_configuration = {
-        'rebin_size': rebin_size,
-        'output_file': "../proton.hdf5",
-        'shape': shape,
-        'paths': proton_train[0][0],
-        'as_channels': False
-    }
-
-    proton_train_preprocessor = EventFilePreprocessor(config=proton_configuration)
-    gamma_train_preprocessor = EventFilePreprocessor(config=gamma_configuration)
-    print(gamma_train_preprocessor.shape)
-
-    gamma_configuration['paths'] = gamma_train[1][0]
-    proton_configuration['paths'] = proton_train[1][0]
-
-    proton_validate_preprocessor = EventFilePreprocessor(config=proton_configuration)
-    gamma_validate_preprocessor = EventFilePreprocessor(config=gamma_configuration)
-
-    gamma_configuration['paths'] = gamma_train[1][0]
-    proton_configuration['paths'] = proton_train[1][0]
-
-    proton_test_preprocessor = EventFilePreprocessor(config=proton_configuration)
-    gamma_test_preprocessor = EventFilePreprocessor(config=gamma_configuration)
-
-    energy_train = EventFileGenerator(paths=gamma_paths, batch_size=batch_size,
-                                      preprocessor=gamma_train_preprocessor,
-                                      proton_paths=crab_paths,
-                                      proton_preprocessor=proton_train_preprocessor,
-                                      as_channels=False,
-                                      final_slices=final_slices,
-                                      slices=(start_slice, end_slice),
-                                      augment=True,
-                                      training_type='Separation')
-
-    energy_validate = EventFileGenerator(paths=gamma_train[1][0], batch_size=batch_size,
-                                         proton_paths=proton_train[1][0],
-                                         proton_preprocessor=proton_validate_preprocessor,
-                                         preprocessor=gamma_validate_preprocessor,
-                                         as_channels=False,
-                                         final_slices=final_slices,
-                                         slices=(start_slice, end_slice),
-                                         augment=False,
-                                         training_type='Separation')
-
-    energy_test = EventFileGenerator(paths=gamma_train[2][0], batch_size=batch_size,
-                                     proton_paths=proton_train[2][0],
-                                     proton_preprocessor=proton_test_preprocessor,
-                                     preprocessor=gamma_test_preprocessor,
-                                     as_channels=False,
-                                     final_slices=final_slices,
-                                     slices=(start_slice, end_slice),
-                                     augment=False,
-                                     training_type='Separation')
-
-    final_shape = (final_slices, gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 1)
-
-    return energy_train, energy_validate, energy_test, final_shape
-
 
 def create_model(shape=(5, 75, 75, 1), neuron_1=16, kernel_1=3, strides_1=1, act_1=3, drop_1=0.3, rec_drop_1=0.3,
                  rec_act_1=2, dense_neuron_1=64, dense_neuron_2=128, optimizer=0,
@@ -132,7 +41,7 @@ def create_model(shape=(5, 75, 75, 1), neuron_1=16, kernel_1=3, strides_1=1, act
         separation_model.add(MaxPooling2D())
     separation_model.add(Conv2D(neuron_2, kernel_size=kernel_2, strides=strides_2,
                                 padding='same', activation=activations[act_2]))
-    separation_model.add(MaxPooling2D())
+    #separation_model.add(MaxPooling2D())
     separation_model.add(Dropout(drop_2))
 
     if three:
@@ -157,7 +66,7 @@ def create_model(shape=(5, 75, 75, 1), neuron_1=16, kernel_1=3, strides_1=1, act
 
 def fit_model(separation_model, train_gen, val_gen):
     early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
-                                               patience=40,
+                                               patience=5,
                                                verbose=0, mode='auto',
                                                restore_best_weights=False)
     separation_model.fit_generator(
@@ -168,7 +77,7 @@ def fit_model(separation_model, train_gen, val_gen):
         validation_data=val_gen,
         callbacks=[early_stop],
         use_multiprocessing=True,
-        workers=1,
+        workers=6,
         max_queue_size=50,
     )
     return separation_model
@@ -195,9 +104,6 @@ def run_mnist(neuron_1=64, kernel_1=3, strides_1=1, act_1=3,
               strides_2=1, act_2=3, drop_2=0.5,
               start_slice=30, end_slice=70, final_slices=5, rebin_size=5,
               batch_size=8):
-    train_gen, val_gen, test_gen, shape = data(start_slice=start_slice, end_slice=end_slice, final_slices=final_slices,
-                                               rebin_size=rebin_size, gamma_train=gamma_indexes,
-                                               proton_train=proton_indexes, batch_size=batch_size)
     separation_model = create_model(shape=shape, neuron_1=neuron_1, kernel_1=kernel_1, strides_1=strides_1, act_1=act_1,
                                     drop_1=drop_1, rec_drop_1=rec_drop_1,
                                     rec_act_1=rec_act_1, dense_neuron_1=dense_neuron_1, dense_neuron_2=dense_neuron_2,

@@ -9,17 +9,17 @@ from keras.models import Sequential
 import keras
 import numpy as np
 
-
+'''
 directory = "/home/jacob/Documents/iact_events/"
-gamma_dir = directory + "gamma/clump20/"
-proton_dir = directory + "proton/clump20/"
+gamma_dir = [directory + "gamma/core20/"]
+proton_dir = [directory + "proton/core20/"]
 
 
 model = Sequential()
 
 model.add(Conv2D(64, kernel_size=3, strides=1,
                             padding='same',
-                            input_shape=(50,50,3)))
+                            input_shape=(50,50,1)))
 #model.add(BatchNormalization())
 model.add(Activation('relu'))
 #model.add(Dropout(0.1))
@@ -50,7 +50,7 @@ model.add(Conv2D(256, kernel_size=3, strides=1,
 #model.add(BatchNormalization())
 model.add(Activation('relu'))
 #model.add(MaxPooling2D())
-#model.add(Flatten())
+model.add(Flatten())
 #model.add(Dense(128))
 #model.add(BatchNormalization())
 #model.add(Activation('relu'))
@@ -68,8 +68,38 @@ model.add(Dense(1, activation='linear'))
 model.compile(optimizer='adam', loss='mse',
                          metrics=['mae', r2])
 model.summary()
+'''
+import os
+import keras
+
+from factnn.utils.cross_validate import cross_validate
+
+from keras.layers import Flatten, ConvLSTM2D, MaxPooling2D, Dense, Activation, Dropout, MaxPooling3D, Conv2D, Conv3D, \
+    AveragePooling2D, AveragePooling3D, PReLU, BatchNormalization, PReLU
+from keras.models import Sequential
+import keras
+import keras.layers as layers
+from keras.applications.resnet50 import ResNet50
+from keras.applications.densenet import DenseNet201
+import numpy as np
+
+directory = "/home/jacob/Documents/iact_events/"
+gamma_dir = [directory + "gamma/core20/"]
+proton_dir = [directory + "proton/core20/"]
+
+#model = ResNet50(include_top=True, weights=None, input_shape=(50,50,3), pooling=None, classes=2)
+
+model = DenseNet201(include_top=False, weights=None, input_shape=(50,50,3), pooling='avg')
+
+model = layers.Flatten()(model)
+model = layers.Dense(256, activation='relu')(model)
+model = layers.Dense(1, activation='linear')(model)
+
+model.compile(optimizer='adam', loss='mse',
+              metrics=['mae'])
+model.summary()
 
 results = cross_validate(model, gamma_dir, proton_directory=proton_dir, indicies=(30, 129, 3), rebin=50,
-                   as_channels=True, kfolds=5, model_type="Energy", normalize=False, batch_size=32,
-                   workers=10, verbose=1, truncate=True, dynamic_resize=True, equal_slices=False, plot=False)
+                   as_channels=True, kfolds=5, model_type="Energy", normalize=False, batch_size=64,
+                   workers=10, verbose=2, truncate=True, dynamic_resize=True, equal_slices=False, plot=False)
 

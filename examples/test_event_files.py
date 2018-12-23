@@ -91,15 +91,15 @@ if __name__ == '__main__':
         if not os.path.exists(path):
             os.makedirs(path)
 
-    proton_pool = Pool(10)
-    gamma_pool = Pool(6)
+    #proton_pool = Pool(10)
+    gamma_pool = Pool()
     #dunc = partial(d, clump_size)
     gunc = partial(gf, clump_size)
-    g = proton_pool.map_async(gunc, gamma_paths)
+    #g = proton_pool.map_async(gunc, gamma_paths)
     func = partial(f, clump_size)
     r = gamma_pool.map_async(func, gamma_paths)
 
-    g.wait()
+    #g.wait()
     print("\n\n\n\n\n\n\n----------------------------------Done Proton------------------------------------------------\n\n\n\n\n\n\n\n")
     r.wait()
 
