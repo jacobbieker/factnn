@@ -50,7 +50,7 @@ def extract_single_simulation_features(event):
     features['starting_altitude'] = event.simulation_truth.air_shower.starting_altitude
     features['height_of_first_interaction'] = event.simulation_truth.air_shower.height_of_first_interaction
 
-    return features
+    return features, cluster
 
 
 def extract_observation_features(phs_file, out_dir):
@@ -89,4 +89,4 @@ def extract_single_observation_features(event):
 
     features['time'] = event.observation_info._time_unix_s + event.observation_info._time_unix_us/1e6
 
-    return features
+    return features, cluster
