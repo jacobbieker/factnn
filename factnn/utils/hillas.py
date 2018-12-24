@@ -48,7 +48,7 @@ def extract_single_simulation_features(event):
     features['impact_x'] = event.simulation_truth.air_shower.impact_x(event.simulation_truth.reuse)
     features['impact_y'] = event.simulation_truth.air_shower.impact_y(event.simulation_truth.reuse)
     features['starting_altitude'] = event.simulation_truth.air_shower.starting_altitude
-    features['hight_of_first_interaction'] = event.simulation_truth.air_shower.hight_of_first_interaction
+    features['height_of_first_interaction'] = event.simulation_truth.air_shower.height_of_first_interaction
 
     return features
 
