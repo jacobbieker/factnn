@@ -7,6 +7,7 @@ from factnn.data.preprocess.base_preprocessor import BasePreprocessor
 from sklearn.utils import shuffle
 import pickle
 import os
+from factnn.utils.hillas import extract_single_simulation_features
 
 
 class ProtonPreprocessor(BasePreprocessor):
@@ -37,6 +38,8 @@ class ProtonPreprocessor(BasePreprocessor):
                             continue
                         for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}.items():
                             event.photon_stream.raw = photon_set
+                            # Extract parameters from the file
+                            features = extract_single_simulation_features(event)
                             # In the event chosen from the file
                             # Each event is the same as each line below
                             energy = event.simulation_truth.air_shower.energy
@@ -47,7 +50,7 @@ class ProtonPreprocessor(BasePreprocessor):
                             act_theta = event.simulation_truth.air_shower.theta
                             data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
                                          {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5,
-                                          'Theta': 6, }]
+                                          'Theta': 6, }, features]
                             if key != "no_clean":
                                 with open(os.path.join(directory, key+str(clump_size), str(file_name) + "_" + str(counter)), "wb") as event_file:
                                     pickle.dump(data_dict, event_file)
@@ -58,6 +61,7 @@ class ProtonPreprocessor(BasePreprocessor):
                     else:
                         # In the event chosen from the file
                         # Each event is the same as each line below
+                        features = extract_single_simulation_features(event)
                         energy = event.simulation_truth.air_shower.energy
                         event_photons = event.photon_stream.list_of_lists
                         zd_deg = event.zd
@@ -66,7 +70,7 @@ class ProtonPreprocessor(BasePreprocessor):
                         act_theta = event.simulation_truth.air_shower.theta
                         data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
                                      {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5,
-                                      'Theta': 6, }]
+                                      'Theta': 6, }, features]
                         with open(os.path.join(directory, str(file_name) + "_" + str(counter)), "wb") as event_file:
                             pickle.dump(data_dict, event_file)
             except Exception as e:
@@ -90,6 +94,7 @@ class ProtonPreprocessor(BasePreprocessor):
                             continue
                     # In the event chosen from the file
                     # Each event is the same as each line below
+                    # TODO Update this to reflect new outputs
                     energy = event.simulation_truth.air_shower.energy
                     event_photons = event.photon_stream.list_of_lists
                     zd_deg = event.zd
@@ -131,6 +136,7 @@ class ProtonPreprocessor(BasePreprocessor):
                                 continue
                         # In the event chosen from the file
                         # Each event is the same as each line below
+                        # TODO Update this to reflect new outputs
                         energy = event.simulation_truth.air_shower.energy
                         event_photons = event.photon_stream.list_of_lists
                         zd_deg = event.zd
@@ -223,6 +229,7 @@ class GammaPreprocessor(BasePreprocessor):
                         else:
                             for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}.items():
                                 event.photon_stream.raw = photon_set
+                                features = extract_single_simulation_features(event)
                                 # In the event chosen from the file
                                 # Each event is the same as each line below
                                 energy = event.simulation_truth.air_shower.energy
@@ -233,7 +240,7 @@ class GammaPreprocessor(BasePreprocessor):
                                 act_theta = event.simulation_truth.air_shower.theta
                                 data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
                                              {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3,'Phi': 4,
-                                              'Theta': 5, }]
+                                              'Theta': 5, }, features]
                                 if key != "no_clean":
                                     with open(os.path.join(directory, key+str(clump_size), str(file_name) + "_" + str(counter)), "wb") as event_file:
                                         pickle.dump(data_dict, event_file)
@@ -244,6 +251,7 @@ class GammaPreprocessor(BasePreprocessor):
                     else:
                         # In the event chosen from the file
                         # Each event is the same as each line below
+                        features = extract_single_simulation_features(event)
                         energy = event.simulation_truth.air_shower.energy
                         event_photons = event.photon_stream.list_of_lists
                         zd_deg = event.zd
@@ -252,7 +260,7 @@ class GammaPreprocessor(BasePreprocessor):
                         act_theta = event.simulation_truth.air_shower.theta
                         data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
                                      {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3,'Phi': 4,
-                                      'Theta': 5, }]
+                                      'Theta': 5, }, features]
                         with open(os.path.join(directory, str(file_name) + "_" + str(counter)), "wb") as event_file:
                             pickle.dump(data_dict, event_file)
             except Exception as e:
@@ -420,6 +428,8 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                             else:
                                 for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}.items():
                                     event.photon_stream.raw = photon_set
+                                    # Now extract parameters from the available photons and save them to a file
+                                    features = extract_single_simulation_features(event)
                                     # In the event chosen from the file
                                     # Each event is the same as each line below
                                     cog_x = df_event['cog_x'].values[0]
@@ -441,7 +451,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                                  {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5,
                                                   'Az_Deg': 6,
                                                   'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11,
-                                                  'Pointing_Az': 12}]
+                                                  'Pointing_Az': 12}, features]
                                     if key != "no_clean":
                                         with open(os.path.join(directory, key+str(clump_size), str(file_name) + "_" + str(counter)), "wb") as event_file:
                                             pickle.dump(data_dict, event_file)
@@ -452,6 +462,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                         else:
                             # In the event chosen from the file
                             # Each event is the same as each line below
+                            features = extract_single_simulation_features(event)
                             cog_x = df_event['cog_x'].values[0]
                             cog_y = df_event['cog_y'].values[0]
                             act_sky_source_zero = df_event['source_position_x'].values[0]
@@ -471,7 +482,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                          {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5,
                                           'Az_Deg': 6,
                                           'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11,
-                                          'Pointing_Az': 12}]
+                                          'Pointing_Az': 12}, features]
                             with open(os.path.join(directory, str(file_name) + "_" + str(counter)), "wb") as event_file:
                                 pickle.dump(data_dict, event_file)
             except Exception as e:
