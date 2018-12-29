@@ -24,13 +24,14 @@ def extract_simulation_features(phs_file, corsika_file, out_dir):
     )
     return 1
 
-def extract_single_simulation_features(event):
+def extract_single_simulation_features(event, cluster=None, min_samples=20):
     """
     Extracts features from a single PHS simulation events and returns them
     :param phs_event: PHS simulation event
     :return:
     """
-    cluster = phs.PhotonStreamCluster(event.photon_stream)
+    if cluster is None:
+        cluster = phs.PhotonStreamCluster(event.photon_stream, min_samples=min_samples)
     cluster = reject.early_or_late_clusters(cluster)
     features = phs_analysis.extract.raw_features(photon_stream=event.photon_stream, cluster=cluster)
     features['type'] = phs.io.binary.SIMULATION_EVENT_TYPE_KEY

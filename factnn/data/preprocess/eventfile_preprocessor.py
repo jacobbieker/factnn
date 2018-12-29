@@ -59,12 +59,27 @@ class EventFilePreprocessor(BasePreprocessor):
 
 
     def on_files_processor(self, paths, collapse_time=True, final_slices=5, normalize=False, dynamic_resize=False,
-                           truncate=False, equal_slices=False):
+                           truncate=False, equal_slices=False, return_features=False, return_collapsed=False):
         all_data = []
         for index, file in enumerate(paths):
             # load the pickled file from the disk
             with open(file, "rb") as pickled_event:
-                data, data_format = pickle.load(pickled_event)
+                data, data_format, features, feature_cluster = pickle.load(pickled_event)
+                if return_features:
+                    if features['extraction'] == 1:
+                        # Failed feature extraction, so ignore event
+                        continue
+                    else:
+                        # Based off a subset the Open Crab Sample Analysis
+                        feature_list = []
+                        feature_list.append(features['head_tail_ratio'])
+                        feature_list.append(features['length'])
+                        feature_list.append(features['width'])
+                        feature_list.append(features['time_gradient'])
+                        feature_list.append(features['number_photons'])
+                        feature_list.append(features['length']*features['width']*np.pi)
+                        feature_list.append(((features['length']*features['width']*np.pi)/np.log(features['number_photons'])**2))
+                        feature_list.append((features['number_photons'] / (features['length']*features['width']*np.pi)))
                 input_matrix = np.zeros([self.shape[1], self.shape[2], self.shape[3]])
                 chid_to_pixel = self.rebinning[0]
                 pixel_index_to_grid = self.rebinning[1]
@@ -112,15 +127,24 @@ class EventFilePreprocessor(BasePreprocessor):
                 data[data_format["Image"]] = np.fliplr(np.rot90(input_matrix, 3))
                 # need to do the format thing here, and add auxiliary structure
                 data = self.format([data, data_format])
+                if return_collapsed:
+                    collapsed_data = self.collapse_image_time(data[0], 1, self.as_channels)
                 if normalize:
                     data = list(data)
                     data[0] = self.normalize_image(data[0], per_slice=False)
                     data = tuple(data)
+                    if return_collapsed:
+                        collapsed_data = self.normalize_image(collapsed_data, per_slice=False)
                 if collapse_time:
                     data = list(data)
                     data[0] = self.collapse_image_time(data[0], final_slices, self.as_channels)
                     data = tuple(data)
-            all_data.append([data, data_format])
+            temp_data = [data, data_format]
+            if return_features:
+                temp_data.append(feature_list)
+            if return_collapsed:
+                temp_data.append(collapsed_data)
+            all_data.append(temp_data)
         # Now have all the data transformed as necessary, return as list of list of images, data_formats
         return all_data
 

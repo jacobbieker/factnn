@@ -185,7 +185,7 @@ def model_evaluate(model, test_gen, workers=10, verbose=0):
 
 def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3), rebin=50,
                    as_channels=False, kfolds=5, model_type="Separation", normalize=False, batch_size=32,
-                   workers=10, verbose=1, truncate=True, dynamic_resize=True, equal_slices=False, seed=1337, plot=False):
+                   workers=10, verbose=1, truncate=True, dynamic_resize=True, equal_slices=False, seed=1337, max_elements=None, plot=False):
     """
 
     :param model: Keras Model
@@ -209,6 +209,8 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
         for root, dirs, files in os.walk(source_dir):
             for file in files:
                 paths.append(os.path.join(root, file))
+    if max_elements is not None:
+        paths = paths[0:max_elements]
     gamma_paths = split_data(paths, kfolds=kfolds, seed=seed)
 
     if model_type == "Separation":
@@ -217,6 +219,8 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
             for root, dirs, files in os.walk(source_dir):
                 for file in files:
                     proton_paths.append(os.path.join(root, file))
+        if max_elements is not None:
+            proton_paths = proton_paths[0:max_elements]
         proton_paths = split_data(proton_paths, kfolds=kfolds, seed=seed)
 
     evaluations = []

@@ -39,7 +39,7 @@ class ProtonPreprocessor(BasePreprocessor):
                         for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}.items():
                             event.photon_stream.raw = photon_set
                             # Extract parameters from the file
-                            features, cluster = extract_single_simulation_features(event)
+                            features, cluster = extract_single_simulation_features(event, min_samples=1)
                             # In the event chosen from the file
                             # Each event is the same as each line below
                             energy = event.simulation_truth.air_shower.energy
@@ -229,7 +229,7 @@ class GammaPreprocessor(BasePreprocessor):
                         else:
                             for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}.items():
                                 event.photon_stream.raw = photon_set
-                                features, cluster = extract_single_simulation_features(event)
+                                features, cluster = extract_single_simulation_features(event, min_samples=1)
                                 # In the event chosen from the file
                                 # Each event is the same as each line below
                                 energy = event.simulation_truth.air_shower.energy
@@ -429,7 +429,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                                 for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}.items():
                                     event.photon_stream.raw = photon_set
                                     # Now extract parameters from the available photons and save them to a file
-                                    features = extract_single_simulation_features(event)
+                                    features = extract_single_simulation_features(event, min_samples=1)
                                     # In the event chosen from the file
                                     # Each event is the same as each line below
                                     cog_x = df_event['cog_x'].values[0]
