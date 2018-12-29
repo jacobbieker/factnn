@@ -98,14 +98,14 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
 
     # Get the correct index for the collapsed and feature data if used
     if return_features and return_collapsed:
-        feature_index = 2
-        collapsed_index = 3
+        feature_index = 1
+        collapsed_index = 2
     elif return_features and not return_collapsed:
-        feature_index = 2
+        feature_index = 1
         collapsed_index = -99
     elif not return_features and return_collapsed:
         feature_index = -99
-        collapsed_index = 2
+        collapsed_index = 1
     else:
         feature_index = -99
         collapsed_index = -99
@@ -480,6 +480,20 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
 
     # For this, the single processors are assumed to infinitely iterate through their files, shuffling the order of the
     # files after every go through of the whole file set, so some kind of shuffling, but not much
+    # Get the correct index for the collapsed and feature data if used
+    if return_features and return_collapsed:
+        feature_index = 2
+        collapsed_index = 3
+    elif return_features and not return_collapsed:
+        feature_index = 2
+        collapsed_index = -99
+    elif not return_features and return_collapsed:
+        feature_index = -99
+        collapsed_index = 2
+    else:
+        feature_index = -99
+        collapsed_index = -99
+
     labels = None
     data_format = images[0][1]
     training_data = [item[0] for item in images]
@@ -489,7 +503,6 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
     elif type_training == "Energy":
         labels = [item[data_format["Energy"]] for item in training_data]
         labels = np.array(labels)
-        training_data = [item[data_format["Image"]] for item in training_data]
     elif type_training == "Disp":
         labels = [euclidean_distance(item[data_format['Source_X']], item[data_format['Source_Y']],
                                      item[data_format['COG_X']], item[data_format['COG_Y']]) for item in training_data]
@@ -514,16 +527,45 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
     training_data = np.array(training_data)
     training_data = training_data.reshape(-1, training_data.shape[2], training_data.shape[3], training_data.shape[4])
 
+    batch_images = training_data
+
+    if return_features:
+        features = images[feature_index]
+        features = np.array(features)
+        print("Features: " + str(features.shape))
+        features = features.reshape(-1, features.shape[10])
+        batch_images.append(features)
+
+    if return_collapsed:
+        # Gather collapsed data
+        collapsed_image = images[collapsed_index]
+        collapsed_image = np.array(collapsed_image)
+        collapsed_image = collapsed_image.reshape(-1, collapsed_image.shape[2], collapsed_image.shape[3], collapsed_image.shape[4])
+        batch_images.append(collapsed_image)
+
     if proton_images is not None:
         proton_data = [item[0] for item in proton_images]
         proton_data = [item[data_format["Image"]] for item in proton_data]
         proton_data = np.array(proton_data)
         proton_data = proton_data.reshape(-1, proton_data.shape[2], proton_data.shape[3], proton_data.shape[4])
-        batch_images = training_data
         proton_images = proton_data
+
+        if return_features:
+            features = proton_data[feature_index]
+            features = np.array(features)
+            print("Features: " + str(features.shape))
+            features = features.reshape(-1, features.shape[10])
+            proton_images.append(features)
+
+        if return_collapsed:
+            # Gather collapsed data
+            collapsed_image = proton_data[collapsed_index]
+            collapsed_image = np.array(collapsed_image)
+            collapsed_image = collapsed_image.reshape(-1, collapsed_image.shape[2], collapsed_image.shape[3], collapsed_image.shape[4])
+            proton_images.append(collapsed_image)
+
         return common_step(batch_images, positions=None, labels=labels, proton_images=proton_images, augment=augment,
                            swap=swap, shape=shape, as_channels=as_channels)
     else:
-        batch_images = training_data
         return common_step(batch_images, positions=None, labels=labels, augment=augment, swap=swap, shape=shape,
                            as_channels=as_channels)
