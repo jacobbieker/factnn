@@ -44,31 +44,130 @@ def image_augmenter(images, as_channels=False):
     images = np.asarray(new_images)
     return images
 
+def dual_image_augmenter(images, collapsed_images, as_channels=False):
+    """
+    Augment images by rotating and flipping input images randomly
+    Does this on the 2nd and 3rd axis of each 4D image stack
+    :param images: Numpy list of images in (batch_size, timeslice, x, y, channels) format
+    :return: Numpy array of randomly flipped and rotated 3D images, in same order
+    """
+    new_images = []
+    new_collapsed_images = []
+    for index, image in enumerate(images):
+        collapsed_image = collapsed_images[index]
+        vert_val = np.random.rand()
+        if vert_val < 0.5:
+            # Flip the image vertically
+            if not as_channels:
+                image = np.flip(image, 1)
+            else:
+                image = np.flip(image, 0)
+            collapsed_image = np.flip(collapsed_image,0)
+        horz_val = np.random.rand()
+        if horz_val < 0.5:
+            # Flip horizontally
+            if not as_channels:
+                image = np.flip(image, 2)
+            else:
+                image = np.flip(image, 1)
+            collapsed_image = np.flip(collapsed_image, 1)
+        rot_val = np.random.rand()
+        if rot_val < 0.3:
+            # Rotate 90 degrees
+            if not as_channels:
+                image = np.rot90(image, 1, axes=(1, 2))
+            else:
+                image = np.rot90(image, 1, axes=(0, 1))
+            collapsed_image = np.rot90(collapsed_image, 1, axes=(0,1))
+        elif rot_val > 0.7:
+            # Rotate 270 degrees
+            if not as_channels:
+                image = np.rot90(image, 3, axes=(1, 2))
+            else:
+                image = np.rot90(image, 3, axes=(0, 1))
+            collapsed_image = np.rot90(collapsed_image, 3, axes=(0,1))
+        new_images.append(image)
+        new_collapsed_images.append(collapsed_image)
+    collapsed_images = np.asarray(new_collapsed_images)
+    images = np.asarray(new_images)
+    return images, collapsed_images
+
 
 def common_step(batch_images, positions=None, labels=None, proton_images=None, augment=True, swap=True, shape=None,
-                as_channels=False):
+                as_channels=False, return_collapsed=False, return_features=False):
+
+    # Get the correct index for the collapsed and feature data if used
+    if return_features and return_collapsed:
+        feature_index = 2
+        collapsed_index = 3
+    elif return_features and not return_collapsed:
+        feature_index = 2
+        collapsed_index = -99
+    elif not return_features and return_collapsed:
+        feature_index = -99
+        collapsed_index = 2
+    else:
+        feature_index = -99
+        collapsed_index = -99
+
     if augment:
-        batch_images = image_augmenter(batch_images, as_channels)
+        if return_collapsed:
+            batch_images[0], batch_images[collapsed_index] = dual_image_augmenter(batch_images[0], batch_images[collapsed_index], as_channels)
+        else:
+            batch_images = image_augmenter(batch_images, as_channels)
     if proton_images is not None:
         if augment:
-            proton_images = image_augmenter(proton_images, as_channels)
+            if return_collapsed:
+                proton_images[0], proton_images[collapsed_index] = dual_image_augmenter(proton_images[0], proton_images[collapsed_index], as_channels)
+            else:
+                proton_images = image_augmenter(proton_images, as_channels)
         if not as_channels:
-            batch_images = batch_images.reshape(shape)
-            proton_images = proton_images.reshape(shape)
-        labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
-        batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
-        batch_images = np.concatenate([batch_images, proton_images], axis=0)
+            if return_collapsed:
+                batch_images[0] = batch_images[0].reshape(shape)
+                proton_images[0] = proton_images[0].reshape(shape)
+                batch_images[collapsed_index] = batch_images[collapsed_index].reshape(shape)
+                proton_images[collapsed_index] = proton_images[collapsed_index].reshape(shape)
+            else:
+                batch_images = batch_images.reshape(shape)
+                proton_images = proton_images.reshape(shape)
+        if return_collapsed:
+            labels = np.array([True] * (len(batch_images[0])) + [False] * len(proton_images[0]))
+            batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
+            batch_images[0] = np.concatenate([batch_images[0], proton_images[0]], axis=0)
+            batch_images[collapsed_index] = np.concatenate([batch_images[collapsed_index], proton_images[collapsed_index]], axis=0)
+        else:
+            labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
+            batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
+            batch_images = np.concatenate([batch_images, proton_images], axis=0)
         if swap:
-            batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
+            if return_features and return_collapsed:
+                batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label)
+            elif return_features and not return_collapsed:
+                batch_images[0], batch_images[feature_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index], batch_image_label)
+            elif not return_features and return_collapsed:
+                batch_images[0], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[collapsed_index], batch_image_label)
+            else:
+                batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
         return batch_images, batch_image_label
     else:
         if positions is not None:
             labels = labels[positions]
         batch_image_label = labels
         if not as_channels:
-            batch_images = batch_images.reshape(shape)
+            if return_collapsed:
+                batch_images[0] = batch_images[0].reshape(shape)
+                batch_images[collapsed_index] = batch_images[collapsed_index].reshape(shape)
+            else:
+                batch_images = batch_images.reshape(shape)
         if swap:
-            batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
+            if return_features and return_collapsed:
+                batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label)
+            elif return_features and not return_collapsed:
+                batch_images[0], batch_images[feature_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index], batch_image_label)
+            elif not return_features and return_collapsed:
+                batch_images[0], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[collapsed_index], batch_image_label)
+            else:
+                batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
         return batch_images, batch_image_label
 
 
@@ -365,7 +464,7 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
 
 
 def augment_image_batch(images, proton_images=None, type_training=None, augment=False, swap=True, shape=None,
-                        as_channels=False):
+                        as_channels=False, return_collapsed=False, return_features=False):
     """
     This is for use with the eventfile_generator, given a set of images, return the possibly augmented ones and labels
     :param images:
@@ -400,6 +499,7 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
         labels = [true_sign(item[data_format['Source_X']], item[data_format['Source_Y']],
                             item[data_format['COG_X']], item[data_format['COG_Y']], item[data_format['Delta']]) for item
                   in training_data]
+        training_data = [item[data_format["Image"]] for item in training_data]
         labels = np.array(labels)
         # Create own categorical one since only two sides anyway
         new_labels = np.zeros((labels.shape[0], 2))

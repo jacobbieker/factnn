@@ -59,7 +59,7 @@ class EventFilePreprocessor(BasePreprocessor):
 
 
     def on_files_processor(self, paths, collapse_time=True, final_slices=5, normalize=False, dynamic_resize=False,
-                           truncate=False, equal_slices=False, return_features=False, return_collapsed=False):
+                           truncate=False, equal_slices=False, return_features=False, return_collapsed=False, norm_per_slice=False):
         all_data = []
         for index, file in enumerate(paths):
             # load the pickled file from the disk
@@ -131,7 +131,7 @@ class EventFilePreprocessor(BasePreprocessor):
                     collapsed_data = self.collapse_image_time(data[0], 1, self.as_channels)
                 if normalize:
                     data = list(data)
-                    data[0] = self.normalize_image(data[0], per_slice=False)
+                    data[0] = self.normalize_image(data[0], per_slice=norm_per_slice)
                     data = tuple(data)
                     if return_collapsed:
                         collapsed_data = self.normalize_image(collapsed_data, per_slice=False)
