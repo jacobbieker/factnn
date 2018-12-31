@@ -9,7 +9,7 @@ class EventFileGenerator(Sequence):
     def __init__(self, paths, batch_size, preprocessor=None, proton_preprocessor=None, proton_paths=None,
                  as_channels=False,
                  final_slices=5, slices=(30, 70), augment=False, training_type=None,
-                 normalize=False, truncate=True, dynamic_resize=True, equal_slices=False, multiple=False, collapsed=False, features=False):
+                 normalize=False, truncate=True, dynamic_resize=True, equal_slices=False, return_collapsed=False, return_features=False):
         self.paths = paths
         self.batch_size = batch_size
         self.preprocessor = preprocessor
@@ -26,9 +26,12 @@ class EventFileGenerator(Sequence):
         self.equal_slices = equal_slices
 
         # These three are for if multiple inputs need to be returned,
-        self.features = features
-        self.multiple = multiple
-        self.collapsed = collapsed
+        self.features = return_features
+        self.collapsed = return_collapsed
+        if return_features or return_collapsed:
+            self.multiple = True
+        else:
+            self.multiple = False
         #failed_paths = self.proton_preprocessor.check_files(self.paths, "Gamma")
         #self.paths = [x for x in self.paths if x not in failed_paths]
         #sfailed_paths = self.proton_preprocessor.check_files(self.proton_paths, "Proton")
@@ -42,49 +45,33 @@ class EventFileGenerator(Sequence):
         :return:
         """
         batch_files = self.paths[index * self.batch_size:(index + 1) * self.batch_size]
-
-        if self.multiple:
-            # Return multiple inputs, the basic one, optionally the collapsed image, and the features extracted from the image
-            if self.proton_paths is not None:
-                proton_batch_files = self.proton_paths[index * self.batch_size:(index + 1) * self.batch_size]
-                proton_images = self.proton_preprocessor.on_files_processor(paths=proton_batch_files,
-                                                                            final_slices=self.final_slices,
-                                                                            normalize=self.normalize,
-                                                                            dynamic_resize=self.dynamic_resize,
-                                                                            truncate=self.truncate,
-                                                                            equal_slices=self.equal_slices)
-            else:
-                proton_images = None
-            images = self.preprocessor.on_files_processor(paths=batch_files, final_slices=self.final_slices,
-                                                          normalize=self.normalize, dynamic_resize=self.dynamic_resize,
-                                                          truncate=self.truncate, equal_slices=self.equal_slices)
-            images, labels = augment_image_batch(images, proton_images=proton_images,
-                                                 type_training=self.training_type,
-                                                 augment=self.augment,
-                                                 swap=self.augment,
-                                                 shape=[-1,self.final_slices, self.preprocessor.shape[1], self.preprocessor.shape[2],1],
-                                                 as_channels=self.as_channels)
+        if self.proton_paths is not None:
+            proton_batch_files = self.proton_paths[index * self.batch_size:(index + 1) * self.batch_size]
+            proton_images = self.proton_preprocessor.on_files_processor(paths=proton_batch_files,
+                                                                        final_slices=self.final_slices,
+                                                                        normalize=self.normalize,
+                                                                        dynamic_resize=self.dynamic_resize,
+                                                                        truncate=self.truncate,
+                                                                        equal_slices=self.equal_slices,
+                                                                        return_collapsed=self.collapsed,
+                                                                        return_features=self.features)
         else:
-            if self.proton_paths is not None:
-                proton_batch_files = self.proton_paths[index * self.batch_size:(index + 1) * self.batch_size]
-                proton_images = self.proton_preprocessor.on_files_processor(paths=proton_batch_files,
-                                                                            final_slices=self.final_slices,
-                                                                            normalize=self.normalize,
-                                                                            dynamic_resize=self.dynamic_resize,
-                                                                            truncate=self.truncate,
-                                                                            equal_slices=self.equal_slices)
-            else:
-                proton_images = None
-            images = self.preprocessor.on_files_processor(paths=batch_files, final_slices=self.final_slices,
-                                                          normalize=self.normalize, dynamic_resize=self.dynamic_resize,
-                                                          truncate=self.truncate, equal_slices=self.equal_slices)
-            images, labels = augment_image_batch(images, proton_images=proton_images,
-                                                 type_training=self.training_type,
-                                                 augment=self.augment,
-                                                 swap=self.augment,
-                                                 shape=[-1,self.final_slices, self.preprocessor.shape[1], self.preprocessor.shape[2],1],
-                                                 as_channels=self.as_channels)
+            proton_images = None
+        images = self.preprocessor.on_files_processor(paths=batch_files, final_slices=self.final_slices,
+                                                      normalize=self.normalize, dynamic_resize=self.dynamic_resize,
+                                                      truncate=self.truncate, equal_slices=self.equal_slices,
+                                                      return_collapsed=self.collapsed,
+                                                      return_features=self.features)
+        images, labels = augment_image_batch(images, proton_images=proton_images,
+                                             type_training=self.training_type,
+                                             augment=self.augment,
+                                             swap=self.augment,
+                                             shape=[-1,self.final_slices, self.preprocessor.shape[1], self.preprocessor.shape[2],1],
+                                             as_channels=self.as_channels,
+                                             return_collapsed=self.collapsed,
+                                             return_features=self.features)
 
+        print("Labels: ", np.array(labels).shape)
         return images, labels
 
     def __len__(self):

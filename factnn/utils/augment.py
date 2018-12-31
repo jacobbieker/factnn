@@ -44,6 +44,7 @@ def image_augmenter(images, as_channels=False):
     images = np.asarray(new_images)
     return images
 
+
 def dual_image_augmenter(images, collapsed_images, as_channels=False):
     """
     Augment images by rotating and flipping input images randomly
@@ -125,8 +126,6 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
             if return_collapsed:
                 batch_images[0] = batch_images[0].reshape(shape)
                 proton_images[0] = proton_images[0].reshape(shape)
-                batch_images[collapsed_index] = batch_images[collapsed_index].reshape(shape)
-                proton_images[collapsed_index] = proton_images[collapsed_index].reshape(shape)
             else:
                 batch_images = batch_images.reshape(shape)
                 proton_images = proton_images.reshape(shape)
@@ -134,18 +133,25 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
             labels = np.array([True] * (len(batch_images[0])) + [False] * len(proton_images[0]))
             batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
             batch_images[0] = np.concatenate([batch_images[0], proton_images[0]], axis=0)
+            if return_features:
+                batch_images[feature_index] = np.concatenate([batch_images[feature_index], proton_images[feature_index]], axis=0)
             batch_images[collapsed_index] = np.concatenate([batch_images[collapsed_index], proton_images[collapsed_index]], axis=0)
         else:
             labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
             batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
+            if return_features:
+                batch_images[feature_index] = np.concatenate([batch_images[feature_index], proton_images[feature_index]], axis=0)
             batch_images = np.concatenate([batch_images, proton_images], axis=0)
         if swap:
             if return_features and return_collapsed:
                 batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label)
+                batch_image_label = [batch_image_label, batch_image_label, batch_image_label]
             elif return_features and not return_collapsed:
                 batch_images[0], batch_images[feature_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index], batch_image_label)
+                batch_image_label = [batch_image_label, batch_image_label]
             elif not return_features and return_collapsed:
                 batch_images[0], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[collapsed_index], batch_image_label)
+                batch_image_label = [batch_image_label, batch_image_label]
             else:
                 batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
         return batch_images, batch_image_label
@@ -156,16 +162,18 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
         if not as_channels:
             if return_collapsed:
                 batch_images[0] = batch_images[0].reshape(shape)
-                batch_images[collapsed_index] = batch_images[collapsed_index].reshape(shape)
             else:
                 batch_images = batch_images.reshape(shape)
         if swap:
             if return_features and return_collapsed:
                 batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label)
+                batch_image_label = [batch_image_label, batch_image_label, batch_image_label]
             elif return_features and not return_collapsed:
                 batch_images[0], batch_images[feature_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index], batch_image_label)
+                batch_image_label = [batch_image_label, batch_image_label]
             elif not return_features and return_collapsed:
                 batch_images[0], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[collapsed_index], batch_image_label)
+                batch_image_label = [batch_image_label, batch_image_label]
             else:
                 batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
         return batch_images, batch_image_label
@@ -497,6 +505,11 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
     labels = None
     data_format = images[0][1]
     training_data = [item[0] for item in images]
+    if return_features:
+        features_list = [item[feature_index] for item in images]
+    if return_collapsed:
+        collapsed_list = [item[collapsed_index] for item in images]
+
     # Use the type of data to determine what to keep
     if type_training == "Separation":
         training_data = [item[data_format["Image"]] for item in training_data]
@@ -527,45 +540,47 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
     training_data = np.array(training_data)
     training_data = training_data.reshape(-1, training_data.shape[2], training_data.shape[3], training_data.shape[4])
 
-    batch_images = training_data
+    if return_collapsed or return_features:
+        batch_images = [training_data]
+    else:
+        batch_images = training_data
 
     if return_features:
-        features = images[feature_index]
-        features = np.array(features)
-        print("Features: " + str(features.shape))
-        features = features.reshape(-1, features.shape[10])
+        features = np.array(features_list)
         batch_images.append(features)
 
     if return_collapsed:
         # Gather collapsed data
-        collapsed_image = images[collapsed_index]
-        collapsed_image = np.array(collapsed_image)
-        collapsed_image = collapsed_image.reshape(-1, collapsed_image.shape[2], collapsed_image.shape[3], collapsed_image.shape[4])
+        collapsed_image = np.array(collapsed_list)
+        collapsed_image = collapsed_image.reshape(-1, collapsed_image.shape[3], collapsed_image.shape[4], 1)
         batch_images.append(collapsed_image)
 
     if proton_images is not None:
         proton_data = [item[0] for item in proton_images]
+        if return_features:
+            proton_features_list = [item[feature_index] for item in proton_images]
+        if return_collapsed:
+            proton_collapsed_list = [item[collapsed_index] for item in proton_images]
         proton_data = [item[data_format["Image"]] for item in proton_data]
         proton_data = np.array(proton_data)
         proton_data = proton_data.reshape(-1, proton_data.shape[2], proton_data.shape[3], proton_data.shape[4])
-        proton_images = proton_data
+        if return_collapsed or return_features:
+            proton_images = [proton_data]
+        else:
+            proton_images = proton_data
 
         if return_features:
-            features = proton_data[feature_index]
-            features = np.array(features)
-            print("Features: " + str(features.shape))
-            features = features.reshape(-1, features.shape[10])
+            features = np.array(proton_features_list)
             proton_images.append(features)
 
         if return_collapsed:
             # Gather collapsed data
-            collapsed_image = proton_data[collapsed_index]
-            collapsed_image = np.array(collapsed_image)
-            collapsed_image = collapsed_image.reshape(-1, collapsed_image.shape[2], collapsed_image.shape[3], collapsed_image.shape[4])
+            collapsed_image = np.array(proton_collapsed_list)
+            collapsed_image = collapsed_image.reshape(-1, collapsed_image.shape[3], collapsed_image.shape[4], 1)
             proton_images.append(collapsed_image)
 
         return common_step(batch_images, positions=None, labels=labels, proton_images=proton_images, augment=augment,
-                           swap=swap, shape=shape, as_channels=as_channels)
+                           swap=swap, shape=shape, as_channels=as_channels, return_features=return_features, return_collapsed=return_collapsed)
     else:
         return common_step(batch_images, positions=None, labels=labels, augment=augment, swap=swap, shape=shape,
-                           as_channels=as_channels)
+                           as_channels=as_channels, return_collapsed=return_collapsed, return_features=return_features)

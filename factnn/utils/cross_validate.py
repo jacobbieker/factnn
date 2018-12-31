@@ -43,7 +43,8 @@ def split_data(indicies, kfolds, seed=None):
 
 
 def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_train=None, model_type="Separation",
-         batch_size=8, as_channels=True, normalize=False, kfold_index=0, truncate=True, dynamic_resize=True, equal_slices=False):
+         batch_size=8, as_channels=True, normalize=False, kfold_index=0, truncate=True, dynamic_resize=True, equal_slices=False,
+         return_collapsed=False, return_features=False):
     shape = [start_slice, end_slice]
 
     gamma_configuration = {
@@ -83,7 +84,9 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                    training_type=model_type,
                                    truncate=truncate,
                                    dynamic_resize=dynamic_resize,
-                                   equal_slices=equal_slices)
+                                   equal_slices=equal_slices,
+                                   return_collapsed=return_collapsed,
+                                   return_features=return_features)
         validate = EventFileGenerator(paths=gamma_train[1][kfold_index], batch_size=batch_size,
                                       proton_paths=proton_train[1][kfold_index],
                                       proton_preprocessor=proton_validate_preprocessor,
@@ -96,7 +99,9 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                       training_type=model_type,
                                       truncate=truncate,
                                       dynamic_resize=dynamic_resize,
-                                      equal_slices=equal_slices)
+                                      equal_slices=equal_slices,
+                                      return_collapsed=return_collapsed,
+                                      return_features=return_features)
         test = EventFileGenerator(paths=gamma_train[2][kfold_index], batch_size=batch_size,
                                   proton_paths=proton_train[2][kfold_index],
                                   proton_preprocessor=proton_test_preprocessor,
@@ -109,7 +114,9 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                   training_type=model_type,
                                   truncate=truncate,
                                   dynamic_resize=dynamic_resize,
-                                  equal_slices=equal_slices)
+                                  equal_slices=equal_slices,
+                                  return_collapsed=return_collapsed,
+                                  return_features=return_features)
     else:
         train = EventFileGenerator(paths=gamma_train[0][kfold_index], batch_size=batch_size,
                                    preprocessor=gamma_train_preprocessor,
@@ -121,7 +128,9 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                    training_type=model_type,
                                    truncate=truncate,
                                    dynamic_resize=dynamic_resize,
-                                   equal_slices=equal_slices)
+                                   equal_slices=equal_slices,
+                                   return_collapsed=return_collapsed,
+                                   return_features=return_features)
         validate = EventFileGenerator(paths=gamma_train[1][kfold_index], batch_size=batch_size,
                                       preprocessor=gamma_validate_preprocessor,
                                       as_channels=as_channels,
@@ -132,7 +141,9 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                       training_type=model_type,
                                       truncate=truncate,
                                       dynamic_resize=dynamic_resize,
-                                      equal_slices=equal_slices)
+                                      equal_slices=equal_slices,
+                                      return_collapsed=return_collapsed,
+                                      return_features=return_features)
         test = EventFileGenerator(paths=gamma_train[2][kfold_index], batch_size=batch_size,
                                   preprocessor=gamma_test_preprocessor,
                                   as_channels=as_channels,
@@ -143,7 +154,9 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
                                   training_type=model_type,
                                   truncate=truncate,
                                   dynamic_resize=dynamic_resize,
-                                  equal_slices=equal_slices)
+                                  equal_slices=equal_slices,
+                                  return_collapsed=return_collapsed,
+                                  return_features=return_features)
 
     if as_channels:
         final_shape = (gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], final_slices)
@@ -185,7 +198,8 @@ def model_evaluate(model, test_gen, workers=10, verbose=0):
 
 def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3), rebin=50,
                    as_channels=False, kfolds=5, model_type="Separation", normalize=False, batch_size=32,
-                   workers=10, verbose=1, truncate=True, dynamic_resize=True, equal_slices=False, seed=1337, max_elements=None, plot=False):
+                   workers=10, verbose=1, truncate=True, dynamic_resize=True, equal_slices=False, seed=1337, max_elements=None,
+                   return_collapsed=False, return_features=False, plot=False):
     """
 
     :param model: Keras Model
@@ -237,7 +251,9 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
                                                        model_type=model_type, as_channels=as_channels,
                                                        truncate=truncate,
                                                        dynamic_resize=dynamic_resize,
-                                                       equal_slices=equal_slices)
+                                                       equal_slices=equal_slices,
+                                                       return_collapsed=return_collapsed,
+                                                       return_features=return_features)
         else:
             train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
                                                        final_slices=indicies[2],
@@ -246,7 +262,9 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
                                                        model_type=model_type, as_channels=as_channels,
                                                        truncate=truncate,
                                                        dynamic_resize=dynamic_resize,
-                                                       equal_slices=equal_slices)
+                                                       equal_slices=equal_slices,
+                                                       return_collapsed=return_collapsed,
+                                                       return_features=return_features)
 
         model = fit_model(model, train_gen, val_gen, workers=workers, verbose=verbose)
         evaluation = model_evaluate(model, test_gen, workers=workers, verbose=verbose)
