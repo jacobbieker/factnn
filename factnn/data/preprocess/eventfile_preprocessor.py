@@ -64,6 +64,7 @@ class EventFilePreprocessor(BasePreprocessor):
         for index, file in enumerate(paths):
             # load the pickled file from the disk
             if os.path.getsize(file) > 0:
+                # Checks that file is not 0
                 with open(file, "rb") as pickled_event:
                     data, data_format, features, feature_cluster = pickle.load(pickled_event)
                     if return_features:

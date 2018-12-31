@@ -154,6 +154,15 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
                 batch_image_label = [batch_image_label, batch_image_label]
             else:
                 batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
+        else:
+            if return_features and return_collapsed:
+                batch_image_label = [batch_image_label, batch_image_label, batch_image_label]
+            elif return_features and not return_collapsed:
+                batch_image_label = [batch_image_label, batch_image_label]
+            elif not return_features and return_collapsed:
+                batch_image_label = [batch_image_label, batch_image_label]
+            else:
+                batch_image_label = batch_image_label
         return batch_images, batch_image_label
     else:
         if positions is not None:
@@ -176,6 +185,15 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
                 batch_image_label = [batch_image_label, batch_image_label]
             else:
                 batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
+        else:
+            if return_features and return_collapsed:
+                batch_image_label = [batch_image_label, batch_image_label, batch_image_label]
+            elif return_features and not return_collapsed:
+                batch_image_label = [batch_image_label, batch_image_label]
+            elif not return_features and return_collapsed:
+                batch_image_label = [batch_image_label, batch_image_label]
+            else:
+                batch_image_label = batch_image_label
         return batch_images, batch_image_label
 
 

@@ -71,7 +71,6 @@ class EventFileGenerator(Sequence):
                                              return_collapsed=self.collapsed,
                                              return_features=self.features)
 
-        print("Labels: ", np.array(labels).shape)
         return images, labels
 
     def __len__(self):
