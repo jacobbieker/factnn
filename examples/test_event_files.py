@@ -56,7 +56,7 @@ def f(clump_size, path):
     }
 
     gamma_train_preprocessor = GammaPreprocessor(config=gamma_configuration)
-    gamma_train_preprocessor.event_processor(os.path.join(output_path, "gamma"), clean_images=True, only_core=True, clump_size=clump_size)
+    gamma_train_preprocessor.event_processor(os.path.join(output_path, "gammaFeature"), clean_images=True, only_core=True, clump_size=clump_size)
 
 # Get paths from the directories
 crab_paths = []
@@ -76,7 +76,7 @@ def d(clump_size, path):
     }
 
     proton_train_preprocessor = ProtonPreprocessor(config=proton_configuration)
-    proton_train_preprocessor.event_processor(os.path.join(output_path, "proton"), clean_images=True, only_core=True, clump_size=clump_size)
+    proton_train_preprocessor.event_processor(os.path.join(output_path, "protonFeature"), clean_images=True, only_core=True, clump_size=clump_size)
 
 
 # Now do the Kfold Cross validation Part for both sets of paths
@@ -84,22 +84,22 @@ def d(clump_size, path):
 
 if __name__ == '__main__':
     clump_size = 20
-    output_paths = [os.path.join(output_path, "proton", "no_clean"),os.path.join(output_path, "proton", "clump"+str(clump_size)),os.path.join(output_path, "proton", "core"+str(clump_size)),
-                    os.path.join(output_path, "gamma", "no_clean"),os.path.join(output_path, "gamma", "clump"+str(clump_size)),os.path.join(output_path, "gamma", "core"+str(clump_size)),
+    output_paths = [os.path.join(output_path, "protonFeature", "no_clean"),os.path.join(output_path, "protonFeature", "clump"+str(clump_size)),os.path.join(output_path, "protonFeature", "core"+str(clump_size)),
+                    os.path.join(output_path, "gammaFeature", "no_clean"),os.path.join(output_path, "gammaFeature", "clump"+str(clump_size)),os.path.join(output_path, "gammaFeature", "core"+str(clump_size)),
                     os.path.join(output_path, "gamma_diffuse", "no_clean"),os.path.join(output_path, "gamma_diffuse", "clump"+str(clump_size)),os.path.join(output_path, "gamma_diffuse", "core"+str(clump_size))]
     for path in output_paths:
         if not os.path.exists(path):
             os.makedirs(path)
 
-    #proton_pool = Pool(10)
-    gamma_pool = Pool()
-    #dunc = partial(d, clump_size)
-    gunc = partial(gf, clump_size)
-    #g = proton_pool.map_async(gunc, gamma_paths)
+    proton_pool = Pool(8)
+    gamma_pool = Pool(8)
+    dunc = partial(d, clump_size)
+    #gunc = partial(gf, clump_size)
+    g = proton_pool.map_async(dunc, crab_paths)
     func = partial(f, clump_size)
     r = gamma_pool.map_async(func, gamma_paths)
 
-    #g.wait()
+    g.wait()
     print("\n\n\n\n\n\n\n----------------------------------Done Proton------------------------------------------------\n\n\n\n\n\n\n\n")
     r.wait()
 
