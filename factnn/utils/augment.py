@@ -114,16 +114,20 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
     if augment:
         if return_collapsed:
             batch_images[0], batch_images[collapsed_index] = dual_image_augmenter(batch_images[0], batch_images[collapsed_index], as_channels)
+        elif return_features:
+            batch_images[0] = image_augmenter(batch_images[0], as_channels)
         else:
             batch_images = image_augmenter(batch_images, as_channels)
     if proton_images is not None:
         if augment:
             if return_collapsed:
                 proton_images[0], proton_images[collapsed_index] = dual_image_augmenter(proton_images[0], proton_images[collapsed_index], as_channels)
+            elif return_features:
+                proton_images[0] = image_augmenter(proton_images[0], as_channels)
             else:
                 proton_images = image_augmenter(proton_images, as_channels)
         if not as_channels:
-            if return_collapsed:
+            if return_collapsed or return_features:
                 batch_images[0] = batch_images[0].reshape(shape)
                 proton_images[0] = proton_images[0].reshape(shape)
             else:
@@ -137,11 +141,15 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
                 batch_images[feature_index] = np.concatenate([batch_images[feature_index], proton_images[feature_index]], axis=0)
             batch_images[collapsed_index] = np.concatenate([batch_images[collapsed_index], proton_images[collapsed_index]], axis=0)
         else:
-            labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
-            batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
             if return_features:
                 batch_images[feature_index] = np.concatenate([batch_images[feature_index], proton_images[feature_index]], axis=0)
-            batch_images = np.concatenate([batch_images, proton_images], axis=0)
+                labels = np.array([True] * (len(batch_images[0])) + [False] * len(proton_images[0]))
+                batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
+                batch_images[0] = np.concatenate([batch_images[0], proton_images[0]], axis=0)
+            else:
+                labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
+                batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
+                batch_images = np.concatenate([batch_images, proton_images], axis=0)
         if swap:
             if return_features and return_collapsed:
                 batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label)
