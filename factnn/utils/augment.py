@@ -542,6 +542,7 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
     elif type_training == "Energy":
         labels = [item[data_format["Energy"]] for item in training_data]
         labels = np.array(labels)
+        training_data = [item[data_format["Image"]] for item in training_data]
     elif type_training == "Disp":
         labels = [euclidean_distance(item[data_format['Source_X']], item[data_format['Source_Y']],
                                      item[data_format['COG_X']], item[data_format['COG_Y']]) for item in training_data]

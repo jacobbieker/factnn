@@ -7,6 +7,8 @@ from keras.optimizers import adam, nadam, rmsprop
 from talos.model.early_stopper import early_stopper
 from talos.model.layers import hidden_layers
 from talos.model.normalizers import lr_normalizer
+from talos.metrics.keras_metrics import root_mean_squared_error, fmeasure_acc, matthews_correlation_acc, precision_acc, recall_acc
+
 
 from factnn.utils.cross_validate import get_chunk_of_data
 
@@ -77,7 +79,11 @@ def input_model(x_train, y_train, x_val, y_val, params):
 
     model.compile(loss=params['losses'],
                   optimizer=params['optimizer'](lr_normalizer(params['lr'], params['optimizer'])),
-                  metrics=['accuracy'])
+                  metrics=['acc',
+                           fmeasure_acc,
+                           matthews_correlation_acc,
+                           precision_acc,
+                           recall_acc])
 
     out = model.fit(x_train, y_train,
                     batch_size=params['batch_size'],
@@ -89,12 +95,12 @@ def input_model(x_train, y_train, x_val, y_val, params):
     return out, model
 
 
-directory = "/media/jacob/WDRed8TB1/Insync/iact_events/"
-gamma_dir = [directory + "gamma/no_clean/"]
-proton_dir = [directory + "proton/no_clean/"]
+directory = "/home/jacob/Documents/iact_events/"
+gamma_dir = [directory + "gammaFeature/no_clean/"]
+proton_dir = [directory + "protonFeature/no_clean/"]
 
 x, y = get_chunk_of_data(directory=gamma_dir, proton_directory=proton_dir, indicies=(30, 129, 5), rebin=75,
-                         chunk_size=10000)
+                         chunk_size=1000)
 print("Got data")
 print("X Shape", x.shape)
 print("Y Shape", y.shape)
@@ -104,4 +110,4 @@ history = ta.Scan(x, y,
                   experiment_no='1',
                   model=input_model,
                   search_method='random',
-                  grid_downsample=0.001)
+                  grid_downsample=0.00001)
