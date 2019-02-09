@@ -8,7 +8,7 @@ from talos.model.early_stopper import early_stopper
 from talos.model.layers import hidden_layers
 from talos.model.normalizers import lr_normalizer
 
-from ..factnn.utils.cross_validate import get_chunk_of_data
+from factnn.utils.cross_validate import get_chunk_of_data
 
 # Parameter Dictionary for talos
 
