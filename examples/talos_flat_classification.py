@@ -13,21 +13,21 @@ from factnn.utils.cross_validate import get_chunk_of_data
 
 # Parameter Dictionary for talos
 
-params = {'lr': (1, 10, 20),
-          'first_neuron': [4, 16, 32, 128],
-          'last_neuron': [4, 8, 16, 64],
-          'hidden_layers': [2, 3, 4, 6],
-          'batch_size': [2, 8, 32, 64],
+params = {'lr': (1, 10, 10),
+          'first_neuron': [16, 32, 128],
+          'last_neuron': [8, 16, 64],
+          'hidden_layers': [2, 3, 6],
+          'batch_size': [2, 16, 64],
           'epochs': [500],
           'dropout': (0, 0.40, 4),
           'weight_regulizer': [None],
           'emb_output_dims': [None],
           'optimizer': [adam, nadam, rmsprop],
-          'losses': [mean_squared_error, mean_absolute_error],
-          'activation': [relu, elu, hard_sigmoid, tanh],
+          'losses': [mean_squared_error],
+          'activation': [relu, elu, hard_sigmoid],
           'last_activation': [softmax],
 
-          'neuron_1': [8, 16, 32, 64, 128],
+          'neuron_1': [16, 64, 128],
           'kernel_1': [1, 3, 5],
           'stride_1': [1, 2, 3],
           'layer_drop': [0.0, 0.4, 4],
@@ -54,10 +54,10 @@ def input_model(x_train, y_train, x_val, y_val, params):
 
     model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
                      padding='same',
-                     input_shape=(100, 100, 3),
+                     input_shape=(100, 100, 1),
                      activation=params['activation']))
     if params['second_conv']:
-        model.add(Conv2D(params['neuron_1']/2, kernel_size=params['kernel_1'], strides=1,
+        model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=1,
                          padding='same', activation=params['activation']))
     if params['pool']:
         model.add(MaxPooling2D())
@@ -66,7 +66,7 @@ def input_model(x_train, y_train, x_val, y_val, params):
     model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
                      padding='same', activation=params['activation']))
     if params['second_conv']:
-        model.add(Conv2D(params['neuron_1']/2, kernel_size=params['kernel_1'], strides=1,
+        model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=1,
                          padding='same', activation=params['activation']))
     #if params['pool']:
     #    model.add(MaxPooling2D())
@@ -77,7 +77,7 @@ def input_model(x_train, y_train, x_val, y_val, params):
         model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
                          padding='same', activation=params['activation']))
         if params['second_conv']:
-            model.add(Conv2D(params['neuron_1']/2, kernel_size=params['kernel_1'], strides=1,
+            model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=1,
                              padding='same', activation=params['activation']))
         if params['pool']:
             model.add(MaxPooling2D())
@@ -88,7 +88,7 @@ def input_model(x_train, y_train, x_val, y_val, params):
         model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
                          padding='same', activation=params['activation']))
         if params['second_conv']:
-            model.add(Conv2D(params['neuron_1']/2, kernel_size=params['kernel_1'], strides=1,
+            model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=1,
                              padding='same', activation=params['activation']))
         #   if params['pool']:
         #       model.add(MaxPooling2D())
@@ -118,12 +118,12 @@ def input_model(x_train, y_train, x_val, y_val, params):
     return out, model
 
 
-directory = "/home/jacob/Documents/iact_events/"
+directory = "/media/jacob/WDRed8Tb1/Insync/iact_events/"
 gamma_dir = [directory + "gammaFeature/no_clean/"]
 proton_dir = [directory + "protonFeature/no_clean/"]
 
-x, y = get_chunk_of_data(directory=gamma_dir, proton_directory=proton_dir, indicies=(30, 129, 3), rebin=100,
-                         chunk_size=1000, as_channels=True)
+x, y = get_chunk_of_data(directory=gamma_dir, proton_directory=proton_dir, indicies=(30, 129, 1), rebin=100,
+                         chunk_size=5000, as_channels=True)
 print("Got data")
 print("X Shape", x.shape)
 print("Y Shape", y.shape)
@@ -133,4 +133,4 @@ history = ta.Scan(x, y,
                   experiment_no='1',
                   model=input_model,
                   search_method='random',
-                  grid_downsample=0.00001)
+                  grid_downsample=0.0001)
