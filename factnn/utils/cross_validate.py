@@ -245,7 +245,7 @@ def get_chunk_of_data(directory, proton_directory="", indicies=(30,129,3),
         train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
                                                    final_slices=indicies[2],
                                                    rebin_size=rebin, gamma_train=gamma_paths,
-                                                   proton_train=proton_paths, batch_size=chunk_size,
+                                                   proton_train=proton_paths, batch_size=1,
                                                    normalize=normalize,
                                                    model_type=model_type, as_channels=as_channels,
                                                    truncate=truncate,
@@ -257,7 +257,7 @@ def get_chunk_of_data(directory, proton_directory="", indicies=(30,129,3),
         train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
                                                    final_slices=indicies[2],
                                                    rebin_size=rebin, gamma_train=gamma_paths,
-                                                   batch_size=chunk_size, normalize=normalize,
+                                                   batch_size=1, normalize=normalize,
                                                    model_type=model_type, as_channels=as_channels,
                                                    truncate=truncate,
                                                    dynamic_resize=dynamic_resize,
@@ -266,6 +266,10 @@ def get_chunk_of_data(directory, proton_directory="", indicies=(30,129,3),
                                                    return_features=return_features)
 
     x, y = train_gen.__getitem__(0)
+    for i in range(1, chunk_size):
+        x_temp, y_temp = train_gen.__getitem__(i)
+        x = np.append(x, x_temp, axis=0)
+        y = np.append(y, y_temp, axis=0)
 
     return x, y
 
