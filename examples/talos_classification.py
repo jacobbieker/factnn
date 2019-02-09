@@ -1,19 +1,11 @@
 import talos as ta
-
-from factnn.data.preprocess.eventfile_preprocessor import EventFilePreprocessor
-from factnn.generator.keras.eventfile_generator import EventFileGenerator
-from keras.layers import Flatten, ConvLSTM2D, MaxPooling2D, Dense, Activation, Dropout, MaxPooling3D, Conv2D, \
-    AveragePooling2D, AveragePooling3D
-from keras.models import Sequential
-import keras
-import numpy as np
-
-from talos.model.layers import hidden_layers
-
-from keras.activations import relu, elu, softmax, sigmoid, hard_sigmoid, tanh
+from keras.activations import relu, elu, softmax, hard_sigmoid, tanh
+from keras.layers import Flatten, ConvLSTM2D, Dense
 from keras.losses import categorical_crossentropy, logcosh
-from keras.optimizers import adam, nadam, rmsprop, sgd
+from keras.models import Sequential
+from keras.optimizers import adam, nadam, rmsprop
 from talos.model.early_stopper import early_stopper
+from talos.model.layers import hidden_layers
 from talos.model.normalizers import lr_normalizer
 
 from factnn.utils.cross_validate import get_chunk_of_data
