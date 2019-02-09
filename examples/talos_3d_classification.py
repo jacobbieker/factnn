@@ -1,6 +1,6 @@
 import talos as ta
 from keras.activations import relu, elu, softmax, hard_sigmoid, tanh
-from keras.layers import Flatten, ConvLSTM2D, Dense, Conv2D, MaxPooling2D, Dropout
+from keras.layers import Flatten, ConvLSTM2D, Dense, Conv3D, MaxPooling3D, Dropout
 from keras.losses import mean_squared_error, mean_absolute_error
 from keras.models import Sequential
 from keras.optimizers import adam, nadam, rmsprop
@@ -17,7 +17,7 @@ params = {'lr': (1, 10, 10),
           'first_neuron': [16, 32, 64],
           'last_neuron': [8, 16, 32],
           'hidden_layers': [2, 3, 6],
-          'batch_size': [2, 16, 64],
+          'batch_size': [2, 8, 16],
           'epochs': [500],
           'dropout': (0, 0.80, 4),
           'weight_regulizer': [None],
@@ -32,7 +32,6 @@ params = {'lr': (1, 10, 10),
           'stride_1': [1, 2, 3],
           'layer_drop': [0.0, 0.8, 4],
           'layers': [2,3,4],
-          'second_conv': [0,1],
           'pool': [0,1]
 
           }
@@ -52,44 +51,32 @@ params = {'lr': (1, 10, 10),
 def input_model(x_train, y_train, x_val, y_val, params):
     model = Sequential()
 
-    model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
+    model.add(Conv3D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
                      padding='same',
-                     input_shape=(100, 100, 1),
+                     input_shape=(100, 100, 10, 1),
                      activation=params['activation']))
-    if params['second_conv']:
-        model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=1,
-                         padding='same', activation=params['activation']))
     if params['pool']:
-        model.add(MaxPooling2D())
+        model.add(MaxPooling3D())
     if params['layer_drop'] > 0.001:
         model.add(Dropout(params['layer_drop']))
-    model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
+    model.add(Conv3D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
                      padding='same', activation=params['activation']))
-    if params['second_conv']:
-        model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=1,
-                         padding='same', activation=params['activation']))
     #if params['pool']:
     #    model.add(MaxPooling2D())
     if params['layer_drop'] > 0.001:
         model.add(Dropout(params['layer_drop']))
 
     if params['layers'] >= 3:
-        model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
+        model.add(Conv3D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
                          padding='same', activation=params['activation']))
-        if params['second_conv']:
-            model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=1,
-                             padding='same', activation=params['activation']))
         if params['pool']:
-            model.add(MaxPooling2D())
+            model.add(MaxPooling3D())
         if params['layer_drop'] > 0.001:
             model.add(Dropout(params['layer_drop']))
 
     if params['layers'] >= 4:
-        model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
+        model.add(Conv3D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
                          padding='same', activation=params['activation']))
-        if params['second_conv']:
-            model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=1,
-                             padding='same', activation=params['activation']))
         #   if params['pool']:
         #       model.add(MaxPooling2D())
         if params['layer_drop'] > 0.001:
@@ -135,14 +122,17 @@ directory = args['dir'] # "/media/jacob/WDRed8Tb1/Insync/iact_events/"
 gamma_dir = [directory + "gammaFeature/no_clean/"]
 proton_dir = [directory + "protonFeature/no_clean/"]
 
-x, y = get_chunk_of_data(directory=gamma_dir, proton_directory=proton_dir, indicies=(30, 129, 1), rebin=100,
+x, y = get_chunk_of_data(directory=gamma_dir, proton_directory=proton_dir, indicies=(30, 129, 10), rebin=100,
                          chunk_size=args['size'], as_channels=True)
+
+x = x.reshape(100,100,10,1)
+
 print("Got data")
 print("X Shape", x.shape)
 print("Y Shape", y.shape)
 history = ta.Scan(x, y,
                   params=params,
-                  dataset_name='flat_separation_test',
+                  dataset_name='3d_separation_test',
                   experiment_no='1',
                   model=input_model,
                   search_method='random',
