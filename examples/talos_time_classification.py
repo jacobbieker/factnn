@@ -73,11 +73,14 @@ def input_model(x_train, y_train, x_val, y_val, params):
                                                               batch_size=params['batch_size'], as_channels=False,
                                                               max_elements=args['size'])
 
+    strides = (1, params['strides_1'], params['strides_1'])
+
     model = Sequential()
 
-    model.add(ConvLSTM2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
+
+    model.add(ConvLSTM2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=strides,
                          padding='same',
-                         input_shape=(params['size'], params['rebin'], params['rebin'], 1),
+                         input_shape=(params['time'], params['rebin'], params['rebin'], 1),
                          activation=params['activation'],
                          dropout=params['layer_drop'], recurrent_dropout=params['rec_dropout'],
                          recurrent_activation=params['rec_act'],
@@ -86,7 +89,7 @@ def input_model(x_train, y_train, x_val, y_val, params):
     if params['pool']:
         model.add(MaxPooling3D())
     if params['layers'] >= 2:
-        model.add(ConvLSTM2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
+        model.add(ConvLSTM2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=strides,
                              padding='same',
                              activation=params['activation'],
                              dropout=params['layer_drop'], recurrent_dropout=params['rec_dropout'],
@@ -97,7 +100,7 @@ def input_model(x_train, y_train, x_val, y_val, params):
         #    model.add(MaxPooling3D())
 
     if params['layers'] >= 3:
-        model.add(ConvLSTM2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
+        model.add(ConvLSTM2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=strides,
                              padding='same',
                              activation=params['activation'],
                              dropout=params['layer_drop'], recurrent_dropout=params['rec_dropout'],
@@ -107,7 +110,7 @@ def input_model(x_train, y_train, x_val, y_val, params):
         if params['pool']:
             model.add(MaxPooling3D())
     if params['layers'] >= 4:
-        model.add(ConvLSTM2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
+        model.add(ConvLSTM2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=strides,
                              padding='same',
                              activation=params['activation'],
                              dropout=params['layer_drop'], recurrent_dropout=params['rec_dropout'],
