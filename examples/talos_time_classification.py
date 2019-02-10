@@ -49,13 +49,13 @@ params = {'lr': (1, 10, 5),
 
           'neuron_1': [8, 32],
           'kernel_1': [1, 3, 5],
-          'stride_1': [1, 3],
+          'stride_1': [1],
           'rec_dropout': [0.0, 0.8, 3],
           'rec_act': [hard_sigmoid, tanh],
           'layer_drop': [0.0, 0.8, 3],
           'layers': [2,3,4],
           'pool': [0, 1],
-          'rebin': [25, 75, 100],
+          'rebin': [25, 50, 75, 100],
           'time': [10, 15, 20]
           }
 '''
