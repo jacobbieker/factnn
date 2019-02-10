@@ -83,6 +83,7 @@ def d(clump_size, path):
 
 
 if __name__ == '__main__':
+
     clump_size = 20
     output_paths = [os.path.join(output_path, "protonFeature", "no_clean"),os.path.join(output_path, "protonFeature", "clump"+str(clump_size)),os.path.join(output_path, "protonFeature", "core"+str(clump_size)),
                     os.path.join(output_path, "gammaFeature", "no_clean"),os.path.join(output_path, "gammaFeature", "clump"+str(clump_size)),os.path.join(output_path, "gammaFeature", "core"+str(clump_size)),

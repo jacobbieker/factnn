@@ -7,19 +7,40 @@ from keras.optimizers import adam, nadam, rmsprop
 from talos.model.early_stopper import early_stopper
 from talos.model.layers import hidden_layers
 from talos.model.normalizers import lr_normalizer
-from talos.metrics.keras_metrics import root_mean_squared_error, fmeasure_acc, matthews_correlation_acc, precision_acc, recall_acc
+from talos.metrics.keras_metrics import root_mean_squared_error, fmeasure_acc, matthews_correlation_acc, precision_acc, \
+    recall_acc
 
-from factnn.utils.cross_validate import get_chunk_of_data
+from factnn.utils.cross_validate import get_chunk_of_data, get_data_generators
+
+# Get arguments
+
+
+import argparse
+
+# construct the argument parse and parse the arguments
+ap = argparse.ArgumentParser()
+ap.add_argument("-d", "--dir", required=True,
+                help="Directory for Files")
+ap.add_argument("-s", "--size", type=int, required=True,
+                help="Chunk Size")
+ap.add_argument("-g", "--grid", type=float, required=True,
+                help="Downsample Amount")
+
+args = vars(ap.parse_args())
+
+directory = args['dir']  # "/media/jacob/WDRed8Tb1/Insync/iact_events/"
+gamma_dir = [directory + "gammaFeature/clump20/"]
+proton_dir = [directory + "protonFeature/clump20/"]
 
 # Parameter Dictionary for talos
 
-params = {'lr': (1, 10, 10),
-          'first_neuron': [16, 32, 64],
-          'last_neuron': [8, 16, 32],
+params = {'lr': (1, 10, 5),
+          'first_neuron': [16, 64],
+          'last_neuron': [8, 32],
           'hidden_layers': [2, 3, 6],
-          'batch_size': [2, 16, 64],
+          'batch_size': [2, 64],
           'epochs': [500],
-          'dropout': (0, 0.80, 4),
+          'dropout': (0, 0.80, 3),
           'weight_regulizer': [None],
           'emb_output_dims': [None],
           'optimizer': [adam, nadam, rmsprop],
@@ -27,13 +48,15 @@ params = {'lr': (1, 10, 10),
           'activation': [relu, elu, hard_sigmoid],
           'last_activation': [softmax],
 
-          'neuron_1': [8, 16, 64],
-          'kernel_1': [1, 3, 5],
+          'neuron_1': [8, 64],
+          'kernel_1': [1, 3],
           'stride_1': [1, 2, 3],
-          'layer_drop': [0.0, 0.8, 4],
-          'layers': [2,3,4],
-          'second_conv': [0,1],
-          'pool': [0,1]
+          'layer_drop': [0.0, 0.8, 3],
+          'layers': [2, 3, 4],
+          'second_conv': [0, 1],
+          'pool': [0, 1],
+          'rebin': [25, 50, 75, 100],
+          'time': [1, 2, 3]
 
           }
 '''
@@ -49,12 +72,17 @@ params = {'lr': (1, 10, 10),
 'stride_3': [1, 2],
 '''
 
+
 def input_model(x_train, y_train, x_val, y_val, params):
+    train_gen, val_gen, _, _ = get_data_generators(directory=gamma_dir, proton_directory=proton_dir,
+                                                              indicies=(30, 129, params['time']), rebin=params['rebin'],
+                                                              batch_size=params['batch_size'], as_channels=True,
+                                                              max_elements=args['size'])
     model = Sequential()
 
     model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
                      padding='same',
-                     input_shape=(100, 100, 1),
+                     input_shape=(params['rebin'], params['rebin'], params['time']),
                      activation=params['activation']))
     if params['second_conv']:
         model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=1,
@@ -68,7 +96,7 @@ def input_model(x_train, y_train, x_val, y_val, params):
     if params['second_conv']:
         model.add(Conv2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=1,
                          padding='same', activation=params['activation']))
-    #if params['pool']:
+    # if params['pool']:
     #    model.add(MaxPooling2D())
     if params['layer_drop'] > 0.001:
         model.add(Dropout(params['layer_drop']))
@@ -108,42 +136,30 @@ def input_model(x_train, y_train, x_val, y_val, params):
                            precision_acc,
                            recall_acc])
 
-    out = model.fit(x_train, y_train,
-                    batch_size=params['batch_size'],
-                    epochs=params['epochs'], verbose=0,
-                    validation_data=[x_val, y_val],
-                    callbacks=[early_stopper(params['epochs'],
-                                             mode='moderate')])
+    out = model.fit_generator(
+        generator=train_gen,
+        epochs=params['epochs'],
+        verbose=0,
+        validation_data=val_gen,
+        callbacks=[early_stopper(params['epochs'],
+                                 mode='moderate')],
+        use_multiprocessing=True,
+        workers=10,
+        max_queue_size=50,
+    )
 
     return out, model
 
 
-import argparse
-
-# construct the argument parse and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-d", "--dir", required=True,
-                help="Directory for Files")
-ap.add_argument("-s", "--size", type=int, required=True,
-                help="Chunk Size")
-ap.add_argument("-g", "--grid", type=float, required=True,
-                help="Downsample Amount")
-
-args = vars(ap.parse_args())
-
-directory = args['dir'] # "/media/jacob/WDRed8Tb1/Insync/iact_events/"
-gamma_dir = [directory + "gammaFeature/no_clean/"]
-proton_dir = [directory + "protonFeature/no_clean/"]
-
-x, y = get_chunk_of_data(directory=gamma_dir, proton_directory=proton_dir, indicies=(30, 129, 1), rebin=100,
-                         chunk_size=args['size'], as_channels=True)
+x, y = get_chunk_of_data(directory=gamma_dir, proton_directory=proton_dir, indicies=(30, 129, 1), rebin=25,
+                         chunk_size=2, as_channels=True)
 print("Got data")
 print("X Shape", x.shape)
 print("Y Shape", y.shape)
 history = ta.Scan(x, y,
                   params=params,
                   dataset_name='flat_separation_test',
-                  experiment_no='1',
+                  experiment_no='2',
                   model=input_model,
                   search_method='random',
                   grid_downsample=args['grid'])

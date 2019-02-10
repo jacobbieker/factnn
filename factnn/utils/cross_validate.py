@@ -196,6 +196,80 @@ def model_evaluate(model, test_gen, workers=10, verbose=0):
     return evaluation
 
 
+def get_data_generators(directory, proton_directory="", indicies=(30,129,3),
+                      rebin=50, as_channels=False, model_type="Separation",
+                      normalize=False, batch_size=32, truncate=True,
+                      dynamic_resize=True, equal_slices=False, seed=1337, max_elements=None,
+                      return_collapsed=False, return_features=False, kfolds=5):
+    """
+    This is to obtain just the generators, for when cross-validation not needed
+    Keeps 20% of the files out by default
+    :param directory:
+    :param proton_directory:
+    :param indicies:
+    :param rebin:
+    :param as_channels:
+    :param model_type:
+    :param normalize:
+    :param chunk_size:
+    :param truncate:
+    :param dynamic_resize:
+    :param equal_slices:
+    :param seed:
+    :param max_elements:
+    :param return_collapsed:
+    :param return_features:
+    :return: Returns images and labels, to be split with the Keras validation split
+    """
+
+    paths = []
+    for source_dir in directory:
+        for root, dirs, files in os.walk(source_dir):
+            for file in files:
+                paths.append(os.path.join(root, file))
+    if max_elements is not None:
+        paths = shuffle(paths)
+        paths = paths[0:max_elements]
+    gamma_paths = split_data(paths, kfolds=kfolds, seed=seed)
+
+    if model_type == "Separation":
+        proton_paths = []
+        for source_dir in proton_directory:
+            for root, dirs, files in os.walk(source_dir):
+                for file in files:
+                    proton_paths.append(os.path.join(root, file))
+        if max_elements is not None:
+            proton_paths = shuffle(proton_paths)
+            proton_paths = proton_paths[0:max_elements]
+        proton_paths = split_data(proton_paths, kfolds=kfolds, seed=seed)
+
+    if model_type == "Separation":
+        train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
+                                                   final_slices=indicies[2],
+                                                   rebin_size=rebin, gamma_train=gamma_paths,
+                                                   proton_train=proton_paths, batch_size=batch_size,
+                                                   normalize=normalize,
+                                                   model_type=model_type, as_channels=as_channels,
+                                                   truncate=truncate,
+                                                   dynamic_resize=dynamic_resize,
+                                                   equal_slices=equal_slices,
+                                                   return_collapsed=return_collapsed,
+                                                   return_features=return_features)
+    else:
+        train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
+                                                   final_slices=indicies[2],
+                                                   rebin_size=rebin, gamma_train=gamma_paths,
+                                                   batch_size=batch_size, normalize=normalize,
+                                                   model_type=model_type, as_channels=as_channels,
+                                                   truncate=truncate,
+                                                   dynamic_resize=dynamic_resize,
+                                                   equal_slices=equal_slices,
+                                                   return_collapsed=return_collapsed,
+                                                   return_features=return_features)
+
+    return train_gen, val_gen, test_gen, shape
+
+
 def get_chunk_of_data(directory, proton_directory="", indicies=(30,129,3),
                       rebin=50, as_channels=False, model_type="Separation",
                       normalize=False, chunk_size=1000, truncate=True,
@@ -228,6 +302,7 @@ def get_chunk_of_data(directory, proton_directory="", indicies=(30,129,3),
             for file in files:
                 paths.append(os.path.join(root, file))
     if max_elements is not None:
+        paths = shuffle(paths)
         paths = paths[0:max_elements]
     gamma_paths = split_data(paths, kfolds=2, seed=seed)
 
@@ -238,6 +313,7 @@ def get_chunk_of_data(directory, proton_directory="", indicies=(30,129,3),
                 for file in files:
                     proton_paths.append(os.path.join(root, file))
         if max_elements is not None:
+            proton_paths = shuffle(proton_paths)
             proton_paths = proton_paths[0:max_elements]
         proton_paths = split_data(proton_paths, kfolds=2, seed=seed)
 
@@ -301,6 +377,7 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
             for file in files:
                 paths.append(os.path.join(root, file))
     if max_elements is not None:
+        paths = shuffle(paths)
         paths = paths[0:max_elements]
     gamma_paths = split_data(paths, kfolds=kfolds, seed=seed)
 
@@ -311,6 +388,7 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
                 for file in files:
                     proton_paths.append(os.path.join(root, file))
         if max_elements is not None:
+            proton_paths = shuffle(proton_paths)
             proton_paths = proton_paths[0:max_elements]
         proton_paths = split_data(proton_paths, kfolds=kfolds, seed=seed)
 
