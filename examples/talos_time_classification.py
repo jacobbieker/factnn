@@ -45,15 +45,15 @@ params = {'lr': (1, 10, 5),
           'losses': [categorical_crossentropy, logcosh],
           'activation': [relu, elu],
 
-          'neuron_1': [8, 16, 32],
+          'neuron_1': [8, 32],
           'kernel_1': [1, 3, 5],
-          'stride_1': [1, 2, 3],
+          'stride_1': [1, 3],
           'rec_dropout': [0.0, 0.8, 3],
           'rec_act': [hard_sigmoid, tanh],
           'layer_drop': [0.0, 0.8, 3],
           'layers': [2,3,4],
           'pool': [0, 1],
-          'rebin': [25, 50, 75, 100],
+          'rebin': [25, 75, 100],
           'time': [10, 15, 20]
           }
 '''
@@ -77,7 +77,7 @@ def input_model(x_train, y_train, x_val, y_val, params):
 
     model.add(ConvLSTM2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
                          padding='same',
-                         input_shape=(10, 100, 100, 1),
+                         input_shape=(params['size'], params['rebin'], params['rebin'], 1),
                          activation=params['activation'],
                          dropout=params['layer_drop'], recurrent_dropout=params['rec_dropout'],
                          recurrent_activation=params['rec_act'],
