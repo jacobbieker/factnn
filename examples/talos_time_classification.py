@@ -9,6 +9,8 @@ from talos.model.layers import hidden_layers
 from talos.model.normalizers import lr_normalizer
 from talos.metrics.keras_metrics import root_mean_squared_error, fmeasure_acc, matthews_correlation_acc, precision_acc, recall_acc
 
+from os import sys, path
+sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from factnn.utils.cross_validate import get_chunk_of_data, get_data_generators
 
