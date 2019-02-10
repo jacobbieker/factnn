@@ -29,10 +29,10 @@ params = {'lr': (1, 10, 10),
 
           'neuron_1': [8, 16, 64],
           'kernel_1': [1, 3, 5],
-          'stride_1': [1, 2, 3],
+          'stride_1': [1, 2],
           'layer_drop': [0.0, 0.8, 4],
           'layers': [2,3,4],
-          'pool': [0,1]
+          'pool': [0]
 
           }
 '''
@@ -124,8 +124,7 @@ proton_dir = [directory + "protonFeature/no_clean/"]
 
 x, y = get_chunk_of_data(directory=gamma_dir, proton_directory=proton_dir, indicies=(30, 129, 10), rebin=100,
                          chunk_size=args['size'], as_channels=True)
-
-x = x.reshape(100,100,10,1)
+x = x.reshape(-1, 100,100,10,1)
 
 print("Got data")
 print("X Shape", x.shape)

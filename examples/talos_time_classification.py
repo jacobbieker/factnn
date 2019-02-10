@@ -16,9 +16,9 @@ from factnn.utils.cross_validate import get_chunk_of_data
 
 params = {'lr': (1, 10, 10),
           'first_neuron': [4, 16, 32],
-          'last_neuron': [4, 8, 16],
-          'hidden_layers': [2, 3, 4],
-          'batch_size': [2, 8, 32],
+          'last_neuron': [4, 16],
+          'hidden_layers': [2, 4],
+          'batch_size': [2, 8],
           'epochs': [500],
           'dropout': (0, 0.80, 4),
           'weight_regulizer': [None],
@@ -33,11 +33,12 @@ params = {'lr': (1, 10, 10),
           'rec_dropout': [0.0, 0.8, 4],
           'rec_act': [hard_sigmoid, tanh],
           'layer_drop': [0.0, 0.8, 4],
-          'layers': [1,2,3,4]
+          'layers': [2,3,4],
+          'pool': [0, 1],
 
           }
 '''
-'pool': [0, 1],
+
 'neuron_2': [4, 8, 16, 32, 64],
 'kernel_2': [1, 2, 3],
 'stride_2': [1, 2],
@@ -68,8 +69,8 @@ def input_model(x_train, y_train, x_val, y_val, params):
                              recurrent_activation=params['rec_act'],
                              return_sequences=True,
                              stateful=False))
-        if params['pool']:
-            model.add(MaxPooling3D())
+        #if params['pool']:
+        #    model.add(MaxPooling3D())
 
     if params['layers'] >= 3:
         model.add(ConvLSTM2D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
@@ -89,8 +90,8 @@ def input_model(x_train, y_train, x_val, y_val, params):
                              recurrent_activation=params['rec_act'],
                              return_sequences=True,
                              stateful=False))
-        if params['pool']:
-            model.add(MaxPooling3D())
+        #if params['pool']:
+        #    model.add(MaxPooling3D())
 
     '''
     if params['pool']:
