@@ -73,7 +73,7 @@ def input_model(x_train, y_train, x_val, y_val, params):
                                                               batch_size=params['batch_size'], as_channels=False,
                                                               max_elements=args['size'])
 
-    strides = (1, params['strides_1'], params['strides_1'])
+    strides = (params['stride_1'], params['stride_1'])
 
     model = Sequential()
 
