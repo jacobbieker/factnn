@@ -1,3 +1,8 @@
+from talos.utils.gpu_utils import force_cpu
+
+# Force CPU use on a GPU system
+force_cpu()
+
 import talos as ta
 from keras.activations import relu, elu, softmax, hard_sigmoid, tanh
 from keras.layers import Flatten, ConvLSTM2D, Dense, Conv3D, MaxPooling3D, Dropout
@@ -35,7 +40,9 @@ params = {'lr': (1, 10, 10),
           'stride_1': [1, 2],
           'layer_drop': [0.0, 0.8, 4],
           'layers': [2,3,4],
-          'pool': [0]
+          'pool': [0],
+          'rebin': [50],
+          'time': [10],
 
           }
 '''
@@ -56,7 +63,7 @@ def input_model(x_train, y_train, x_val, y_val, params):
 
     model.add(Conv3D(params['neuron_1'], kernel_size=params['kernel_1'], strides=params['stride_1'],
                      padding='same',
-                     input_shape=(100, 100, 10, 1),
+                     input_shape=(params['rebin'],params['rebin'],params['time'], 1),
                      activation=params['activation']))
     if params['pool']:
         model.add(MaxPooling3D())
@@ -125,9 +132,9 @@ directory = args['dir'] # "/media/jacob/WDRed8Tb1/Insync/iact_events/"
 gamma_dir = [directory + "gammaFeature/no_clean/"]
 proton_dir = [directory + "protonFeature/no_clean/"]
 
-x, y = get_chunk_of_data(directory=gamma_dir, proton_directory=proton_dir, indicies=(30, 129, 10), rebin=100,
+x, y = get_chunk_of_data(directory=gamma_dir, proton_directory=proton_dir, indicies=(30, 129, params['time'][0]), rebin=params['rebin'][0],
                          chunk_size=args['size'], as_channels=True)
-x = x.reshape(-1, 100,100,10,1)
+x = x.reshape(-1, params['rebin'][0],params['rebin'][0],params['time'][0],1)
 
 print("Got data")
 print("X Shape", x.shape)
@@ -135,7 +142,7 @@ print("Y Shape", y.shape)
 history = ta.Scan(x, y,
                   params=params,
                   dataset_name='3d_separation_test',
-                  experiment_no='1',
+                  experiment_no='2',
                   model=input_model,
                   search_method='random',
                   grid_downsample=args['grid'])
