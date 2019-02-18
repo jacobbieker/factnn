@@ -1,7 +1,7 @@
 import talos as ta
 from keras.activations import relu, elu, softmax, hard_sigmoid, tanh
 from keras.layers import Flatten, ConvLSTM2D, Dense, Conv2D, MaxPooling2D, Dropout
-from keras.losses import mean_squared_error, mean_absolute_error
+from keras.losses import mean_squared_error, mean_absolute_error, categorical_crossentropy
 from keras.models import Sequential
 from keras.optimizers import adam, nadam, rmsprop
 from talos.model.early_stopper import early_stopper
@@ -41,24 +41,24 @@ params = {'lr': (1, 10, 5),
           'first_neuron': [16, 64],
           'last_neuron': [8, 32],
           'hidden_layers': [2, 3, 6],
-          'batch_size': [2, 64],
+          'batch_size': [2, 16],
           'epochs': [500],
           'dropout': (0, 0.80, 3),
           'weight_regulizer': [None],
           'emb_output_dims': [None],
           'optimizer': [adam, nadam, rmsprop],
-          'losses': [mean_squared_error],
+          'losses': [categorical_crossentropy],
           'activation': [relu, elu, hard_sigmoid],
           'last_activation': [softmax],
 
           'neuron_1': [8, 64],
-          'kernel_1': [1, 3],
-          'stride_1': [1, 2, 3],
+          'kernel_1': [1, 3, 5, 7],
+          'stride_1': [1],
           'layer_drop': [0.0, 0.8, 3],
           'layers': [2, 3, 4],
           'second_conv': [0, 1],
           'pool': [0, 1],
-          'rebin': [25, 50, 75, 100],
+          'rebin': [25, 50, 75],
           'time': [1, 2, 3]
 
           }
@@ -162,7 +162,7 @@ print("Y Shape", y.shape)
 history = ta.Scan(x, y,
                   params=params,
                   dataset_name='flat_separation_test',
-                  experiment_no='2',
+                  experiment_no='6',
                   model=input_model,
                   search_method='random',
                   grid_downsample=args['grid'])

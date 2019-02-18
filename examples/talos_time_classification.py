@@ -40,7 +40,7 @@ params = {'lr': (1, 10, 5),
           'hidden_layers': [2, 4],
           'batch_size': [2, 8],
           'epochs': [500],
-          'dropout': (0, 0.80, 3),
+          'dropout': (0, 0.80, 4),
           'weight_regulizer': [None],
           'emb_output_dims': [None],
           'optimizer': [adam, nadam, rmsprop],
@@ -50,13 +50,13 @@ params = {'lr': (1, 10, 5),
           'neuron_1': [8, 32],
           'kernel_1': [1, 3, 5],
           'stride_1': [1],
-          'rec_dropout': [0.0, 0.8, 3],
+          'rec_dropout': [0.0, 0.8, 4],
           'rec_act': [hard_sigmoid, tanh],
-          'layer_drop': [0.0, 0.8, 3],
+          'layer_drop': [0.0, 0.8, 4],
           'layers': [2,3,4],
           'pool': [0, 1],
-          'rebin': [25, 50, 75, 100],
-          'time': [10, 15, 20]
+          'rebin': [50],
+          'time': [20]
           }
 '''
 
@@ -70,10 +70,6 @@ params = {'lr': (1, 10, 5),
 '''
 
 def input_model(x_train, y_train, x_val, y_val, params):
-    train_gen, val_gen, _, _ = get_data_generators(directory=gamma_dir, proton_directory=proton_dir,
-                                                              indicies=(30, 129, params['time']), rebin=params['rebin'],
-                                                              batch_size=params['batch_size'], as_channels=False,
-                                                              max_elements=args['size'])
 
     strides = (params['stride_1'], params['stride_1'])
 
@@ -149,22 +145,17 @@ def input_model(x_train, y_train, x_val, y_val, params):
                            precision_acc,
                            recall_acc])
 
-    out = model.fit_generator(
-        generator=train_gen,
-        epochs=params['epochs'],
-        verbose=0,
-        validation_data=val_gen,
-        callbacks=[early_stopper(params['epochs'],
-                                 mode='moderate')],
-        use_multiprocessing=True,
-        workers=10,
-        max_queue_size=50,
-    )
+    out = model.fit(x_train, y_train,
+                    batch_size=params['batch_size'],
+                    epochs=params['epochs'], verbose=0,
+                    validation_data=[x_val, y_val],
+                    callbacks=[early_stopper(params['epochs'],
+                                             mode='moderate')])
 
     return out, model
 
-x, y = get_chunk_of_data(directory=gamma_dir, proton_directory=proton_dir, indicies=(30, 129, 10), rebin=25,
-                         chunk_size=2, as_channels=False)
+x, y = get_chunk_of_data(directory=gamma_dir, proton_directory=proton_dir, indicies=(30, 129, params['time'][0]), rebin=params['rebin'][0],
+                         chunk_size=args['size'], as_channels=False)
 
 print("Got data")
 print("X Shape", x.shape)
@@ -172,7 +163,7 @@ print("Y Shape", y.shape)
 history = ta.Scan(x, y,
                   params=params,
                   dataset_name='time_separation_test',
-                  experiment_no='2',
+                  experiment_no='8',
                   model=input_model,
                   search_method='random',
                   grid_downsample=args['grid'])
