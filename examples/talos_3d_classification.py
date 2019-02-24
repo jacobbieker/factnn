@@ -37,7 +37,7 @@ params = {'lr': (1, 10, 10),
           'layers': [2,3,4],
           'pool': [0],
           'rebin': [75],
-          'time': [10],
+          'time': [5],
 
           }
 '''
@@ -137,7 +137,7 @@ print("Y Shape", y.shape)
 history = ta.Scan(x, y,
                   params=params,
                   dataset_name='3d_separation_test',
-                  experiment_no='5',
+                  experiment_no='11',
                   model=input_model,
                   search_method='random',
                   grid_downsample=args['grid'])
