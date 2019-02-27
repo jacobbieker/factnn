@@ -156,8 +156,8 @@ print("X Shape", x.shape)
 print("Y Shape", y.shape)
 history = ta.Scan(x, y,
                   params=params,
-                  dataset_name='lstm_thesis_separation__250_test',
-                  experiment_no='5',
+                  dataset_name='lstm_thesis_separation_test',
+                  experiment_no='15',
                   model=input_model,
                   search_method='random',
                   grid_downsample=args['grid'])
