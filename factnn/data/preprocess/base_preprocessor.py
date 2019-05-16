@@ -414,13 +414,15 @@ class BasePreprocessor(object):
             print("Start: {}, End: {}, Mean: {}, Std: {} Clumps: {} Photons Before: {} Photons Saved: {}".format(np.min(list_of_slices), np.max(list_of_slices), np.round(np.mean(list_of_slices),3), np.round(np.std(list_of_slices),3), number, len(point_cloud), len(new_raw)-1440))
         return new_raw
 
-    def clean_image(self, event, min_samples=20, eps=0.1, only_core=True):
+    def clean_image(self, event, min_samples=20, eps=0.1, method='dbscan', only_core=True):
         """
         Clean the image with various methods, currently only DBSCAN
 
         DBSCAN code is taken almost directly from pyfact
 
 
+        :param method: Method to use, either 'dbscan' or 'facttools', where facttools uses the method used by Fact Tools,
+        and DBSCAN is used in pyfact
         :param event: PhotonStream Event
         :param min_samples: Min samples for DBSCAN
         :param eps: maximal distance between two samples to be considered same neighborhood
@@ -429,10 +431,15 @@ class BasePreprocessor(object):
 
         point_cloud = event.photon_stream.point_cloud
 
-        dbscan = self.find_clumps(point_cloud, min_samples, eps)
+        if method=='dbscan':
+            dbscan = self.find_clumps(point_cloud, min_samples, eps)
+            core_photons = self.select_clustered_photons(dbscan, point_cloud, only_core=True)
+            clump_photons = self.select_clustered_photons(dbscan, point_cloud, only_core=False)
+        elif method == 'facttools':
 
-        core_photons = self.select_clustered_photons(dbscan, point_cloud, only_core=True)
-        clump_photons = self.select_clustered_photons(dbscan, point_cloud, only_core=False)
+            return NotImplementedError
+        else:
+            raise NotImplementedError('Only dbscan or facttools implemented now')
         all_photons = event.photon_stream.raw
 
         return all_photons, clump_photons, core_photons
