@@ -439,10 +439,10 @@ class BasePreprocessor(object):
 
             return NotImplementedError
         else:
-            raise NotImplementedError('Only dbscan or facttools implemented now')
+            raise NotImplementedError('Only dbscan or facttools implemented for now')
         all_photons = event.photon_stream.raw
 
-        return all_photons, clump_photons, core_photons
+        return all_photons, clump_photons, core_photons, dbscan
 
     def find_clumps(self, point_cloud, min_samples=20, eps=0.1):
         deg_over_s = 0.35e9
