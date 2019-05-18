@@ -436,7 +436,7 @@ class BasePreprocessor(object):
             core_photons = self.select_clustered_photons(dbscan, point_cloud, only_core=True)
             clump_photons = self.select_clustered_photons(dbscan, point_cloud, only_core=False)
         elif method == 'facttools':
-
+            dbscan=None
             return NotImplementedError
         else:
             raise NotImplementedError('Only dbscan or facttools implemented for now')

@@ -32,14 +32,15 @@ class SimulationPreprocessor(BasePreprocessor):
 
                     if clean_images:
                         # Do it for no clumps, all clump, and only core into different subfolders
-                        all_photons, clump_photons, core_photons, dbscan = self.clean_image(event, only_core=only_core,min_samples=clump_size)
+                        all_photons, clump_photons, core_photons, dbscan = self.clean_image(event, only_core=only_core, min_samples=clump_size)
                         if core_photons is None:
                             print("No Clumps, skip")
                             continue
                         for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}.items():
                             event.photon_stream.raw = photon_set
-                            # Extract parameters from the file
-                            features, cluster = extract_single_simulation_features(event, cluster=dbscan)
+                            # Extract parameters from the file, if cleaning type is 'facttools', then this still calls DBSCAN currently
+                            # TODO Get features from FeatureStream without DBSCAN
+                            features, cluster = extract_single_simulation_features(event, cluster=dbscan, min_samples=clump_size)
                             # In the event chosen from the file
                             # Each event is the same as each line below
                             energy = event.simulation_truth.air_shower.energy
@@ -225,7 +226,7 @@ class ProtonPreprocessor(BasePreprocessor):
                         for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}.items():
                             event.photon_stream.raw = photon_set
                             # Extract parameters from the file
-                            features, cluster = extract_single_simulation_features(event, cluster=dbscan)
+                            features, cluster = extract_single_simulation_features(event, min_samples=1)
                             # In the event chosen from the file
                             # Each event is the same as each line below
                             energy = event.simulation_truth.air_shower.energy
@@ -415,7 +416,7 @@ class GammaPreprocessor(BasePreprocessor):
                         else:
                             for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}.items():
                                 event.photon_stream.raw = photon_set
-                                features, cluster = extract_single_simulation_features(event, cluster=dbscan)
+                                features, cluster = extract_single_simulation_features(event, min_samples=1)
                                 # In the event chosen from the file
                                 # Each event is the same as each line below
                                 energy = event.simulation_truth.air_shower.energy
