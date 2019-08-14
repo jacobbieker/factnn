@@ -208,6 +208,7 @@ class BasePreprocessor(object):
         default photon-stream representation, and auxiliary data and saves it to a new file based on the
         :return:
         """
+        return NotImplementedError
 
     def count_events(self):
         """

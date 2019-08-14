@@ -9,7 +9,6 @@ import pickle
 import os
 from factnn.utils.hillas import extract_single_simulation_features
 
-
 class SimulationPreprocessor(BasePreprocessor):
 
     def event_processor(self, directory, clean_type="dbscan", clean_images=False, only_core=True, clump_size=20):

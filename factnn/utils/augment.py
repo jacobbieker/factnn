@@ -497,6 +497,164 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
                            as_channels=as_channels)
 
 
+def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augment=True, swap=False, return_features=False, feature_index=-99):
+    """
+    Returns labels and images for point clouds. As point clouds need to be augmented differently than images, common_step does not work
+
+    :param gamma_clouds: Gamma point clouds
+    :param proton_clouds: Proton point clouds
+    :param labels: Labels
+    :param augment: Whether to augment images or just pass them through
+    :param swap: Whether to shuffle the images and labels or not
+    :param return_features: Whether to return features as well as images
+    :return:
+    """
+
+    if augment:
+        # TODO Add point cloud augmenation here
+        if return_features:
+            return NotImplementedError
+            gamma_clouds[0] = image_augmenter(gamma_clouds[0])
+        else:
+            return NotImplementedError
+            gamma_clouds = image_augmenter(gamma_clouds)
+
+    if proton_clouds is not None:
+        if augment:
+            if return_features:
+                return NotImplementedError
+                proton_clouds[0] = image_augmenter(proton_clouds[0])
+            else:
+                return NotImplementedError
+                proton_clouds = image_augmenter(proton_clouds)
+        if return_features:
+            gamma_clouds[feature_index] = np.concatenate([gamma_clouds[feature_index], proton_clouds[feature_index]], axis=0)
+            labels = np.array([True] * (len(gamma_clouds[0])) + [False] * len(proton_clouds[0]))
+            batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
+            gamma_clouds[0] = np.concatenate([gamma_clouds[0], proton_clouds[0]], axis=0)
+        else:
+            labels = np.array([True] * (len(gamma_clouds)) + [False] * len(proton_clouds))
+            batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
+            gamma_clouds = np.concatenate([gamma_clouds, proton_clouds], axis=0)
+        if swap:
+            if return_features:
+                gamma_clouds[0], gamma_clouds[feature_index], batch_image_label = shuffle(gamma_clouds[0], gamma_clouds[feature_index], batch_image_label)
+                batch_image_label = [batch_image_label, batch_image_label]
+            else:
+                gamma_clouds, batch_image_label = shuffle(gamma_clouds, batch_image_label)
+        else:
+            if return_features:
+                batch_image_label = [batch_image_label, batch_image_label]
+            else:
+                batch_image_label = batch_image_label
+        return gamma_clouds, batch_image_label
+    else:
+        batch_image_label = labels
+        if swap:
+            if return_features:
+                gamma_clouds[0], gamma_clouds[feature_index], batch_image_label = shuffle(gamma_clouds[0], gamma_clouds[feature_index], batch_image_label)
+                batch_image_label = [batch_image_label, batch_image_label]
+            else:
+                gamma_clouds, batch_image_label = shuffle(gamma_clouds, batch_image_label)
+        else:
+            if return_features:
+                batch_image_label = [batch_image_label, batch_image_label]
+            else:
+                batch_image_label = batch_image_label
+        return gamma_clouds, batch_image_label
+
+
+def augment_pointcloud_batch(images, proton_images=None, type_training=None, augment=False, swap=True, return_features=False):
+    """
+    This is for use with the eventfile_generator, given a set of Pointclouds, return the possibly augmented ones and labels
+    :param images:
+    :param proton_images:
+    :param type_training:
+    :param augment:
+    :param swap:
+    :param shape:
+    :param as_channels:
+    :param final_slices:
+    :return:
+    """
+
+    # For this, the single processors are assumed to infinitely iterate through their files, shuffling the order of the
+    # files after every go through of the whole file set, so some kind of shuffling, but not much
+    # Get the correct index for the collapsed and feature data if used
+    if return_features:
+        feature_index = 2
+    else:
+        feature_index = -99
+
+    labels = None
+    data_format = images[0][1]
+    training_data = [item[0] for item in images]
+    if return_features:
+        features_list = [item[feature_index] for item in images]
+
+    # Use the type of data to determine what to keep
+    if type_training == "Separation":
+        training_data = [item[data_format["Image"]] for item in training_data]
+    elif type_training == "Energy":
+        labels = [item[data_format["Energy"]] for item in training_data]
+        labels = np.array(labels)
+        training_data = [item[data_format["Image"]] for item in training_data]
+    elif type_training == "Disp":
+        labels = [euclidean_distance(item[data_format['Source_X']], item[data_format['Source_Y']],
+                                     item[data_format['COG_X']], item[data_format['COG_Y']]) for item in training_data]
+        labels = np.array(labels)
+        training_data = [item[data_format["Image"]] for item in training_data]
+    elif type_training == "Sign":
+        labels = [true_sign(item[data_format['Source_X']], item[data_format['Source_Y']],
+                            item[data_format['COG_X']], item[data_format['COG_Y']], item[data_format['Delta']]) for item
+                  in training_data]
+        training_data = [item[data_format["Image"]] for item in training_data]
+        labels = np.array(labels)
+        # Create own categorical one since only two sides anyway
+        new_labels = np.zeros((labels.shape[0], 2))
+        for index, element in enumerate(labels):
+            if element < 0:
+                new_labels[index][0] = 1.
+            else:
+                new_labels[index][1] = 1.
+        labels = new_labels
+        training_data = [item[data_format["Image"]] for item in training_data]
+
+    training_data = np.array(training_data)
+
+    if return_features:
+        batch_images = [training_data]
+    else:
+        batch_images = training_data
+
+    if return_features:
+        features = np.array(features_list)
+        batch_images.append(features)
+
+    if proton_images is not None:
+        proton_data = [item[0] for item in proton_images]
+        if return_features:
+            proton_features_list = [item[feature_index] for item in proton_images]
+        proton_data = [item[data_format["Image"]] for item in proton_data]
+        proton_data = np.array(proton_data)
+        if return_features:
+            proton_images = [proton_data]
+        else:
+            proton_images = proton_data
+
+        if return_features:
+            features = np.array(proton_features_list)
+            proton_images.append(features)
+
+        # Because most of the common_step is only relevant to image version, going without it here
+        return point_cloud_augmentation(batch_images, proton_clouds=proton_images, labels=labels, augment=augment,
+                                        swap=swap, return_features=return_features, feature_index=feature_index)
+    else:
+        return point_cloud_augmentation(batch_images, proton_clouds=proton_images, labels=labels, augment=augment,
+                                        swap=swap, return_features=return_features, feature_index=feature_index)
+
+
+
 def augment_image_batch(images, proton_images=None, type_training=None, augment=False, swap=True, shape=None,
                         as_channels=False, return_collapsed=False, return_features=False):
     """

@@ -59,7 +59,8 @@ class EventFilePreprocessor(BasePreprocessor):
 
 
     def on_files_processor(self, paths, collapse_time=True, final_slices=5, normalize=False, dynamic_resize=False,
-                           truncate=False, equal_slices=False, return_features=False, return_collapsed=False, norm_per_slice=False):
+                           truncate=False, equal_slices=False, return_features=False, return_collapsed=False,
+                           norm_per_slice=False):
         all_data = []
         for index, file in enumerate(paths):
             # load the pickled file from the disk
