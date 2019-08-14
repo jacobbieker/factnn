@@ -550,7 +550,7 @@ def point_cloud_augmenter(point_cloud, rotate=True, jitter=None):
 
 
 def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augment=True, swap=False,
-                             return_features=False, rotate=False, jitter=None, reflect=False, feature_index=-99):
+                             return_features=False, rotate=False, jitter=None, feature_index=-99):
     """
     Returns labels and images for point clouds. As point clouds need to be augmented differently than images, common_step does not work
 
@@ -565,9 +565,9 @@ def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augm
 
     if augment:
         if return_features:
-            gamma_clouds[0] = point_cloud_augmenter(gamma_clouds[0], rotate=rotate, jitter=jitter, reflect=reflect)
+            gamma_clouds[0] = point_cloud_augmenter(gamma_clouds[0], rotate=rotate, jitter=jitter)
         else:
-            gamma_clouds = point_cloud_augmenter(gamma_clouds, rotate=rotate, jitter=jitter, reflect=reflect)
+            gamma_clouds = point_cloud_augmenter(gamma_clouds, rotate=rotate, jitter=jitter)
 
     if proton_clouds is not None:
         if augment:
@@ -618,7 +618,7 @@ def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augm
 
 
 def augment_pointcloud_batch(images, proton_images=None, type_training=None, augment=False, swap=True,
-                             return_features=False, reflect=False, rotate=False, jitter=False):
+                             return_features=False, rotate=False, jitter=None):
     """
     This is for use with the eventfile_generator, given a set of Pointclouds, return the possibly augmented ones and labels
     :param images:
@@ -703,11 +703,11 @@ def augment_pointcloud_batch(images, proton_images=None, type_training=None, aug
         # Because most of the common_step is only relevant to image version, going without it here
         return point_cloud_augmentation(batch_images, proton_clouds=proton_images, labels=labels, augment=augment,
                                         swap=swap, return_features=return_features, feature_index=feature_index,
-                                        rotate=rotate, reflect=reflect, jitter=jitter)
+                                        rotate=rotate, jitter=jitter)
     else:
         return point_cloud_augmentation(batch_images, proton_clouds=proton_images, labels=labels, augment=augment,
                                         swap=swap, return_features=return_features, feature_index=feature_index,
-                                        rotate=rotate, reflect=reflect, jitter=jitter)
+                                        rotate=rotate, jitter=jitter)
 
 
 def augment_image_batch(images, proton_images=None, type_training=None, augment=False, swap=True, shape=None,
