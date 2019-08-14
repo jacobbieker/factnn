@@ -10,8 +10,8 @@ class PointCloudGenerator(Sequence):
     """
 
     def __init__(self, paths, batch_size, preprocessor=None, proton_preprocessor=None, proton_paths=None,
-                 slices=(30, 70), final_points=1024, replacement=False, augment=False, training_type=None,
-                 truncate=True,  return_features=False):
+                 slices=(30, 70), final_points=2048, replacement=False, augment=False, training_type=None,
+                 truncate=True, return_features=False, rotate=True, jitter=None):
         self.paths = paths
         self.batch_size = batch_size
         self.preprocessor = preprocessor
@@ -23,6 +23,8 @@ class PointCloudGenerator(Sequence):
         self.truncate = truncate
         self.replacement = replacement
         self.final_points = final_points
+        self.rotate = rotate
+        self.jitter = jitter
 
         # These three are for if multiple inputs need to be returned,
         self.features = return_features
@@ -48,14 +50,14 @@ class PointCloudGenerator(Sequence):
                                                       truncate=self.truncate,
                                                       return_features=self.features)
         images, labels = augment_pointcloud_batch(images, proton_images=proton_images,
-                                             type_training=self.training_type,
-                                             augment=self.augment,
-                                             swap=self.augment,
-
-                                             return_features=self.features)
+                                                  type_training=self.training_type,
+                                                  augment=self.augment,
+                                                  swap=self.augment,
+                                                  jitter=self.jitter,
+                                                  rotate=self.rotate,
+                                                  return_features=self.features)
 
         return images, labels
-        return NotImplementedError
 
     def __len__(self):
         """

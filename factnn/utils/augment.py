@@ -556,7 +556,7 @@ def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augm
 
     :param gamma_clouds: Gamma point clouds
     :param proton_clouds: Proton point clouds
-    :param labels: Labels
+    :param labels: Labels, for non-separation tasks.
     :param augment: Whether to augment images or just pass them through
     :param swap: Whether to shuffle the images and labels or not
     :param return_features: Whether to return features as well as images

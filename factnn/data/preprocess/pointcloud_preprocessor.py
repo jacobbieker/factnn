@@ -18,8 +18,8 @@ class PointCloudPreprocessor(EventFilePreprocessor):
 
         :param paths: Paths to the Eventfiles
         :param final_points: Number of final points to return, if this is larger than the total number of photons,
-        replacement must be True, or an exception will be thrown
-        :param replacement: Whether to randomly choose points with replacement (True), or not
+        replacement will be used
+        :param replacement: Whether to randomly choose points with replacement (True), or not, if there are more photons than points
         :param normalize:
         :param truncate: Whether to truncate the photons before converting to a point cloud or not
         :param return_features: Whether to return the Hillas features extracted beforehand
@@ -62,6 +62,15 @@ class PointCloudPreprocessor(EventFilePreprocessor):
                     # Now in point cloud format, truncation is just cutting off in z now
                     mask = (point_cloud[:,2] <= self.end) & (point_cloud[:,2] >= self.start)
                     point_cloud = point_cloud[mask]
+
+                    # Now have to subsample (or resample) points
+                    # Replacement has to be used if there are less points than final_points
+                    if replacement or point_cloud.shape[0] < final_points:
+                        point_indicies = np.random.choice(point_cloud.shape[0], final_points, replace=True)
+                    else:
+                        point_indicies = np.random.choice(point_cloud.shape[0], final_points, replace=False)
+
+                    point_cloud = point_cloud[point_indicies]
 
                     data[data_format["Image"]] = point_cloud
                     data = self.format([data, data_format])
@@ -106,6 +115,15 @@ class PointCloudPreprocessor(EventFilePreprocessor):
             # Now in point cloud format, truncation is just cutting off in z now
             mask = (point_cloud[:,2] <= self.end) & (point_cloud[:,2] >= self.start)
             point_cloud = point_cloud[mask]
+
+            # Now have to subsample (or resample) points
+            # Replacement has to be used if there are less points than final_points
+            if replacement or point_cloud.shape[0] < final_points:
+                point_indicies = np.random.choice(point_cloud.shape[0], final_points, replace=True)
+            else:
+                point_indicies = np.random.choice(point_cloud.shape[0], final_points, replace=False)
+
+            point_cloud = point_cloud[point_indicies]
 
             data[data_format["Image"]] = point_cloud
             data = self.format([data, data_format])
