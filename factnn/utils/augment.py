@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.utils import shuffle
 import h5py
+from scipy.spatial.transform import Rotation as R
 
 
 def image_augmenter(images, as_channels=False):
@@ -63,7 +64,7 @@ def dual_image_augmenter(images, collapsed_images, as_channels=False):
                 image = np.flip(image, 1)
             else:
                 image = np.flip(image, 0)
-            collapsed_image = np.flip(collapsed_image,0)
+            collapsed_image = np.flip(collapsed_image, 0)
         horz_val = np.random.rand()
         if horz_val < 0.5:
             # Flip horizontally
@@ -79,14 +80,14 @@ def dual_image_augmenter(images, collapsed_images, as_channels=False):
                 image = np.rot90(image, 1, axes=(1, 2))
             else:
                 image = np.rot90(image, 1, axes=(0, 1))
-            collapsed_image = np.rot90(collapsed_image, 1, axes=(0,1))
+            collapsed_image = np.rot90(collapsed_image, 1, axes=(0, 1))
         elif rot_val > 0.7:
             # Rotate 270 degrees
             if not as_channels:
                 image = np.rot90(image, 3, axes=(1, 2))
             else:
                 image = np.rot90(image, 3, axes=(0, 1))
-            collapsed_image = np.rot90(collapsed_image, 3, axes=(0,1))
+            collapsed_image = np.rot90(collapsed_image, 3, axes=(0, 1))
         new_images.append(image)
         new_collapsed_images.append(collapsed_image)
     collapsed_images = np.asarray(new_collapsed_images)
@@ -96,7 +97,6 @@ def dual_image_augmenter(images, collapsed_images, as_channels=False):
 
 def common_step(batch_images, positions=None, labels=None, proton_images=None, augment=True, swap=True, shape=None,
                 as_channels=False, return_collapsed=False, return_features=False):
-
     # Get the correct index for the collapsed and feature data if used
     if return_features and return_collapsed:
         feature_index = 1
@@ -113,7 +113,9 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
 
     if augment:
         if return_collapsed:
-            batch_images[0], batch_images[collapsed_index] = dual_image_augmenter(batch_images[0], batch_images[collapsed_index], as_channels)
+            batch_images[0], batch_images[collapsed_index] = dual_image_augmenter(batch_images[0],
+                                                                                  batch_images[collapsed_index],
+                                                                                  as_channels)
         elif return_features:
             batch_images[0] = image_augmenter(batch_images[0], as_channels)
         else:
@@ -121,7 +123,9 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
     if proton_images is not None:
         if augment:
             if return_collapsed:
-                proton_images[0], proton_images[collapsed_index] = dual_image_augmenter(proton_images[0], proton_images[collapsed_index], as_channels)
+                proton_images[0], proton_images[collapsed_index] = dual_image_augmenter(proton_images[0],
+                                                                                        proton_images[collapsed_index],
+                                                                                        as_channels)
             elif return_features:
                 proton_images[0] = image_augmenter(proton_images[0], as_channels)
             else:
@@ -138,11 +142,14 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
             batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
             batch_images[0] = np.concatenate([batch_images[0], proton_images[0]], axis=0)
             if return_features:
-                batch_images[feature_index] = np.concatenate([batch_images[feature_index], proton_images[feature_index]], axis=0)
-            batch_images[collapsed_index] = np.concatenate([batch_images[collapsed_index], proton_images[collapsed_index]], axis=0)
+                batch_images[feature_index] = np.concatenate(
+                    [batch_images[feature_index], proton_images[feature_index]], axis=0)
+            batch_images[collapsed_index] = np.concatenate(
+                [batch_images[collapsed_index], proton_images[collapsed_index]], axis=0)
         else:
             if return_features:
-                batch_images[feature_index] = np.concatenate([batch_images[feature_index], proton_images[feature_index]], axis=0)
+                batch_images[feature_index] = np.concatenate(
+                    [batch_images[feature_index], proton_images[feature_index]], axis=0)
                 labels = np.array([True] * (len(batch_images[0])) + [False] * len(proton_images[0]))
                 batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
                 batch_images[0] = np.concatenate([batch_images[0], proton_images[0]], axis=0)
@@ -152,13 +159,20 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
                 batch_images = np.concatenate([batch_images, proton_images], axis=0)
         if swap:
             if return_features and return_collapsed:
-                batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label)
+                batch_images[0], batch_images[feature_index], batch_images[
+                    collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index],
+                                                                  batch_images[collapsed_index], batch_image_label)
                 batch_image_label = [batch_image_label, batch_image_label, batch_image_label]
             elif return_features and not return_collapsed:
-                batch_images[0], batch_images[feature_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index], batch_image_label)
+                batch_images[0], batch_images[feature_index], batch_image_label = shuffle(batch_images[0],
+                                                                                          batch_images[feature_index],
+                                                                                          batch_image_label)
                 batch_image_label = [batch_image_label, batch_image_label]
             elif not return_features and return_collapsed:
-                batch_images[0], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[collapsed_index], batch_image_label)
+                batch_images[0], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0],
+                                                                                            batch_images[
+                                                                                                collapsed_index],
+                                                                                            batch_image_label)
                 batch_image_label = [batch_image_label, batch_image_label]
             else:
                 batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
@@ -183,13 +197,20 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
                 batch_images = batch_images.reshape(shape)
         if swap:
             if return_features and return_collapsed:
-                batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index], batch_images[collapsed_index], batch_image_label)
+                batch_images[0], batch_images[feature_index], batch_images[
+                    collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index],
+                                                                  batch_images[collapsed_index], batch_image_label)
                 batch_image_label = [batch_image_label, batch_image_label, batch_image_label]
             elif return_features and not return_collapsed:
-                batch_images[0], batch_images[feature_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index], batch_image_label)
+                batch_images[0], batch_images[feature_index], batch_image_label = shuffle(batch_images[0],
+                                                                                          batch_images[feature_index],
+                                                                                          batch_image_label)
                 batch_image_label = [batch_image_label, batch_image_label]
             elif not return_features and return_collapsed:
-                batch_images[0], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[collapsed_index], batch_image_label)
+                batch_images[0], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0],
+                                                                                            batch_images[
+                                                                                                collapsed_index],
+                                                                                            batch_image_label)
                 batch_image_label = [batch_image_label, batch_image_label]
             else:
                 batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
@@ -497,7 +518,34 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
                            as_channels=as_channels)
 
 
-def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augment=True, swap=False, return_features=False, feature_index=-99):
+def point_cloud_augmenter(point_cloud, rotate=True, jitter=None):
+    """
+    Augments point cloud directly. Can do so through rotation, jittering, and reflecting over the origin
+    :param jitter: The amount of jitter to use, if None or < 0.0, it is ignored. Else it determines the max jitter for each point
+    :param rotate: Whether to rotate the cloud or not. This goes over the range 0-360 degrees, along the z axis, so no time information is changed.
+    :param point_cloud: The point cloud representation of the photon stream.
+    :return:
+    """
+
+    if rotate:
+        rand_rot = R.from_euler("z", np.random.uniform(0.0,360.0), degrees=True)
+        point_cloud = rand_rot.apply(point_cloud)
+
+    if jitter is not None and jitter > 0.0:
+        tmp_cloud = []
+        for point in point_cloud:
+            # Only add jitter in the x, and y directions.
+            point[0] += np.random.uniform(-1.0,1.0)*jitter
+            point[1] += np.random.uniform(-1.0,1.0)*jitter
+            tmp_cloud.append(point)
+
+        point_cloud = np.asarray(tmp_cloud)
+
+    return point_cloud
+
+
+def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augment=True, swap=False,
+                             return_features=False, rotate=False, jitter=None, reflect=False, feature_index=-99):
     """
     Returns labels and images for point clouds. As point clouds need to be augmented differently than images, common_step does not work
 
@@ -511,24 +559,20 @@ def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augm
     """
 
     if augment:
-        # TODO Add point cloud augmenation here
         if return_features:
-            return NotImplementedError
-            gamma_clouds[0] = image_augmenter(gamma_clouds[0])
+            gamma_clouds[0] = point_cloud_augmenter(gamma_clouds[0], rotate=rotate, jitter=jitter, reflect=reflect)
         else:
-            return NotImplementedError
-            gamma_clouds = image_augmenter(gamma_clouds)
+            gamma_clouds = point_cloud_augmenter(gamma_clouds, rotate=rotate, jitter=jitter, reflect=reflect)
 
     if proton_clouds is not None:
         if augment:
             if return_features:
-                return NotImplementedError
-                proton_clouds[0] = image_augmenter(proton_clouds[0])
+                proton_clouds[0] = point_cloud_augmenter(proton_clouds[0])
             else:
-                return NotImplementedError
-                proton_clouds = image_augmenter(proton_clouds)
+                proton_clouds = point_cloud_augmenter(proton_clouds)
         if return_features:
-            gamma_clouds[feature_index] = np.concatenate([gamma_clouds[feature_index], proton_clouds[feature_index]], axis=0)
+            gamma_clouds[feature_index] = np.concatenate([gamma_clouds[feature_index], proton_clouds[feature_index]],
+                                                         axis=0)
             labels = np.array([True] * (len(gamma_clouds[0])) + [False] * len(proton_clouds[0]))
             batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
             gamma_clouds[0] = np.concatenate([gamma_clouds[0], proton_clouds[0]], axis=0)
@@ -538,7 +582,9 @@ def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augm
             gamma_clouds = np.concatenate([gamma_clouds, proton_clouds], axis=0)
         if swap:
             if return_features:
-                gamma_clouds[0], gamma_clouds[feature_index], batch_image_label = shuffle(gamma_clouds[0], gamma_clouds[feature_index], batch_image_label)
+                gamma_clouds[0], gamma_clouds[feature_index], batch_image_label = shuffle(gamma_clouds[0],
+                                                                                          gamma_clouds[feature_index],
+                                                                                          batch_image_label)
                 batch_image_label = [batch_image_label, batch_image_label]
             else:
                 gamma_clouds, batch_image_label = shuffle(gamma_clouds, batch_image_label)
@@ -552,7 +598,9 @@ def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augm
         batch_image_label = labels
         if swap:
             if return_features:
-                gamma_clouds[0], gamma_clouds[feature_index], batch_image_label = shuffle(gamma_clouds[0], gamma_clouds[feature_index], batch_image_label)
+                gamma_clouds[0], gamma_clouds[feature_index], batch_image_label = shuffle(gamma_clouds[0],
+                                                                                          gamma_clouds[feature_index],
+                                                                                          batch_image_label)
                 batch_image_label = [batch_image_label, batch_image_label]
             else:
                 gamma_clouds, batch_image_label = shuffle(gamma_clouds, batch_image_label)
@@ -564,7 +612,8 @@ def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augm
         return gamma_clouds, batch_image_label
 
 
-def augment_pointcloud_batch(images, proton_images=None, type_training=None, augment=False, swap=True, return_features=False):
+def augment_pointcloud_batch(images, proton_images=None, type_training=None, augment=False, swap=True,
+                             return_features=False, reflect=False, rotate=False, jitter=False):
     """
     This is for use with the eventfile_generator, given a set of Pointclouds, return the possibly augmented ones and labels
     :param images:
@@ -648,11 +697,12 @@ def augment_pointcloud_batch(images, proton_images=None, type_training=None, aug
 
         # Because most of the common_step is only relevant to image version, going without it here
         return point_cloud_augmentation(batch_images, proton_clouds=proton_images, labels=labels, augment=augment,
-                                        swap=swap, return_features=return_features, feature_index=feature_index)
+                                        swap=swap, return_features=return_features, feature_index=feature_index,
+                                        rotate=rotate, reflect=reflect, jitter=jitter)
     else:
         return point_cloud_augmentation(batch_images, proton_clouds=proton_images, labels=labels, augment=augment,
-                                        swap=swap, return_features=return_features, feature_index=feature_index)
-
+                                        swap=swap, return_features=return_features, feature_index=feature_index,
+                                        rotate=rotate, reflect=reflect, jitter=jitter)
 
 
 def augment_image_batch(images, proton_images=None, type_training=None, augment=False, swap=True, shape=None,
@@ -765,7 +815,8 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
             proton_images.append(collapsed_image)
 
         return common_step(batch_images, positions=None, labels=labels, proton_images=proton_images, augment=augment,
-                           swap=swap, shape=shape, as_channels=as_channels, return_features=return_features, return_collapsed=return_collapsed)
+                           swap=swap, shape=shape, as_channels=as_channels, return_features=return_features,
+                           return_collapsed=return_collapsed)
     else:
         return common_step(batch_images, positions=None, labels=labels, augment=augment, swap=swap, shape=shape,
                            as_channels=as_channels, return_collapsed=return_collapsed, return_features=return_features)
