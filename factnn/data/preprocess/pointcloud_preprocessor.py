@@ -4,6 +4,8 @@ import os
 import numpy as np
 from photon_stream.representations import list_of_lists_to_raw_phs, raw_phs_to_point_cloud
 from photon_stream.geometry import GEOMETRY
+from photon_stream.io.magic_constants import TIME_SLICE_DURATION_S
+
 
 class PointCloudPreprocessor(EventFilePreprocessor):
     """
@@ -45,12 +47,18 @@ class PointCloudPreprocessor(EventFilePreprocessor):
                             feature_list.append(features['width'])
                             feature_list.append(features['time_gradient'])
                             feature_list.append(features['number_photons'])
-                            feature_list.append(features['length']*features['width']*np.pi)
-                            feature_list.append(((features['length']*features['width']*np.pi)/np.log(features['number_photons'])**2))
-                            feature_list.append((features['number_photons'] / (features['length']*features['width']*np.pi)))
+                            feature_list.append(features['length'] * features['width'] * np.pi)
+                            feature_list.append(((features['length'] * features['width'] * np.pi) / np.log(
+                                features['number_photons']) ** 2))
+                            feature_list.append(
+                                (features['number_photons'] / (features['length'] * features['width'] * np.pi)))
+
+                    # Convert from timeslice to time
+                    self.end *= TIME_SLICE_DURATION_S
+                    self.start *= TIME_SLICE_DURATION_S
 
                     if truncate:
-                        self.end = self.start + self.shape[3]
+                        self.end = self.start + (self.shape[3]*TIME_SLICE_DURATION_S)
 
                     # Convert List of List to Point Cloud, then truncation is simply cutting in the z direction
                     event_photons = data[data_format["Image"]]
@@ -58,13 +66,20 @@ class PointCloudPreprocessor(EventFilePreprocessor):
                     point_cloud = np.asarray(raw_phs_to_point_cloud(event_photons,
                                                                     cx=GEOMETRY.x_angle,
                                                                     cy=GEOMETRY.y_angle))
-
+                    start_one = min(point_cloud[:,2])
+                    if start_one > self.start:
+                        diff = start_one - self.start
+                        self.start += diff
+                        self.end += diff
+                    #print("Min: {} Max: {}".format(min(point_cloud[:,2]), max(point_cloud[:,2])))
+                    #print("Min: {} Max: {}".format(self.start, self.end))
                     # Now in point cloud format, truncation is just cutting off in z now
-                    mask = (point_cloud[:,2] <= self.end) & (point_cloud[:,2] >= self.start)
+                    mask = (point_cloud[:, 2] <= self.end) & (point_cloud[:, 2] >= self.start)
+                    # TODO Move around if no pixels contained
                     point_cloud = point_cloud[mask]
 
                     # Now have to subsample (or resample) points
-                    # Replacement has to be used if there are less points than final_points
+                    # Replacement has to be used if there are less points than final_points photons available
                     if replacement or point_cloud.shape[0] < final_points:
                         point_indicies = np.random.choice(point_cloud.shape[0], final_points, replace=True)
                     else:
@@ -82,7 +97,7 @@ class PointCloudPreprocessor(EventFilePreprocessor):
         return all_data
 
     def event_file_processor(self, filepath, final_points=1024, replacement=False, truncate=False,
-                             return_features=False,):
+                             return_features=False, ):
 
         with open(filepath, "rb") as pickled_event:
             data, data_format, features, feature_cluster = pickle.load(pickled_event)
@@ -98,12 +113,16 @@ class PointCloudPreprocessor(EventFilePreprocessor):
                     feature_list.append(features['width'])
                     feature_list.append(features['time_gradient'])
                     feature_list.append(features['number_photons'])
-                    feature_list.append(features['length']*features['width']*np.pi)
-                    feature_list.append(((features['length']*features['width']*np.pi)/np.log(features['number_photons'])**2))
-                    feature_list.append((features['number_photons'] / (features['length']*features['width']*np.pi)))
+                    feature_list.append(features['length'] * features['width'] * np.pi)
+                    feature_list.append(
+                        ((features['length'] * features['width'] * np.pi) / np.log(features['number_photons']) ** 2))
+                    feature_list.append((features['number_photons'] / (features['length'] * features['width'] * np.pi)))
 
+            # Convert from timeslice to time
+            self.end *= TIME_SLICE_DURATION_S
+            self.start *= TIME_SLICE_DURATION_S
             if truncate:
-                self.end = self.start + self.shape[3]
+                self.end = self.start + (self.shape[3]*TIME_SLICE_DURATION_S)
 
             # Convert List of List to Point Cloud, then truncation is simply cutting in the z direction
             event_photons = data[data_format["Image"]]
@@ -113,7 +132,7 @@ class PointCloudPreprocessor(EventFilePreprocessor):
                                                             cy=GEOMETRY.y_angle))
 
             # Now in point cloud format, truncation is just cutting off in z now
-            mask = (point_cloud[:,2] <= self.end) & (point_cloud[:,2] >= self.start)
+            mask = (point_cloud[:, 2] <= self.end) & (point_cloud[:, 2] >= self.start)
             point_cloud = point_cloud[mask]
 
             # Now have to subsample (or resample) points

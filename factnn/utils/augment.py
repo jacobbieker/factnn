@@ -518,35 +518,38 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
                            as_channels=as_channels)
 
 
-def point_cloud_augmenter(point_cloud, rotate=True, jitter=None):
+def point_cloud_augmenter(point_clouds, rotate=True, jitter=None):
     """
     Augments point cloud directly. Can do so through rotation, jittering, and reflecting over the origin
     :param jitter: The amount of jitter to use, if None or < 0.0, it is ignored. Else it determines the max jitter for each point
     :param rotate: Whether to rotate the cloud or not. This goes over the range 0-360 degrees, along the z axis, so no time information is changed.
-    :param point_cloud: The point cloud representation of the photon stream.
+    :param point_clouds: The point cloud representation of the photon stream.
     :return:
     """
+    tmp_clouds = []
+    for point_cloud in point_clouds:
+        if rotate:
+            rand_rot = R.from_euler("z", np.random.uniform(0.0,360.0), degrees=True)
+            point_cloud = rand_rot.apply(point_cloud)
 
-    if rotate:
-        rand_rot = R.from_euler("z", np.random.uniform(0.0,360.0), degrees=True)
-        point_cloud = rand_rot.apply(point_cloud)
+        if jitter is not None and jitter > 0.0:
+            tmp_cloud = []
+            for point in point_cloud:
+                # Only add jitter in the x, and y directions.
+                point[0] += np.random.uniform(-1.0,1.0)*jitter
+                point[1] += np.random.uniform(-1.0,1.0)*jitter
+                # Since point[1] is the y coordinate, in radians, should stay between 0 and 2pi, works for non-crazy jitters
+                if point[1] >= 2*np.pi:
+                    point[1] -= 2*np.pi
+                elif point[1] < 0.0:
+                    point[1] += 2*np.pi
+                tmp_cloud.append(point)
 
-    if jitter is not None and jitter > 0.0:
-        tmp_cloud = []
-        for point in point_cloud:
-            # Only add jitter in the x, and y directions.
-            point[0] += np.random.uniform(-1.0,1.0)*jitter
-            point[1] += np.random.uniform(-1.0,1.0)*jitter
-            # Since point[1] is the y coordinate, in radians, should stay between 0 and 2pi, works for non-crazy jitters
-            if point[1] >= 2*np.pi:
-                point[1] -= 2*np.pi
-            elif point[1] < 0.0:
-                point[1] += 2*np.pi
-            tmp_cloud.append(point)
+            point_cloud = np.asarray(tmp_cloud)
+        tmp_clouds.append(point_cloud)
+    point_clouds = np.asarray(tmp_clouds)
 
-        point_cloud = np.asarray(tmp_cloud)
-
-    return point_cloud
+    return point_clouds
 
 
 def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augment=True, swap=False,
