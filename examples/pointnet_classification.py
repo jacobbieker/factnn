@@ -1,8 +1,10 @@
 import keras
 from keras.optimizers import adam
 import sys
-
+sys.path.extend(['/fact'])
 sys.path.insert(0, './')
+
+from factnn.layers.layers import Pointnet_SA, Pointnet_SA_MSG
 
 import tensorflow as tf
 from tensorflow.keras import Model
@@ -10,9 +12,6 @@ from tensorflow.keras.layers import Dense, Dropout, BatchNormalization
 
 from factnn.generator.keras.pointcloud_generator import PointCloudGenerator
 from factnn.data.preprocess.pointcloud_preprocessor import PointCloudPreprocessor
-from factnn.utils.cross_validate import fit_model
-
-from .pnet2_layers.layers import Pointnet_SA, Pointnet_SA_MSG, Pointnet_FP
 
 directory = "/home/jacob/"
 gamma_dir = [directory + "gammaFeature/core5/"]
@@ -62,7 +61,7 @@ proton_val_preprocessor = PointCloudPreprocessor(config=proton_configuration)
 proton_configuration["paths"] = test_p_paths
 proton_test_preprocessor = PointCloudPreprocessor(config=proton_configuration)
 
-final_points = 1024
+final_points = 2048
 
 train = PointCloudGenerator(train_paths, batch_size=16, preprocessor=gamma_train_preprocessor,
                             proton_paths=train_p_paths,
