@@ -92,19 +92,19 @@ def transform_net(inputs, scope=None, regularize=False):
         k = input_shape[-1]
         num_points = input_shape[-2]
 
-        net = conv1d_bn(inputs, num_filters=64, kernel_size=1, padding='valid',
+        net = conv1d_bn(inputs, num_filters=128, kernel_size=1, padding='valid',
                         use_bias=True, scope='tconv1')
-        net = conv1d_bn(net, num_filters=128, kernel_size=1, padding='valid',
+        net = conv1d_bn(net, num_filters=256, kernel_size=1, padding='valid',
                         use_bias=True, scope='tconv2')
-        net = conv1d_bn(net, num_filters=1024, kernel_size=1, padding='valid',
+        net = conv1d_bn(net, num_filters=2048, kernel_size=1, padding='valid',
                         use_bias=True, scope='tconv3')
 
         #  Done in 2D since 1D is painfully slow
         net = MaxPooling2D(pool_size=(num_points, 1), padding='valid')(Lambda(K.expand_dims)(net))
         net = Flatten()(net)
 
-        net = dense_bn(net, units=512, scope='tfc1', activation='relu')
-        net = dense_bn(net, units=256, scope='tfc2', activation='relu')
+        net = dense_bn(net, units=1024, scope='tfc1', activation='relu')
+        net = dense_bn(net, units=512, scope='tfc2', activation='relu')
 
         transform = Dense(units=k * k,
                           kernel_initializer='zeros', bias_initializer=Constant(np.eye(k).flatten()),
@@ -128,9 +128,9 @@ def pointnet_base(inputs, use_tnet=True):
         point_cloud_transformed = Dot(axes=(2, 1))([inputs, ptransform])
 
     # First block of convolutions
-    net = conv1d_bn(point_cloud_transformed if use_tnet else inputs, num_filters=64, kernel_size=1, padding='valid',
+    net = conv1d_bn(point_cloud_transformed if use_tnet else inputs, num_filters=128, kernel_size=1, padding='valid',
                     use_bias=True, scope='conv1')
-    net = conv1d_bn(net, num_filters=64, kernel_size=1, padding='valid',
+    net = conv1d_bn(net, num_filters=128, kernel_size=1, padding='valid',
                     use_bias=True, scope='conv2')
 
     # Obtain feature transform and apply it to the network
@@ -141,9 +141,9 @@ def pointnet_base(inputs, use_tnet=True):
     # Second block of convolutions
     net = conv1d_bn(net_transformed if use_tnet else net, num_filters=64, kernel_size=1, padding='valid',
                     use_bias=True, scope='conv3')
-    net = conv1d_bn(net, num_filters=128, kernel_size=1, padding='valid',
+    net = conv1d_bn(net, num_filters=256, kernel_size=1, padding='valid',
                     use_bias=True, scope='conv4')
-    net = conv1d_bn(net, num_filters=1024, kernel_size=1, padding='valid',
+    net = conv1d_bn(net, num_filters=2048, kernel_size=1, padding='valid',
                     use_bias=True, scope='conv5')
 
     return net
@@ -189,16 +189,16 @@ def pointnet_cls(include_top=True, weights=None, input_shape=(2048, 3),
         net = Flatten()(net)
         if isinstance(classes, dict):
             # Disjoint stacks of fc layers, one per value in dict
-            net = [dense_bn(net, units=512, scope=r + '_fc1', activation='relu') for r in classes]
+            net = [dense_bn(net, units=1024, scope=r + '_fc1', activation='relu') for r in classes]
             net = [Dropout(0.3, name=r + '_dp1')(n) for r, n in zip(classes, net)]
-            net = [dense_bn(n, units=256, scope=r + '_fc2', activation='relu') for r, n in zip(classes, net)]
+            net = [dense_bn(n, units=512, scope=r + '_fc2', activation='relu') for r, n in zip(classes, net)]
             net = [Dropout(0.3, name=r + '_dp2')(n) for r, n in zip(classes, net)]
             net = [Dense(units=classes[r], activation=activation, name=r)(n) for r, n in zip(classes, net)]
         else:
             # Fully connected layers for a single classification task
-            net = dense_bn(net, units=512, scope='fc1', activation='relu')
+            net = dense_bn(net, units=1024, scope='fc1', activation='relu')
             net = Dropout(0.3, name='dp1')(net)
-            net = dense_bn(net, units=256, scope='fc2', activation='relu')
+            net = dense_bn(net, units=512, scope='fc2', activation='relu')
             net = Dropout(0.3, name='dp2')(net)
             net = Dense(units=classes, name='fc3', activation=activation)(net)
     else:
@@ -221,9 +221,9 @@ def pointnet_cls(include_top=True, weights=None, input_shape=(2048, 3),
     return model
 
 
-directory = "/home/jacob/jacob@bieker.us/FACT_events/"
-gamma_dir = [directory + "gammaFeature/clump5/"]
-proton_dir = [directory + "protonFeature/clump5/"]
+directory = "/home/jacob/"
+gamma_dir = [directory + "gammaFeature/core5/"]
+proton_dir = [directory + "protonFeature/core5/"]
 import os
 
 paths = []
@@ -231,7 +231,7 @@ for source_dir in gamma_dir:
     for root, dirs, files in os.walk(source_dir):
         for file in files:
             paths.append(os.path.join(root, file))
-
+paths = paths#[:5000]
 train_paths = paths[:int(.6 * len(paths))]
 val_paths = paths[int(.6 * len(paths)):int(.8 * len(paths))]
 test_paths = paths[int(.8 * len(paths)):]
@@ -241,7 +241,7 @@ for source_dir in proton_dir:
     for root, dirs, files in os.walk(source_dir):
         for file in files:
             proton_paths.append(os.path.join(root, file))
-
+proton_paths = proton_paths#[:5000]
 train_p_paths = paths[:int(.6 * len(proton_paths))]
 val_p_paths = paths[int(.6 * len(proton_paths)):int(.8 * len(proton_paths))]
 test_p_paths = paths[int(.8 * len(proton_paths)):]
@@ -249,12 +249,12 @@ test_p_paths = paths[int(.8 * len(proton_paths)):]
 gamma_configuration = {
     'paths': train_paths,
     'rebin_size': 5,
-    'shape': (30,100)
+    'shape': (0,160)
 }
 proton_configuration = {
     'paths': train_p_paths,
     'rebin_size': 5,
-    'shape': (30,100)
+    'shape': (0,160)
 }
 
 gamma_train_preprocessor = PointCloudPreprocessor(config=gamma_configuration)
@@ -269,12 +269,12 @@ proton_val_preprocessor = PointCloudPreprocessor(config=proton_configuration)
 proton_configuration["paths"] = test_p_paths
 proton_test_preprocessor = PointCloudPreprocessor(config=proton_configuration)
 
-final_points=2048
+final_points=1024
 
 train = PointCloudGenerator(train_paths, batch_size=16, preprocessor=gamma_train_preprocessor,
                             proton_paths=train_p_paths,
                             proton_preprocessor=proton_train_preprocessor,
-                            slices=(35, 65),
+                            slices=(0, 160),
                             final_points=final_points,
                             replacement=False,
                             augment=True,
@@ -286,7 +286,7 @@ train = PointCloudGenerator(train_paths, batch_size=16, preprocessor=gamma_train
 val = PointCloudGenerator(val_paths, batch_size=16, preprocessor=gamma_val_preprocessor,
                           proton_paths=val_p_paths,
                           proton_preprocessor=proton_val_preprocessor,
-                          slices=(35, 65),
+                          slices=(0, 160),
                           final_points=final_points,
                           replacement=False,
                           augment=False,
@@ -295,8 +295,9 @@ val = PointCloudGenerator(val_paths, batch_size=16, preprocessor=gamma_val_prepr
                           return_features=False,
                           rotate=True, )
 
-model = pointnet_cls(input_shape=(final_points, 3), classes=2, activation='softmax')
+model = pointnet_cls(input_shape=(final_points, 3), classes=2, use_tnet=True, activation='softmax')
 loss = 'binary_crossentropy'
+#loss = "mean_squared_error"
 metric = ['accuracy']
 monitor = 'val_loss'
 
@@ -305,12 +306,12 @@ callbacks = list()
 callbacks.append(keras.callbacks.TensorBoard(log_dir="./", histogram_freq=0, write_graph=True))
 callbacks.append(
     keras.callbacks.ReduceLROnPlateau(monitor=monitor, factor=0.5, patience=5, verbose=1, min_lr=1e-10))
-callbacks.append(keras.callbacks.EarlyStopping(monitor=monitor, patience=10))
+callbacks.append(keras.callbacks.EarlyStopping(monitor=monitor, patience=20))
 callbacks.append(keras.callbacks.TerminateOnNaN())
 
 #callbacks.append(keras.callbacks.ModelCheckpoint(weights_path, monitor=monitor, verbose=0, save_best_only=True,
 #
-optimizer = adam(lr=3e-4)
+optimizer = adam(lr=0.001)
 model.compile(loss=loss, optimizer=optimizer, metrics=metric)
 
 model.summary()
@@ -318,10 +319,10 @@ model.summary()
 model.fit_generator(
     generator=train,
     epochs=500,
-    verbose=1,
+    verbose=2,
     validation_data=val,
     callbacks=callbacks,
-    use_multiprocessing=False,
-    workers=1,
-    max_queue_size=200,
+    use_multiprocessing=True,
+    workers=12,
+    max_queue_size=400,
 )

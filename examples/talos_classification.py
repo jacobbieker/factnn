@@ -100,7 +100,7 @@ gamma_dir = [directory + "gammaFeature/no_clean/"]
 proton_dir = [directory + "protonFeature/no_clean/"]
 
 x, y = get_chunk_of_data(directory=gamma_dir, proton_directory=proton_dir, indicies=(30, 129, 5), rebin=75,
-                         chunk_size=1000)
+                         chunk_size=5000)
 print("Got data")
 print("X Shape", x.shape)
 print("Y Shape", y.shape)

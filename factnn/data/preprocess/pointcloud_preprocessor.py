@@ -74,9 +74,12 @@ class PointCloudPreprocessor(EventFilePreprocessor):
                     #print("Min: {} Max: {}".format(min(point_cloud[:,2]), max(point_cloud[:,2])))
                     #print("Min: {} Max: {}".format(self.start, self.end))
                     # Now in point cloud format, truncation is just cutting off in z now
-                    mask = (point_cloud[:, 2] <= self.end) & (point_cloud[:, 2] >= self.start)
+                    #print("Num Points Before Mask: {}".format(len(point_cloud)))
+                    #mask = (point_cloud[:, 2] <= self.end) & (point_cloud[:, 2] >= self.start)
                     # TODO Move around if no pixels contained
-                    point_cloud = point_cloud[mask]
+                    # TODO mask seems to be off slightly
+                    #point_cloud = point_cloud[mask]
+                    #print("Num Points: {}".format(len(point_cloud)))
 
                     # Now have to subsample (or resample) points
                     # Replacement has to be used if there are less points than final_points photons available
