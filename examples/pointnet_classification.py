@@ -1,8 +1,7 @@
-import keras
-from keras.optimizers import adam
+import tensorflow.keras
+from tensorflow.keras.optimizers import Adam
 import sys
 sys.path.extend(['/fact'])
-sys.path.insert(0, './')
 
 from factnn.layers.layers import Pointnet_SA, Pointnet_SA_MSG
 
@@ -169,6 +168,7 @@ class CLS_MSG_Model(Model):
 
 
 model = CLS_MSG_Model(16, final_points, 2, False)
+model.build(input_shape=(16, final_points, 3))
 loss = 'binary_crossentropy'
 # loss = "mean_squared_error"
 metric = ['accuracy']
@@ -176,15 +176,15 @@ monitor = 'val_loss'
 
 # tensorboard and weights saving callbacks
 callbacks = list()
-callbacks.append(keras.callbacks.TensorBoard(log_dir="./", histogram_freq=0, write_graph=True))
+callbacks.append(tf.keras.callbacks.TensorBoard(log_dir="./", histogram_freq=0, write_graph=True))
 callbacks.append(
-    keras.callbacks.ReduceLROnPlateau(monitor=monitor, factor=0.5, patience=5, verbose=1, min_lr=1e-10))
-callbacks.append(keras.callbacks.EarlyStopping(monitor=monitor, patience=20))
-callbacks.append(keras.callbacks.TerminateOnNaN())
+    tf.keras.callbacks.ReduceLROnPlateau(monitor=monitor, factor=0.5, patience=5, verbose=1, min_lr=1e-10))
+callbacks.append(tf.keras.callbacks.EarlyStopping(monitor=monitor, patience=20))
+callbacks.append(tf.keras.callbacks.TerminateOnNaN())
 
 # callbacks.append(keras.callbacks.ModelCheckpoint(weights_path, monitor=monitor, verbose=0, save_best_only=True,
 #
-optimizer = adam(lr=0.001)
+optimizer = Adam(lr=0.001)
 model.compile(loss=loss, optimizer=optimizer, metrics=metric)
 
 model.summary()
