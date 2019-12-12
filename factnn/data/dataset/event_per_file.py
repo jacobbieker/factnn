@@ -9,10 +9,6 @@ import os
 from multiprocessing import Pool
 from functools import partial
 
-shape = [30, 70]
-rebin_size = 5
-
-
 def process_diffuse_gamma_files(data_dir="", output_dir="", clump_size=5, num_workers=12, hdf_file="../gamma.hdf5",
                                 gamma_dl2="../gamma_simulations_diffuse_facttools_dl2.hdf5"):
     # Get paths from the directories
@@ -27,7 +23,7 @@ def process_diffuse_gamma_files(data_dir="", output_dir="", clump_size=5, num_wo
         gamma_configuration = {
             'rebin_size': 5,
             'output_file': hdf_file,
-            'shape': shape,
+            'shape': [30, 70],
             'paths': [path],
             'dl2_file': gamma_dl2
         }
@@ -58,7 +54,7 @@ def process_gamma_files(data_dir="", output_dir="", clump_size=5, num_workers=12
         gamma_configuration = {
             'rebin_size': 5,
             'output_file': hdf_file,
-            'shape': shape,
+            'shape': [30, 70],
             'paths': [path]
         }
 
@@ -84,9 +80,9 @@ def process_proton_files(data_dir="", output_dir="", clump_size=5, num_workers=1
 
     def process_proton(clump_size, path):
         proton_configuration = {
-            'rebin_size': rebin_size,
+            'rebin_size': 5,
             'output_file': hdf_file,
-            'shape': shape,
+            'shape': [30, 70],
             'paths': [path],
         }
 
