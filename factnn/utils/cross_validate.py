@@ -1,10 +1,12 @@
+import os
+
 import numpy as np
+import tensorflow.keras
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.utils import shuffle
-import keras
+
 from ..data.preprocess.eventfile_preprocessor import EventFilePreprocessor
 from ..generator.keras.eventfile_generator import EventFileGenerator
-import os
 
 
 def split_data(indicies, kfolds, seed=None):
@@ -166,11 +168,11 @@ def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_t
 
 
 def fit_model(model, train_gen, val_gen, workers=10, verbose=1):
-    early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
-                                               patience=5,
-                                               verbose=0, mode='auto',
-                                               restore_best_weights=True)
-    nan_stop = keras.callbacks.TerminateOnNaN()
+    early_stop = tensorflow.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
+                                                          patience=5,
+                                                          verbose=0, mode='auto',
+                                                          restore_best_weights=True)
+    nan_stop = tensorflow.keras.callbacks.TerminateOnNaN()
 
     model.fit_generator(
         generator=train_gen,
@@ -211,7 +213,6 @@ def get_data_generators(directory, proton_directory="", indicies=(30,129,3),
     :param as_channels:
     :param model_type:
     :param normalize:
-    :param chunk_size:
     :param truncate:
     :param dynamic_resize:
     :param equal_slices:

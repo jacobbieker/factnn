@@ -1,11 +1,12 @@
 import numpy as np
-from keras.utils import Sequence
 from sklearn.utils import shuffle
+from tensorflow.keras.utils import Sequence
+
 
 class BaseSequence(Sequence):
 
     def __init__(self, paths, num_elements, batch_size, preprocessor=None, proton_preprocessor=None, as_channels=False,
-                 final_slices=5, slices=(30,70), augment=False):
+                 final_slices=5, slices=(30, 70), augment=False):
         """
         Idea for this is to be simpler than the base_generator, less options and less have everything and the kitchen sink
         Instead, each BaseSequence will do one thing, given the paths assigned to it, take a uniform sample of the images in each file,

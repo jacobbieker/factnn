@@ -1,6 +1,7 @@
 import numpy as np
-from keras.utils import Sequence
 from sklearn.utils import shuffle
+from tensorflow.keras.utils import Sequence
+
 from factnn.utils.augment import augment_image_batch
 
 
@@ -9,7 +10,8 @@ class EventFileGenerator(Sequence):
     def __init__(self, paths, batch_size, preprocessor=None, proton_preprocessor=None, proton_paths=None,
                  as_channels=False,
                  final_slices=5, slices=(30, 70), augment=False, training_type=None,
-                 normalize=False, truncate=True, dynamic_resize=True, equal_slices=False, return_collapsed=False, return_features=False):
+                 normalize=False, truncate=True, dynamic_resize=True, equal_slices=False, return_collapsed=False,
+                 return_features=False):
         self.paths = paths
         self.batch_size = batch_size
         self.preprocessor = preprocessor

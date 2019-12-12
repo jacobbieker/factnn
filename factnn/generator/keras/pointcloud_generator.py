@@ -1,6 +1,7 @@
 import numpy as np
-from keras.utils import Sequence
 from sklearn.utils import shuffle
+from tensorflow.keras.utils import Sequence
+
 from factnn.utils.augment import augment_pointcloud_batch
 
 

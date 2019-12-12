@@ -6,7 +6,6 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from factnn import ProtonPreprocessor, GammaPreprocessor, GammaDiffusePreprocessor
 import os
 
-import multiprocessing
 from multiprocessing import Pool
 from functools import partial
 
