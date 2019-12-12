@@ -1,5 +1,5 @@
-from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D
-from keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D
+from tensorflow.keras.models import Sequential
 
 from factnn.models.base_model import BaseModel
 

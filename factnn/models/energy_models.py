@@ -1,5 +1,5 @@
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D, BatchNormalization
+from tensorflow.keras.layers import Dense, Dropout, Flatten, ConvLSTM2D, Conv3D, MaxPooling3D
+from tensorflow.keras.models import Sequential
 
 from factnn.models.base_model import BaseModel
 
@@ -8,7 +8,7 @@ def r2(y_true, y_pred):
     from keras import backend as K
     SS_res = K.sum(K.square(y_true - y_pred))
     SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
-    return -1.*(1 - SS_res / (SS_tot + K.epsilon()))
+    return -1. * (1 - SS_res / (SS_tot + K.epsilon()))
 
 
 class EnergyModel(BaseModel):

@@ -1,6 +1,6 @@
 import h5py
-import keras
 import numpy as np
+import tensorflow.keras as keras
 
 
 def print_structure(weight_file_path):
