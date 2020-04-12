@@ -11,4 +11,7 @@ pip install git+https://github.com/fact-project/photon_stream.git
 pip install git+https://github.com/relleums/phs_air_shower_feature_generation.git
 pyfact>=0.20.1
 scipy >= 1.1.0
-tensorflow>=2.0.0
+tensorflow>=2.1.0
+keras
+keras-tuner
+autokeras
