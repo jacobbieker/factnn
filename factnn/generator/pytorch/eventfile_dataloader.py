@@ -41,19 +41,18 @@ class EventFileDataset(Dataset):
                                                                     cx=GEOMETRY.x_angle,
                                                                     cy=GEOMETRY.y_angle))
                     # Read data from `raw_path`.
-                    print(point_cloud.shape)
                     data = Data(pos=point_cloud)  # Just need x,y,z ignore derived features, padding would in dataloader
                     if "gamma" in raw_path:
                         data.event_type = torch.tensor(0, dtype=torch.int8)
                     elif "proton" in raw_path:
                         data.event_type = torch.tensor(1, dtype=torch.int8)
-                    data.energy = torch.tensor(data_format["Energy"], dtype=torch.float)
-                    data.disp = torch.tensor(euclidean_distance(data_format['Source_X'], data_format['Source_Y'],
-                                                                data_format['COG_X'], data_format['COG_Y']),
+                    data.energy = torch.tensor(data[data_format["Energy"]], dtype=torch.float)
+                    data.disp = torch.tensor(euclidean_distance(data[data_format['Source_X']], data[data_format['Source_Y']],
+                                                                data[data_format['COG_X']], data[data_format['COG_Y']]),
                                              dtype=torch.float16)
-                    data.sign = torch.tensor(true_sign(data_format['Source_X'], data_format['Source_Y'],
-                                                       data_format['COG_X'], data_format['COG_Y'],
-                                                       data_format['Delta']), dtype=torch.uint8)
+                    data.sign = torch.tensor(true_sign(data[data_format['Source_X']], data[data_format['Source_Y']],
+                                                       data[data_format['COG_X']], data[data_format['COG_Y']],
+                                                       data[data_format['Delta']]), dtype=torch.uint8)
 
                     if self.pre_filter is not None and not self.pre_filter(data):
                         continue
