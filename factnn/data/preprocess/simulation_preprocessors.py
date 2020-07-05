@@ -588,92 +588,92 @@ class GammaDiffusePreprocessor(BasePreprocessor):
         for index, file in enumerate(self.paths):
             mc_truth = file.split(".phs")[0] + ".ch.gz"
             file_name = file.split("/")[-1].split(".phs")[0]
-            #try:
-            sim_reader = ps.SimulationReader(
-                photon_stream_path=file,
-                mmcs_corsika_path=mc_truth
-            )
-            counter = 0
-            for event in sim_reader:
-                df_event = self.dl2_file.loc[(np.isclose(self.dl2_file['corsika_event_header_total_energy'],
-                                                         event.simulation_truth.air_shower.energy)) &
-                                             (self.dl2_file['run_id'] == event.simulation_truth.run)]
-                counter += 1
-                if not df_event.empty:
-
-                    if os.path.isfile(os.path.join(directory, "clump"+str(clump_size), str(file_name) + "_" + str(counter))) \
-                            and os.path.isfile(os.path.join(directory, "core"+str(clump_size), str(file_name) + "_" + str(counter))):
-                        print("True: " + str(file_name) + "_" + str(counter))
-                        continue
-
-                    if clean_images:
-                        all_photons, clump_photons, core_photons = self.clean_image(event, only_core=only_core,min_samples=clump_size)
-                        if core_photons is None:
-                            print("No Clumps, skip")
+            try:
+                sim_reader = ps.SimulationReader(
+                    photon_stream_path=file,
+                    mmcs_corsika_path=mc_truth
+                )
+                counter = 0
+                for event in sim_reader:
+                    print(f"Event Count: {counter}")
+                    df_event = self.dl2_file.loc[(np.isclose(self.dl2_file['corsika_event_header_total_energy'],
+                                                             event.simulation_truth.air_shower.energy)) &
+                                                 (self.dl2_file['run_id'] == event.simulation_truth.run)]
+                    counter += 1
+                    if not df_event.empty:
+                        if os.path.isfile(os.path.join(directory, "clump"+str(clump_size), str(file_name) + "_" + str(counter))) \
+                                and os.path.isfile(os.path.join(directory, "core"+str(clump_size), str(file_name) + "_" + str(counter))):
+                            print("True: " + str(file_name) + "_" + str(counter))
                             continue
-                        else:
-                            for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}.items():
-                                event.photon_stream.raw = photon_set
-                                # Now extract parameters from the available photons and save them to a file
-                                features = extract_single_simulation_features(event, min_samples=1)
-                                # In the event chosen from the file
-                                # Each event is the same as each line below
-                                cog_x = df_event['cog_x'].values[0]
-                                cog_y = df_event['cog_y'].values[0]
-                                act_sky_source_zero = df_event['source_position_x'].values[0]
-                                act_sky_source_one = df_event['source_position_y'].values[0]
-                                event_photons = event.photon_stream.list_of_lists
-                                zd_deg = event.zd
-                                az_deg = event.az
-                                delta = df_event['delta'].values[0]
-                                energy = event.simulation_truth.air_shower.energy
-                                sky_source_zd = df_event['source_position_zd'].values[0]
-                                sky_source_az = df_event['source_position_az'].values[0]
-                                zd_deg1 = df_event['aux_pointing_position_az'].values[0]
-                                az_deg1 = df_event['aux_pointing_position_zd'].values[0]
-                                data_dict = [[event_photons, act_sky_source_zero, act_sky_source_one,
-                                              cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
-                                              energy, zd_deg1, az_deg1],
-                                             {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5,
-                                              'Az_Deg': 6,
-                                              'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11,
-                                              'Pointing_Az': 12}, features]
-                                if key != "no_clean":
-                                    with open(os.path.join(directory, key+str(clump_size), str(file_name) + "_" + str(counter)), "wb") as event_file:
-                                        pickle.dump(data_dict, event_file)
-                                else:
-                                    if not os.path.isfile(os.path.join(directory, key, str(file_name) + "_" + str(counter))):
-                                        with open(os.path.join(directory, key, str(file_name) + "_" + str(counter)), "wb") as event_file:
+
+                        if clean_images:
+                            all_photons, clump_photons, core_photons, dbscan = self.clean_image(event, only_core=only_core,min_samples=clump_size)
+                            if core_photons is None:
+                                print("No Clumps, skip")
+                                continue
+                            else:
+                                for key, photon_set in {"no_clean": all_photons, "clump": clump_photons, "core": core_photons}.items():
+                                    event.photon_stream.raw = photon_set
+                                    # Now extract parameters from the available photons and save them to a file
+                                    features = extract_single_simulation_features(event, min_samples=1)
+                                    # In the event chosen from the file
+                                    # Each event is the same as each line below
+                                    cog_x = df_event['cog_x'].values[0]
+                                    cog_y = df_event['cog_y'].values[0]
+                                    act_sky_source_zero = df_event['source_position_x'].values[0]
+                                    act_sky_source_one = df_event['source_position_y'].values[0]
+                                    event_photons = event.photon_stream.list_of_lists
+                                    zd_deg = event.zd
+                                    az_deg = event.az
+                                    delta = df_event['delta'].values[0]
+                                    energy = event.simulation_truth.air_shower.energy
+                                    sky_source_zd = df_event['source_position_zd'].values[0]
+                                    sky_source_az = df_event['source_position_az'].values[0]
+                                    zd_deg1 = df_event['aux_pointing_position_az'].values[0]
+                                    az_deg1 = df_event['aux_pointing_position_zd'].values[0]
+                                    data_dict = [[event_photons, act_sky_source_zero, act_sky_source_one,
+                                                  cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
+                                                  energy, zd_deg1, az_deg1],
+                                                 {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5,
+                                                  'Az_Deg': 6,
+                                                  'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11,
+                                                  'Pointing_Az': 12}, features]
+                                    if key != "no_clean":
+                                        with open(os.path.join(directory, key+str(clump_size), str(file_name) + "_" + str(counter)), "wb") as event_file:
                                             pickle.dump(data_dict, event_file)
-                    else:
-                        # In the event chosen from the file
-                        # Each event is the same as each line below
-                        features = extract_single_simulation_features(event)
-                        cog_x = df_event['cog_x'].values[0]
-                        cog_y = df_event['cog_y'].values[0]
-                        act_sky_source_zero = df_event['source_position_x'].values[0]
-                        act_sky_source_one = df_event['source_position_y'].values[0]
-                        event_photons = event.photon_stream.list_of_lists
-                        zd_deg = event.zd
-                        az_deg = event.az
-                        delta = df_event['delta'].values[0]
-                        energy = event.simulation_truth.air_shower.energy
-                        sky_source_zd = df_event['source_position_zd'].values[0]
-                        sky_source_az = df_event['source_position_az'].values[0]
-                        zd_deg1 = df_event['aux_pointing_position_az'].values[0]
-                        az_deg1 = df_event['aux_pointing_position_zd'].values[0]
-                        data_dict = [[event_photons, act_sky_source_zero, act_sky_source_one,
-                                      cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
-                                      energy, zd_deg1, az_deg1],
-                                     {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5,
-                                      'Az_Deg': 6,
-                                      'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11,
-                                      'Pointing_Az': 12}, features]
-                        with open(os.path.join(directory, str(file_name) + "_" + str(counter)), "wb") as event_file:
-                            pickle.dump(data_dict, event_file)
-            #except Exception as e:
-            #    print(str(e))
-            #    pass
+                                    else:
+                                        if not os.path.isfile(os.path.join(directory, key, str(file_name) + "_" + str(counter))):
+                                            with open(os.path.join(directory, key, str(file_name) + "_" + str(counter)), "wb") as event_file:
+                                                pickle.dump(data_dict, event_file)
+                        else:
+                            # In the event chosen from the file
+                            # Each event is the same as each line below
+                            features = extract_single_simulation_features(event)
+                            cog_x = df_event['cog_x'].values[0]
+                            cog_y = df_event['cog_y'].values[0]
+                            act_sky_source_zero = df_event['source_position_x'].values[0]
+                            act_sky_source_one = df_event['source_position_y'].values[0]
+                            event_photons = event.photon_stream.list_of_lists
+                            zd_deg = event.zd
+                            az_deg = event.az
+                            delta = df_event['delta'].values[0]
+                            energy = event.simulation_truth.air_shower.energy
+                            sky_source_zd = df_event['source_position_zd'].values[0]
+                            sky_source_az = df_event['source_position_az'].values[0]
+                            zd_deg1 = df_event['aux_pointing_position_az'].values[0]
+                            az_deg1 = df_event['aux_pointing_position_zd'].values[0]
+                            data_dict = [[event_photons, act_sky_source_zero, act_sky_source_one,
+                                          cog_x, cog_y, zd_deg, az_deg, sky_source_zd, sky_source_az, delta,
+                                          energy, zd_deg1, az_deg1],
+                                         {'Image': 0, 'Source_X': 1, 'Source_Y': 2, 'COG_X': 3, 'COG_Y': 4, 'Zd_Deg': 5,
+                                          'Az_Deg': 6,
+                                          'Source_Zd': 7, 'Source_Az': 8, 'Delta': 9, 'Energy': 10, 'Pointing_Zd': 11,
+                                          'Pointing_Az': 12}, features]
+                            with open(os.path.join(directory, str(file_name) + "_" + str(counter)), "wb") as event_file:
+                                pickle.dump(data_dict, event_file)
+            except Exception as e:
+                print(str(e))
+                pass
 
     def batch_processor(self, clean_images=False):
         for index, file in enumerate(self.paths):
