@@ -2,11 +2,10 @@ import os.path as osp
 import pickle
 import numpy as np
 from zlib import crc32
-from pathlib import Path
 
 import torch
 from torch_geometric.data import Dataset
-from torch_geometric.data import Data, DataLoader
+from torch_geometric.data import Data
 
 from photon_stream.representations import list_of_lists_to_raw_phs, raw_phs_to_point_cloud
 from photon_stream.geometry import GEOMETRY
