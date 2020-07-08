@@ -108,8 +108,6 @@ class DiffuseDataset(Dataset):
         self.split = split
         super(DiffuseDataset, self).__init__(root, transform, pre_transform)
 
-
-
     @property
     def raw_file_names(self):
         return np.loadtxt("/home/jacob/Development/factnn/raw_names.txt", dtype=str)
@@ -217,8 +215,8 @@ class ClusterDataset(Dataset):
                         uncleaned_photons = uncleaned_data[data_format["Image"]]
                         uncleaned_photons = list_of_lists_to_raw_phs(uncleaned_photons)
                         uncleaned_cloud = np.asarray(raw_phs_to_point_cloud(uncleaned_photons,
-                                                                        cx=GEOMETRY.x_angle,
-                                                                        cy=GEOMETRY.y_angle))
+                                                                            cx=GEOMETRY.x_angle,
+                                                                            cy=GEOMETRY.y_angle))
                         # Convert List of List to Point Cloud, then truncation is simply cutting in the z direction
                         event_photons = event_data[data_format["Image"]]
                         event_photons = list_of_lists_to_raw_phs(event_photons)
@@ -226,7 +224,10 @@ class ClusterDataset(Dataset):
                                                                         cx=GEOMETRY.x_angle,
                                                                         cy=GEOMETRY.y_angle))
                         # Read data from `raw_path`.
-                        data = Data(pos=uncleaned_cloud, y=point_cloud)  # Just need x,y,z ignore derived features
+                        point_values = np.isclose(uncleaned_cloud, point_cloud) # Get a mask for which points are in it
+                        print(point_values)
+                        print(point_values.shape)
+                        data = Data(pos=uncleaned_cloud, y=point_values)  # Just need x,y,z ignore derived features
                         if self.pre_filter is not None and not self.pre_filter(data):
                             continue
 

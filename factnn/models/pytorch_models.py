@@ -289,8 +289,9 @@ def MLP(channels, batch_norm=True):
 
 
 class PointNet2_Classifier(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes):
         super(PointNet2_Classifier, self).__init__()
+        self.num_classes = num_classes
 
         self.sa1_module = SAModule(0.5, 0.2, MLP([3, 64, 64, 128]))
         self.sa2_module = SAModule(0.25, 0.4, MLP([128 + 3, 128, 128, 256]))
@@ -298,7 +299,7 @@ class PointNet2_Classifier(torch.nn.Module):
 
         self.lin1 = Linear(1024, 512)
         self.lin2 = Linear(512, 256)
-        self.lin3 = Linear(256, 10)
+        self.lin3 = Linear(256, num_classes)
 
     def forward(self, data):
         sa0_out = (data.x, data.pos, data.batch)
@@ -313,48 +314,3 @@ class PointNet2_Classifier(torch.nn.Module):
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin3(x)
         return F.log_softmax(x, dim=-1)
-
-
-def train(epoch):
-    model.train()
-
-    for data in train_loader:
-        data = data.to(device)
-        optimizer.zero_grad()
-        loss = F.nll_loss(model(data), data.y)
-        loss.backward()
-        optimizer.step()
-
-
-def test(loader):
-    model.eval()
-
-    correct = 0
-    for data in loader:
-        data = data.to(device)
-        with torch.no_grad():
-            pred = model(data).max(1)[1]
-        correct += pred.eq(data.y).sum().item()
-    return correct / len(loader.dataset)
-
-
-if __name__ == '__main__':
-    num_classes = 2
-    net = PointNet2PartSegmentNet(num_classes)
-    path = ""
-    transform = T.SamplePoints(1024)
-    train_dataset = ModelNet(path, 'trainval', True, transform, None)
-    test_dataset = ModelNet(path, 'test', False, transform, None)
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True,
-                              num_workers=6)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False,
-                             num_workers=6)
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = PointNet2_Classifier().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
-    for epoch in range(1, 201):
-        train(epoch)
-        test_acc = test(test_loader)
-        print('Epoch: {:03d}, Test: {:.4f}'.format(epoch, test_acc))
