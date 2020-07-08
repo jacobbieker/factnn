@@ -14,7 +14,7 @@ from photon_stream.geometry import GEOMETRY
 from factnn.utils.augment import euclidean_distance, true_sign
 
 
-class EventFileDataset(Dataset):
+class EventDataset(Dataset):
 
     def __init__(self, root, split="trainval", include_proton=True, task="Separation", transform=None,
                  pre_transform=None):
@@ -24,11 +24,11 @@ class EventFileDataset(Dataset):
         :param root: Root directory for the dataset
         :param include_proton: Whether to include proton events or not
         """
-        self.processed_filenames = [f"data_{i}.pt" for i in list(range(725473))]
+        self.processed_filenames = []
         self.task = task
         self.split = split
         self.include_proton = include_proton
-        super(EventFileDataset, self).__init__(root, transform, pre_transform)
+        super(EventDataset, self).__init__(root, transform, pre_transform)
 
     @property
     def raw_file_names(self):
@@ -94,7 +94,7 @@ class EventFileDataset(Dataset):
         return data
 
 
-class EventFileDiffuseDataset(Dataset):
+class DiffuseDataset(Dataset):
 
     def __init__(self, root, split="trainval", transform=None, pre_transform=None):
         """
@@ -107,7 +107,7 @@ class EventFileDiffuseDataset(Dataset):
         """
         self.processed_filenames = []
         self.split = split
-        super(EventFileDiffuseDataset, self).__init__(root, transform, pre_transform)
+        super(DiffuseDataset, self).__init__(root, transform, pre_transform)
 
 
 
@@ -162,6 +162,81 @@ class EventFileDiffuseDataset(Dataset):
                     torch.save(data, osp.join(self.processed_dir, self.split, 'data_{}.pt'.format(i)))
                     self.processed_filenames.append('data_{}.pt'.format(i))
                     i += 1
+
+    def len(self):
+        return len(self.processed_file_names)
+
+    def get(self, idx):
+        data = torch.load(osp.join(self.processed_dir, self.split, self.processed_file_names[idx]))
+        return data
+
+
+class ClusterDataset(Dataset):
+
+    def __init__(self, root, uncleaned_root, split="trainval", transform=None,
+                 pre_transform=None):
+        """
+
+        Dataset for working on clustering datapoints, such as a replacement for DBSCAN algorithm.
+        :param uncleaned_root: Root of files, with same names, that do not have the DBSCAN cleaned output
+        :param split: Splits to include, either 'train', 'val', 'test', or 'trainval' for training, validation, test, or training and validation sets
+        :param root: Root directory for the dataset, holding the files with the "cleaned" files
+        """
+        self.processed_filenames = []
+        self.split = split
+        self.uncleaned_root = uncleaned_root
+        super(ClusterDataset, self).__init__(root, transform, pre_transform)
+
+    @property
+    def raw_file_names(self):
+        return np.loadtxt("/home/jacob/Development/factnn/raw_names.txt", dtype=str)
+
+    @property
+    def processed_file_names(self):
+        return self.processed_filenames
+
+    def download(self):
+        pass
+
+    def process(self):
+        i = 0
+
+        used_paths = split_data(self.raw_file_names)[self.split]
+
+        for base_path in used_paths:
+            raw_path = osp.join(self.raw_dir, base_path)
+            uncleaned_path = osp.join(self.uncleaned_root, base_path)
+            # load the pickled file from the disk
+            if osp.exists(osp.join(self.processed_dir, self.split, f"data_{i}.pt")):
+                self.processed_filenames.append(f"data_{i}.pt")
+            else:
+                with open(raw_path, "rb") as pickled_event:
+                    with open(uncleaned_path, 'rb') as pickled_original:
+                        print(raw_path)
+                        event_data, data_format, features, feature_cluster = pickle.load(pickled_event)
+                        uncleaned_data, _, _, _ = pickle.load(pickled_original)
+                        uncleaned_photons = uncleaned_data[data_format["Image"]]
+                        uncleaned_photons = list_of_lists_to_raw_phs(uncleaned_photons)
+                        uncleaned_cloud = np.asarray(raw_phs_to_point_cloud(uncleaned_photons,
+                                                                        cx=GEOMETRY.x_angle,
+                                                                        cy=GEOMETRY.y_angle))
+                        # Convert List of List to Point Cloud, then truncation is simply cutting in the z direction
+                        event_photons = event_data[data_format["Image"]]
+                        event_photons = list_of_lists_to_raw_phs(event_photons)
+                        point_cloud = np.asarray(raw_phs_to_point_cloud(event_photons,
+                                                                        cx=GEOMETRY.x_angle,
+                                                                        cy=GEOMETRY.y_angle))
+                        # Read data from `raw_path`.
+                        data = Data(pos=uncleaned_cloud, y=point_cloud)  # Just need x,y,z ignore derived features
+                        if self.pre_filter is not None and not self.pre_filter(data):
+                            continue
+
+                        if self.pre_transform is not None:
+                            data = self.pre_transform(data)
+
+                        torch.save(data, osp.join(self.processed_dir, self.split, 'data_{}.pt'.format(i)))
+                        self.processed_filenames.append('data_{}.pt'.format(i))
+                        i += 1
 
     def len(self):
         return len(self.processed_file_names)
