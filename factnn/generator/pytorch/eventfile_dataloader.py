@@ -96,7 +96,7 @@ class EventFileDataset(Dataset):
 
 class EventFileDiffuseDataset(Dataset):
 
-    def __init__(self, root, split="trainval", transform=None, pre_transform=None, num_points=0):
+    def __init__(self, root, split="trainval", transform=None, pre_transform=None):
         """
         EventFile Dataloader for specifically Disp calculations,
         only using the diffuse gamma sources that have the extra information
@@ -106,7 +106,6 @@ class EventFileDiffuseDataset(Dataset):
         :param num_points: The number of points to have, either using points multiple times, or subselecting from the total points
         """
         self.processed_filenames = []
-        self.num_points = num_points
         self.split = split
         super(EventFileDiffuseDataset, self).__init__(root, transform, pre_transform)
 
