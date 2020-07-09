@@ -209,6 +209,7 @@ class ClusterDataset(Dataset):
         for base_path in used_paths:
             raw_path = osp.join(self.raw_dir, base_path)
             uncleaned_path = osp.join(self.uncleaned_root, base_path)
+            clump_path = osp.join(self.clump_root, base_path)
             # load the pickled file from the disk
             if osp.exists(osp.join(self.processed_dir, self.split, f"cluster_{i}.pt")):
                 self.processed_filenames.append(f"cluster_{i}.pt")
@@ -223,17 +224,29 @@ class ClusterDataset(Dataset):
                         uncleaned_cloud = np.asarray(raw_phs_to_point_cloud(uncleaned_photons,
                                                                             cx=GEOMETRY.x_angle,
                                                                             cy=GEOMETRY.y_angle))
-                        # Convert List of List to Point Cloud, then truncation is simply cutting in the z direction
+                        # Convert List of List to Point Cloud
                         event_photons = event_data[data_format["Image"]]
                         event_photons = list_of_lists_to_raw_phs(event_photons)
                         point_cloud = np.asarray(raw_phs_to_point_cloud(event_photons,
                                                                         cx=GEOMETRY.x_angle,
                                                                         cy=GEOMETRY.y_angle))
-                        # Read data from `raw_path`.
                         point_values = np.isclose(uncleaned_cloud, point_cloud) # Get a mask for which points are in it
                         print(point_values)
                         print(point_values.shape)
-                        data = Data(pos=uncleaned_cloud, y=point_values.astype(int))  # Just need x,y,z ignore derived features
+                        if self.clumps:
+                            with open(clump_path, "rb") as pickled_clump:
+                                clump_data, _, _, _ = pickle.load(pickled_clump)
+                                clump_photons = clump_data[data_format["Image"]]
+                                clump_photons = list_of_lists_to_raw_phs(clump_photons)
+                                clump_cloud = np.asarray(raw_phs_to_point_cloud(clump_photons,
+                                                                                    cx=GEOMETRY.x_angle,
+                                                                                    cy=GEOMETRY.y_angle))
+                                clump_values = np.isclose(clump_cloud, point_cloud)
+                                # Convert to ints so that addition works, gives 0 for outside, 1 clump, 2 core
+                                point_values = point_values.astype(int) + clump_values.astype(int)
+                        else:
+                            point_values = point_values.astype(int)
+                        data = Data(pos=uncleaned_cloud, y=point_values)  # Just need x,y,z ignore derived features
                         if self.pre_filter is not None and not self.pre_filter(data):
                             continue
 
