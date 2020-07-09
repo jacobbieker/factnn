@@ -235,8 +235,8 @@ class ProtonPreprocessor(BasePreprocessor):
                             act_phi = event.simulation_truth.air_shower.phi
                             act_theta = event.simulation_truth.air_shower.theta
                             data_dict = [[event_photons, energy, zd_deg, az_deg, act_phi, act_theta],
-                                         {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'COG_Y': 4, 'Phi': 5,
-                                          'Theta': 6, }, features, cluster]
+                                         {'Image': 0, 'Energy': 1, 'Zd_Deg': 2, 'Az_Deg': 3, 'Phi': 4,
+                                          'Theta': 5, }, features, cluster]
                             if key != "no_clean":
                                 with open(os.path.join(directory, key+str(clump_size), str(file_name) + "_" + str(counter)), "wb") as event_file:
                                     pickle.dump(data_dict, event_file)
