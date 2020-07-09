@@ -24,7 +24,7 @@ class PhotonStreamDataset(Dataset):
         Dataset for generating the events from the PhotonStream files, instead of the preprocessed files
 
         :param task: Either 'Separation', or 'Energy'
-        :param split: Splits to include, either 'train', 'val', 'test', or 'trainval' for training, validation, test, or training and validation sets
+        :param split: Splits to include, either 'train', 'val', 'test', or 'trainval' or 'all' for training, validation, test, training and validation sets, or all data respectively
         :param root: Root directory for the dataset
         :param include_proton: Whether to include proton events or not
         :param simulated: Whether this is on simulated data or real data
@@ -111,7 +111,7 @@ class EventDataset(Dataset):
                  pre_transform=None):
         """
         :param task: Either 'Separation', or 'Energy'
-        :param split: Splits to include, either 'train', 'val', 'test', or 'trainval' for training, validation, test, or training and validation sets
+        :param split: Splits to include, either 'train', 'val', 'test', or 'trainval' or 'all' for training, validation, test, training and validation sets, or all data respectively
         :param root: Root directory for the dataset
         :param include_proton: Whether to include proton events or not
         """
@@ -386,4 +386,5 @@ def split_data(paths, val_split=0.2, test_split=0.2):
     return {"train": train,
             "val": val,
             "trainval": train + val,
-            "test": test}
+            "test": test,
+            'all': train + val + test}
