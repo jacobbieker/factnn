@@ -170,7 +170,7 @@ class DiffuseDataset(Dataset):
 
 class ClusterDataset(Dataset):
 
-    def __init__(self, root, uncleaned_root, split="trainval", transform=None,
+    def __init__(self, root, uncleaned_root, clump_root=None, split="trainval", transform=None,
                  pre_transform=None):
         """
 
@@ -178,10 +178,16 @@ class ClusterDataset(Dataset):
         :param uncleaned_root: Root of files, with same names, that do not have the DBSCAN cleaned output
         :param split: Splits to include, either 'train', 'val', 'test', or 'trainval' for training, validation, test, or training and validation sets
         :param root: Root directory for the dataset, holding the files with the "cleaned" files
+        :param clump_root: Root for files that hold the non-core clump outputs from DBSCAN, optional
         """
         self.processed_filenames = []
         self.split = split
         self.uncleaned_root = uncleaned_root
+        self.clump_root = clump_root
+        if self.clump_root is not None:
+            self.clumps = True
+        else:
+            self.clumps = False
         super(ClusterDataset, self).__init__(root, transform, pre_transform)
 
     @property
@@ -204,8 +210,8 @@ class ClusterDataset(Dataset):
             raw_path = osp.join(self.raw_dir, base_path)
             uncleaned_path = osp.join(self.uncleaned_root, base_path)
             # load the pickled file from the disk
-            if osp.exists(osp.join(self.processed_dir, self.split, f"data_{i}.pt")):
-                self.processed_filenames.append(f"data_{i}.pt")
+            if osp.exists(osp.join(self.processed_dir, self.split, f"cluster_{i}.pt")):
+                self.processed_filenames.append(f"cluster_{i}.pt")
             else:
                 with open(raw_path, "rb") as pickled_event:
                     with open(uncleaned_path, 'rb') as pickled_original:
@@ -227,15 +233,15 @@ class ClusterDataset(Dataset):
                         point_values = np.isclose(uncleaned_cloud, point_cloud) # Get a mask for which points are in it
                         print(point_values)
                         print(point_values.shape)
-                        data = Data(pos=uncleaned_cloud, y=point_values)  # Just need x,y,z ignore derived features
+                        data = Data(pos=uncleaned_cloud, y=point_values.astype(int))  # Just need x,y,z ignore derived features
                         if self.pre_filter is not None and not self.pre_filter(data):
                             continue
 
                         if self.pre_transform is not None:
                             data = self.pre_transform(data)
 
-                        torch.save(data, osp.join(self.processed_dir, self.split, 'data_{}.pt'.format(i)))
-                        self.processed_filenames.append('data_{}.pt'.format(i))
+                        torch.save(data, osp.join(self.processed_dir, self.split, 'cluster_{}.pt'.format(i)))
+                        self.processed_filenames.append('cluster_{}.pt'.format(i))
                         i += 1
 
     def len(self):
