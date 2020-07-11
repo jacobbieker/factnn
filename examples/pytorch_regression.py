@@ -11,7 +11,7 @@ from factnn.utils.plotting import plot_energy_confusion, plot_disp_confusion
 
 from trains import Task
 
-task = Task.init(project_name="IACT Classification", task_name="pytorch pointnet++")
+task = Task.init(project_name="IACT Regression", task_name="pytorch pointnet++")
 task.name += " {}".format(task.id)
 
 logger = task.get_logger()

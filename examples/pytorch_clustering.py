@@ -11,7 +11,7 @@ from factnn.models.pytorch_models import PointNet2Classifier, PointNet2Segmenter
 
 from trains import Task
 
-task = Task.init(project_name="IACT Classification", task_name="pytorch pointnet++")
+task = Task.init(project_name="IACT Clustering", task_name="pytorch pointnet++")
 task.name += " {}".format(task.id)
 
 logger = task.get_logger()
