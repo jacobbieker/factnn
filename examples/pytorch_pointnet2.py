@@ -94,6 +94,7 @@ def default_argument_parser():
         help="whether to attempt to resume from the checkpoint directory",
     )
     parser.add_argument("--augment", action="store_true", help="whether to augment input data, default False")
+    parser.add_argument("--norm", action="store_true", help="whether to normalize point locations, default False")
     parser.add_argument("--max-points", type=int, default=0, help="max number of sampled points, if > 0, default 0")
     parser.add_argument("--dataset", type=str, default="", help="path to dataset folder")
     parser.add_argument("--lr", type=float, default=0.001, help="learning rate")
@@ -114,6 +115,9 @@ if __name__ == '__main__':
         transforms.append(T.RandomRotate((-180,180), axis=2)) # Rotate around z axis
         transforms.append(T.RandomFlip(0)) # Flp about x axis
         transforms.append(T.RandomFlip(1)) # Flip about y axis
+        transforms.append(T.RandomTranslate(0.001)) # Random jitter
+    if args.norm:
+        transforms.append(T.NormalizeScale())
     transform = T.Compose(transforms=transforms) if transforms else None
     train_dataset = EventDataset(args.dataset, 'trainval', include_proton=True, task="Separation", pre_transform=None,
                                  transform=transform)

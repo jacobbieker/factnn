@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import torch_geometric.transforms as T
 from torch_geometric.data import DataLoader
+from torch_geometric.utils import intersection_and_union as i_and_u
 import numpy as np
 import argparse
 
@@ -13,50 +14,49 @@ from trains import Task
 task = Task.init(project_name="IACT Classification", task_name="pytorch pointnet++")
 task.name += " {}".format(task.id)
 
-
 logger = task.get_logger()
 
 
 def test(args, model, device, test_loader):
-
     save_test_loss = []
     save_correct = []
 
     model.eval()
-    test_loss = 0
-    correct = 0
+    y_mask = test_loader.dataset.y_mask
+    ious = [[] for _ in range(len(test_loader.dataset.categories))]
     with torch.no_grad():
         for _, data in enumerate(test_loader):
             data = data.to(device)
             output = model(data)
-            # sum up batch loss
-            test_loss += F.nll_loss(output, data.y, reduction='sum').item()
             # get the index of the max log-probability
-            pred = output.argmax(dim=1, keepdim=True)
-            correct += pred.eq(data.y.view_as(pred)).sum().item()
+            pred = output.argmax(dim=1)
 
-            save_test_loss.append(test_loss)
-            save_correct.append(correct)
+            i, u = i_and_u(pred, data.y, test_loader.dataset.num_classes, data.batch)
+            iou = i.cpu().to(torch.float) / u.cpu().to(torch.float)
+            iou[torch.isnan(iou)] = 1
 
-    test_loss /= len(test_loader)
+            # Find and filter the relevant classes for each category.
+            for iou, category in zip(iou.unbind(), data.category.unbind()):
+                ious[category.item()].append(iou[y_mask[category]])
 
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader),
-        100. * correct / len(test_loader)))
+        # Compute mean IoU.
+        ious = [torch.stack(iou).mean(0).mean(0) for iou in ious]
+        save_test_loss.append(torch.tensor(ious).mean().item())
+        save_correct.append(ious)
 
-    logger.report_histogram(title='Histogram example', series='correct',
-        iteration=1, values=save_correct, xaxis='Test', yaxis='Correct')
-
-    # Manually report test loss and correct as a confusion matrix
-    matrix = np.array([save_test_loss, save_correct])
-    logger.report_confusion_matrix(title='Confusion matrix example',
-        series='Test loss / correct', matrix=matrix, iteration=1)
+        # Add manual scalar reporting for loss metrics
+        for i, iou in enumerate(ious):
+            logger.report_scalar(title='Test Class IoU'.format(epoch),
+                                 series=f'Class {i} IoU', value=iou.item(), iteration=1)
+        logger.report_scalar(title='Test Mean IoU'.format(epoch),
+                             series='Mean IoU.', value=torch.tensor(ious).mean().item(), iteration=1)
 
 
 def train(args, model, device, train_loader, optimizer, epoch):
     save_loss = []
 
     model.train()
+    total_loss = correct_nodes = total_nodes = 0
     for batch_idx, data in enumerate(train_loader):
         data, target = data.to(device)
         optimizer.zero_grad()
@@ -67,13 +67,18 @@ def train(args, model, device, train_loader, optimizer, epoch):
         save_loss.append(loss)
 
         optimizer.step()
+        total_loss += loss.item()
+        correct_nodes += output.argmax(dim=1).eq(data.y).sum().item()
+        total_nodes += data.num_nodes
         if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                       100. * batch_idx / len(train_loader), loss.item()))
+            print(f'[{batch_idx + 1}/{len(train_loader)}] Loss: {total_loss / 10:.4f} '
+                  f'Train Acc: {correct_nodes / total_nodes:.4f}')
             # Add manual scalar reporting for loss metrics
             logger.report_scalar(title='Scalar example {} - epoch'.format(epoch),
                                  series='Loss', value=loss.item(), iteration=batch_idx)
+            logger.report_scalar(title='Scalar example {} - epoch'.format(epoch),
+                                 series='Train Acc.', value=correct_nodes / total_nodes, iteration=batch_idx)
+            total_loss = correct_nodes = total_nodes = 0
 
 
 def default_argument_parser():
@@ -93,6 +98,7 @@ def default_argument_parser():
         help="whether to attempt to resume from the checkpoint directory",
     )
     parser.add_argument("--augment", action="store_true", help="whether to augment input data, default False")
+    parser.add_argument("--norm", action="store_true", help="whether to normalize point locations, default False")
     parser.add_argument("--max-points", type=int, default=0, help="max number of sampled points, if > 0, default 0")
     parser.add_argument("--dataset", type=str, default="", help="path to dataset folder")
     parser.add_argument("--unclean-dataset", type=str, default="", help="path to uncleaned dataset folder")
@@ -111,21 +117,24 @@ if __name__ == '__main__':
     if args.max_points > 0:
         transforms.append(T.FixedPoints(args.max_points))
     if args.augment:
-        transforms.append(T.RandomRotate((-180,180), axis=2)) # Rotate around z axis
-        transforms.append(T.RandomFlip(0)) # Flp about x axis
-        transforms.append(T.RandomFlip(1)) # Flip about y axis
+        transforms.append(T.RandomRotate((-180, 180), axis=2))  # Rotate around z axis
+        transforms.append(T.RandomFlip(0))  # Flp about x axis
+        transforms.append(T.RandomFlip(1))  # Flip about y axis
+    if args.norm:
+        transforms.append(T.NormalizeScale())
     transform = T.Compose(transforms=transforms) if transforms else None
-    train_dataset = ClusterDataset(args.dataset, split='trainval', uncleaned_root=args.unclean_dataset, pre_transform=None,
-                                 transform=transform, clump_root=args.clump_dataset if args.clump_dataset else None)
+    train_dataset = ClusterDataset(args.dataset, split='trainval', uncleaned_root=args.unclean_dataset,
+                                   pre_transform=None,
+                                   transform=transform, clump_root=args.clump_dataset if args.clump_dataset else None)
     test_dataset = ClusterDataset(args.dataset, split='test', uncleaned_root=args.unclean_dataset, pre_transform=None,
-                                transform=transform, clump_root=args.clump_dataset if args.clump_dataset else None)
+                                  transform=transform, clump_root=args.clump_dataset if args.clump_dataset else None)
     train_loader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True,
                               num_workers=6)
     test_loader = DataLoader(test_dataset, batch_size=args.batch, shuffle=False,
                              num_workers=6)
 
     config = {"sample_ratio_one": 0.5, "sample_radius_one": 0.2, "sample_max_neighbor": 64, "sample_ratio_two": 0.25,
-              "sample_radius_two": 0.4, "fc_1": 128, "fc_2": 64, "dropout": 0.5, "knn_num": 3 }
+              "sample_radius_two": 0.4, "fc_1": 128, "fc_2": 64, "dropout": 0.5, "knn_num": 3}
     config = task.connect_configuration(config)
     labels = {"Background": 0}
     if args.clump_dataset:
