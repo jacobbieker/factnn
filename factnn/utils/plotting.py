@@ -58,6 +58,7 @@ def plot_event_compare(event, cleaned_event=None):
     plt.show()
     ps_plot.event(cleaned_event)
 
+
 def plot_energy_confusion(prediction, truth, log_xy=True, log_z=True, ax=None):
     ax = ax or plt.gca()
 

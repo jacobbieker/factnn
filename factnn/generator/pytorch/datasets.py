@@ -100,23 +100,26 @@ class PhotonStreamDataset(Dataset):
     def get(self, idx):
         data = torch.load(osp.join(self.processed_dir, self.split, self.processed_file_names[idx]))
         if self.simulated:
-            if self.task == "Energy":
+            if self.task == "energy":
                 data.y = data.energy
-            elif self.task == "Phi":
+            elif self.task == "phi":
                 data.y = data.phi
-            elif self.task == "Theta":
+            elif self.task == "theta":
                 data.y = data.theta
-            else:
+            elif self.task == "separation":
                 data.y = data.event_type
+            else:
+                print("Not recognized task type")
+                return NotImplementedError
         return data
 
 
 class EventDataset(Dataset):
 
-    def __init__(self, root, split="trainval", include_proton=True, task="Separation", transform=None,
+    def __init__(self, root, split="trainval", include_proton=True, task="separation", transform=None,
                  pre_transform=None):
         """
-        :param task: Either 'Separation', 'Energy', 'Phi', or 'Theta'
+        :param task: Either 'separation', 'energy', 'phi', or 'theta'
         :param split: Splits to include, either 'train', 'val', 'test', or 'trainval' or 'all' for training, validation, test, training and validation sets, or all data respectively
         :param root: Root directory for the dataset
         :param include_proton: Whether to include proton events or not
@@ -186,14 +189,17 @@ class EventDataset(Dataset):
 
     def get(self, idx):
         data = torch.load(osp.join(self.processed_dir, self.split, self.processed_file_names[idx]))
-        if self.task == "Energy":
+        if self.task == "energy":
             data.y = data.energy
-        elif self.task == "Phi":
+        elif self.task == "phi":
             data.y = data.phi
-        elif self.task == "Theta":
+        elif self.task == "theta":
             data.y = data.theta
-        else:
+        elif self.task == "separation":
             data.y = data.event_type
+        else:
+            print("Not recognized task type")
+            return NotImplementedError
         return data
 
 
@@ -335,7 +341,6 @@ class ClusterDataset(Dataset):
                                                                         cx=GEOMETRY.x_angle,
                                                                         cy=GEOMETRY.y_angle))
                         point_values = np.isclose(uncleaned_cloud, point_cloud)  # Get a mask for which points are in it
-                        print(point_values)
                         print(point_values.shape)
                         if self.clumps:
                             with open(clump_path, "rb") as pickled_clump:

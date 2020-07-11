@@ -17,7 +17,7 @@ task.name += " {}".format(task.id)
 logger = task.get_logger()
 
 
-def test(args, model, device, test_loader):
+def test(model, device, test_loader):
     save_test_loss = []
     save_correct = []
 
@@ -152,4 +152,4 @@ if __name__ == '__main__':
 
     for epoch in range(args.epochs):
         train(args, model, device, train_loader, optimizer, epoch)
-        test(args, model, device, test_loader)
+        test(model, device, test_loader)
