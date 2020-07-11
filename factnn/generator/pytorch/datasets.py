@@ -82,6 +82,8 @@ class PhotonStreamDataset(Dataset):
                             print("No Event Type")
                             continue
                         data.energy = torch.tensor(event.simulation_truth.air_shower.energy, dtype=torch.float)
+                        data.phi = torch.tensor(event.simulation_truth.air_shower.phi, dtype=torch.float)
+                        data.theta = torch.tensor(event.simulation_truth.air_shower.theta, dtype=torch.float)
                     if self.pre_filter is not None and not self.pre_filter(data):
                         continue
 
@@ -100,6 +102,10 @@ class PhotonStreamDataset(Dataset):
         if self.simulated:
             if self.task == "Energy":
                 data.y = data.energy
+            elif self.task == "Phi":
+                data.y = data.phi
+            elif self.task == "Theta":
+                data.y = data.theta
             else:
                 data.y = data.event_type
         return data
@@ -110,7 +116,7 @@ class EventDataset(Dataset):
     def __init__(self, root, split="trainval", include_proton=True, task="Separation", transform=None,
                  pre_transform=None):
         """
-        :param task: Either 'Separation', or 'Energy'
+        :param task: Either 'Separation', 'Energy', 'Phi', or 'Theta'
         :param split: Splits to include, either 'train', 'val', 'test', or 'trainval' or 'all' for training, validation, test, training and validation sets, or all data respectively
         :param root: Root directory for the dataset
         :param include_proton: Whether to include proton events or not
@@ -163,6 +169,8 @@ class EventDataset(Dataset):
                         print("No Event Type")
                         continue
                     data.energy = torch.tensor(event_data[data_format["Energy"]], dtype=torch.float)
+                    data.phi = torch.tensor(event_data[data_format["Phi"]], dtype=torch.float)
+                    data.theta = torch.tensor(event_data[data_format["Theta"]], dtype=torch.float)
                     if self.pre_filter is not None and not self.pre_filter(data):
                         continue
 
@@ -180,6 +188,10 @@ class EventDataset(Dataset):
         data = torch.load(osp.join(self.processed_dir, self.split, self.processed_file_names[idx]))
         if self.task == "Energy":
             data.y = data.energy
+        elif self.task == "Phi":
+            data.y = data.phi
+        elif self.task == "Theta":
+            data.y = data.theta
         else:
             data.y = data.event_type
         return data
