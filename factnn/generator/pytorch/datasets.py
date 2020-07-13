@@ -17,7 +17,7 @@ from factnn.utils.augment import euclidean_distance, true_sign
 
 class PhotonStreamDataset(Dataset):
 
-    def __init__(self, root, split="trainval", include_proton=True, task="Separation", simulated=True, transform=None,
+    def __init__(self, root, split="trainval", include_proton=True, task="separation", simulated=True, transform=None,
                  pre_transform=None):
         """
 
@@ -30,8 +30,8 @@ class PhotonStreamDataset(Dataset):
         :param simulated: Whether this is on simulated data or real data
         """
         self.processed_filenames = []
-        self.task = task
-        self.split = split
+        self.task = task.lower()
+        self.split = split.lower()
         self.include_proton = include_proton
         self.simulated = simulated
         super(PhotonStreamDataset, self).__init__(root, transform, pre_transform)
@@ -125,8 +125,8 @@ class EventDataset(Dataset):
         :param include_proton: Whether to include proton events or not
         """
         self.processed_filenames = []
-        self.task = task
-        self.split = split
+        self.task = task.lower()
+        self.split = split.lower()
         self.include_proton = include_proton
         super(EventDataset, self).__init__(root, transform, pre_transform)
 
@@ -215,7 +215,7 @@ class DiffuseDataset(Dataset):
         :param num_points: The number of points to have, either using points multiple times, or subselecting from the total points
         """
         self.processed_filenames = []
-        self.split = split
+        self.split = split.lower()
         super(DiffuseDataset, self).__init__(root, transform, pre_transform)
 
     @property
@@ -291,7 +291,7 @@ class ClusterDataset(Dataset):
         :param clump_root: Root for files that hold the non-core clump outputs from DBSCAN, optional
         """
         self.processed_filenames = []
-        self.split = split
+        self.split = split.lower()
         self.uncleaned_root = uncleaned_root
         self.clump_root = clump_root
         if self.clump_root is not None:

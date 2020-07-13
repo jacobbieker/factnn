@@ -74,9 +74,9 @@ def train(args, model, device, train_loader, optimizer, epoch):
             print(f'[{batch_idx + 1}/{len(train_loader)}] Loss: {total_loss / 10:.4f} '
                   f'Train Acc: {correct_nodes / total_nodes:.4f}')
             # Add manual scalar reporting for loss metrics
-            logger.report_scalar(title='Scalar example {} - epoch'.format(epoch),
+            logger.report_scalar(title='Loss {} - epoch'.format(epoch),
                                  series='Loss', value=loss.item(), iteration=batch_idx)
-            logger.report_scalar(title='Scalar example {} - epoch'.format(epoch),
+            logger.report_scalar(title='Train Accuracy {} - epoch'.format(epoch),
                                  series='Train Acc.', value=correct_nodes / total_nodes, iteration=batch_idx)
             total_loss = correct_nodes = total_nodes = 0
 

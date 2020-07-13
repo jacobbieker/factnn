@@ -45,12 +45,12 @@ def test(args, model, device, test_loader):
         test_loss, correct, len(test_loader),
         100. * correct / len(test_loader)))
 
-    logger.report_histogram(title='Histogram example', series='correct',
+    logger.report_histogram(title='Test Histogram', series='correct',
         iteration=1, values=save_correct, xaxis='Test', yaxis='Correct')
 
     # Manually report test loss and correct as a confusion matrix
     matrix = np.array([save_test_loss, save_correct])
-    logger.report_confusion_matrix(title='Confusion matrix example',
+    logger.report_confusion_matrix(title='Confusion matrix',
         series='Test loss / correct', matrix=matrix, iteration=1)
 
 
@@ -73,16 +73,13 @@ def train(args, model, device, train_loader, optimizer, epoch):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                        100. * batch_idx / len(train_loader), loss.item()))
             # Add manual scalar reporting for loss metrics
-            logger.report_scalar(title='Scalar example {} - epoch'.format(epoch),
+            logger.report_scalar(title='Training Loss {} - epoch'.format(epoch),
                                  series='Loss', value=loss.item(), iteration=batch_idx)
 
 
 def default_argument_parser():
     """
-    Create a parser with some common arguments used by detectron2 users.
-
-    Args:
-        epilog (str): epilog passed to ArgumentParser describing the usage.
+    Create a parser with some common arguments.
 
     Returns:
         argparse.ArgumentParser:
@@ -119,9 +116,9 @@ if __name__ == '__main__':
     if args.norm:
         transforms.append(T.NormalizeScale())
     transform = T.Compose(transforms=transforms) if transforms else None
-    train_dataset = EventDataset(args.dataset, 'trainval', include_proton=True, task="Separation", pre_transform=None,
+    train_dataset = EventDataset(args.dataset, 'trainval', include_proton=True, task="separation", pre_transform=None,
                                  transform=transform)
-    test_dataset = EventDataset(args.dataset, 'test', include_proton=True, task="Separation", pre_transform=None,
+    test_dataset = EventDataset(args.dataset, 'test', include_proton=True, task="separation", pre_transform=None,
                                 transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True,
                               num_workers=6)
