@@ -2,6 +2,10 @@ import os.path as osp
 import pickle
 import numpy as np
 from zlib import crc32
+import pkg_resources as res
+
+
+from multiprocessing import Pool
 
 import torch
 from torch_geometric.data import Dataset
@@ -48,7 +52,6 @@ class PhotonStreamDataset(Dataset):
         pass
 
     def process(self):
-        i = 0
 
         used_paths = split_data(self.raw_paths)[self.split]
 
@@ -56,8 +59,8 @@ class PhotonStreamDataset(Dataset):
             if not self.include_proton and "proton" in raw_path:
                 continue
             # load the pickled file from the disk
-            if osp.exists(osp.join(self.processed_dir, self.split, f"data_{i}.pt")):
-                self.processed_filenames.append(f"data_{i}.pt")
+            if osp.exists(osp.join(self.processed_dir, self.split, f"{raw_path}.pt")):
+                self.processed_filenames.append(f"{raw_path}.pt")
             else:
                 if self.simulated:
                     mc_truth = raw_path.split(".phs")[0] + ".ch.gz"
@@ -90,9 +93,8 @@ class PhotonStreamDataset(Dataset):
                     if self.pre_transform is not None:
                         data = self.pre_transform(data)
 
-                    torch.save(data, osp.join(self.processed_dir, self.split, 'data_{}.pt'.format(i)))
-                    self.processed_filenames.append('data_{}.pt'.format(i))
-                    i += 1
+                    torch.save(data, osp.join(self.processed_dir, self.split, '{}.pt'.format(raw_path)))
+                    self.processed_filenames.append('{}.pt'.format(raw_path))
 
     def len(self):
         return len(self.processed_file_names)
@@ -116,23 +118,33 @@ class PhotonStreamDataset(Dataset):
 
 class EventDataset(Dataset):
 
-    def __init__(self, root, split="trainval", include_proton=True, task="separation", transform=None,
+    def __init__(self, root, split="trainval", include_proton=True, task="separation", cleanliness="no_clean", transform=None,
                  pre_transform=None):
         """
         :param task: Either 'separation', 'energy', 'phi', or 'theta'
         :param split: Splits to include, either 'train', 'val', 'test', or 'trainval' or 'all' for training, validation, test, training and validation sets, or all data respectively
         :param root: Root directory for the dataset
         :param include_proton: Whether to include proton events or not
+        :param cleanliness: str, which version of the DBSCAN cleaned files to use, and which raw filenames to load, one of 'no_clean', 'clump5',
+        'clump10', 'clump15', 'clump20', 'core5', 'core10', 'core15', 'core20'
         """
         self.processed_filenames = []
         self.task = task.lower()
         self.split = split.lower()
         self.include_proton = include_proton
+        self.cleanliness = cleanliness.strip().lower()
+        try:
+            self.event_dict = pickle.load(open(res.resource_filename('factnn.data.resources', f"{self.cleanliness}_raw_names.p"), "rb"))
+        except:
+            raise ValueError("cleanliness value is not one of: 'no_clean', 'clump5','clump10', 'clump15', 'clump20', 'core5', 'core10', 'core15', 'core20'")
         super(EventDataset, self).__init__(root, transform, pre_transform)
 
     @property
     def raw_file_names(self):
-        return np.loadtxt("/home/jacob/Development/factnn/raw_names.txt", dtype=str)
+        if self.include_proton:
+            return self.event_dict["proton"] + self.event_dict["gamma"]
+        else:
+            return self.event_dict["gamma"]
 
     @property
     def processed_file_names(self):
@@ -141,48 +153,53 @@ class EventDataset(Dataset):
     def download(self):
         pass
 
-    def process(self):
-        i = 0
-
-        used_paths = split_data(self.raw_paths)[self.split]
-
-        for raw_path in used_paths:
-            if not self.include_proton and "proton" in raw_path:
-                continue
-            # load the pickled file from the disk
-            if osp.exists(osp.join(self.processed_dir, self.split, f"data_{i}.pt")):
-                self.processed_filenames.append(f"data_{i}.pt")
-            else:
-                with open(raw_path, "rb") as pickled_event:
-                    print(raw_path)
-                    event_data, data_format, features, feature_cluster = pickle.load(pickled_event)
-                    # Convert List of List to Point Cloud, then truncation is simply cutting in the z direction
-                    event_photons = event_data[data_format["Image"]]
-                    event_photons = list_of_lists_to_raw_phs(event_photons)
-                    point_cloud = np.asarray(raw_phs_to_point_cloud(event_photons,
-                                                                    cx=GEOMETRY.x_angle,
-                                                                    cy=GEOMETRY.y_angle))
-                    # Read data from `raw_path`.
-                    data = Data(pos=point_cloud)  # Just need x,y,z ignore derived features
-                    if "gamma" in raw_path:
+    def process_file(self, raw_path):
+        """
+        Processes a single file given the path
+        :param raw_path:
+        :return:
+        """
+        # load the pickled file from the disk
+        # TODO Change so don't repeat processing for trainval and all splits
+        if osp.exists(osp.join(self.processed_dir, self.split, f"{raw_path}.pt")):
+            self.processed_filenames.append(f"{raw_path}.pt")
+        else:
+            with open(raw_path, "rb") as pickled_event:
+                print(raw_path)
+                event_data, data_format, features, feature_cluster = pickle.load(pickled_event)
+                # Convert List of List to Point Cloud, then truncation is simply cutting in the z direction
+                event_photons = event_data[data_format["Image"]]
+                event_photons = list_of_lists_to_raw_phs(event_photons)
+                point_cloud = np.asarray(raw_phs_to_point_cloud(event_photons,
+                                                                cx=GEOMETRY.x_angle,
+                                                                cy=GEOMETRY.y_angle))
+                # Read data from `raw_path`.
+                data = Data(pos=point_cloud)  # Just need x,y,z ignore derived features
+                if self.include_proton: # Only check if needed
+                    if raw_path in self.event_dict['proton']: # proton is much shorter, so faster to check
                         data.event_type = torch.tensor(0, dtype=torch.int8)
-                    elif "proton" in raw_path:
-                        data.event_type = torch.tensor(1, dtype=torch.int8)
                     else:
-                        print("No Event Type")
-                        continue
-                    data.energy = torch.tensor(event_data[data_format["Energy"]], dtype=torch.float)
-                    data.phi = torch.tensor(event_data[data_format["Phi"]], dtype=torch.float)
-                    data.theta = torch.tensor(event_data[data_format["Theta"]], dtype=torch.float)
-                    if self.pre_filter is not None and not self.pre_filter(data):
-                        continue
+                        data.event_type = torch.tensor(1, dtype=torch.int8)
+                else:
+                    data.event_type = torch.tensor(1, dtype=torch.int8)
+                data.energy = torch.tensor(event_data[data_format["Energy"]], dtype=torch.float)
+                data.phi = torch.tensor(event_data[data_format["Phi"]], dtype=torch.float)
+                data.theta = torch.tensor(event_data[data_format["Theta"]], dtype=torch.float)
+                if self.pre_filter is not None and not self.pre_filter(data):
+                    return
 
-                    if self.pre_transform is not None:
-                        data = self.pre_transform(data)
+                if self.pre_transform is not None:
+                    data = self.pre_transform(data)
 
-                    torch.save(data, osp.join(self.processed_dir, self.split, 'data_{}.pt'.format(i)))
-                    self.processed_filenames.append('data_{}.pt'.format(i))
-                    i += 1
+                torch.save(data, osp.join(self.processed_dir, self.split, '{}.pt'.format(raw_path)))
+                self.processed_filenames.append('{}.pt'.format(raw_path))
+
+    def process(self):
+        used_paths = split_data(self.raw_paths)[self.split]
+        pool = Pool()
+        processors = pool.map_async(self.process_file, used_paths)
+        processors.wait()
+
 
     def len(self):
         return len(self.processed_file_names)
@@ -205,7 +222,7 @@ class EventDataset(Dataset):
 
 class DiffuseDataset(Dataset):
 
-    def __init__(self, root, split="trainval", transform=None, pre_transform=None):
+    def __init__(self, root, split="trainval", cleanliness="no_clean", transform=None, pre_transform=None):
         """
         EventFile Dataloader for specifically Disp calculations,
         only using the diffuse gamma sources that have the extra information
@@ -216,11 +233,19 @@ class DiffuseDataset(Dataset):
         """
         self.processed_filenames = []
         self.split = split.lower()
+        self.cleanliness = cleanliness.strip().lower()
         super(DiffuseDataset, self).__init__(root, transform, pre_transform)
 
     @property
     def raw_file_names(self):
-        return np.loadtxt("/home/jacob/Development/factnn/raw_names.txt", dtype=str)
+        try:
+            name_dict = pickle.load(open(res.resource_filename('factnn.data.resources', f"{self.cleanliness}_diffuse_raw_names.p"), "rb"))
+            if self.include_proton:
+                return name_dict["proton"] + name_dict["gamma"]
+            else:
+                return name_dict["gamma"]
+        except:
+            raise ValueError("cleanliness value is not one of: 'no_clean', 'clump5','clump10', 'clump15', 'clump20', 'core5', 'core10', 'core15', 'core20'")
 
     @property
     def processed_file_names(self):
@@ -229,46 +254,55 @@ class DiffuseDataset(Dataset):
     def download(self):
         pass
 
+    def process_file(self, raw_path):
+        """
+        Processes a single file given the path
+        :param raw_path:
+        :return:
+        """
+        if not self.include_proton and "proton" in raw_path:
+            return
+        # load the pickled file from the disk
+        if osp.exists(osp.join(self.processed_dir, self.split, f"{raw_path}.pt")):
+            self.processed_filenames.append(f"{raw_path}.pt")
+        else:
+            # Checks that file is not 0
+            with open(raw_path, "rb") as pickled_event:
+                print(raw_path)
+                event_data, data_format, features, feature_cluster = pickle.load(pickled_event)
+                # Convert List of List to Point Cloud, then truncation is simply cutting in the z direction
+                event_photons = event_data[data_format["Image"]]
+                event_photons = list_of_lists_to_raw_phs(event_photons)
+                point_cloud = np.asarray(raw_phs_to_point_cloud(event_photons,
+                                                                cx=GEOMETRY.x_angle,
+                                                                cy=GEOMETRY.y_angle))
+                # Read data from `raw_path`.
+                data = Data(pos=point_cloud)  # Just need x,y,z ignore derived features
+                data.y = torch.tensor(true_sign(event_data[data_format['Source_X']],
+                                                event_data[data_format['Source_Y']],
+                                                event_data[data_format['COG_X']],
+                                                event_data[data_format['COG_Y']],
+                                                event_data[data_format['Delta']]) * euclidean_distance(
+                    event_data[data_format['Source_X']],
+                    event_data[data_format['Source_Y']],
+                    event_data[data_format['COG_X']],
+                    event_data[data_format['COG_Y']]),
+                                      dtype=torch.float16)
+                if self.pre_filter is not None and not self.pre_filter(data):
+                    return
+
+                if self.pre_transform is not None:
+                    data = self.pre_transform(data)
+
+                torch.save(data, osp.join(self.processed_dir, self.split, '{}.pt'.format(raw_path)))
+                self.processed_filenames.append('{}.pt'.format(raw_path))
+
     def process(self):
-        i = 0
 
         used_paths = split_data(self.raw_paths)[self.split]
-        # load the pickled file from the disk
-        if osp.exists(osp.join(self.processed_dir, self.split, f"data_{i}.pt")):
-            self.processed_filenames.append(f"data_{i}.pt")
-        else:
-            for raw_path in used_paths:
-                # Checks that file is not 0
-                with open(raw_path, "rb") as pickled_event:
-                    print(raw_path)
-                    event_data, data_format, features, feature_cluster = pickle.load(pickled_event)
-                    # Convert List of List to Point Cloud, then truncation is simply cutting in the z direction
-                    event_photons = event_data[data_format["Image"]]
-                    event_photons = list_of_lists_to_raw_phs(event_photons)
-                    point_cloud = np.asarray(raw_phs_to_point_cloud(event_photons,
-                                                                    cx=GEOMETRY.x_angle,
-                                                                    cy=GEOMETRY.y_angle))
-                    # Read data from `raw_path`.
-                    data = Data(pos=point_cloud)  # Just need x,y,z ignore derived features
-                    data.y = torch.tensor(true_sign(event_data[data_format['Source_X']],
-                                                    event_data[data_format['Source_Y']],
-                                                    event_data[data_format['COG_X']],
-                                                    event_data[data_format['COG_Y']],
-                                                    event_data[data_format['Delta']]) * euclidean_distance(
-                        event_data[data_format['Source_X']],
-                        event_data[data_format['Source_Y']],
-                        event_data[data_format['COG_X']],
-                        event_data[data_format['COG_Y']]),
-                                          dtype=torch.float16)
-                    if self.pre_filter is not None and not self.pre_filter(data):
-                        continue
-
-                    if self.pre_transform is not None:
-                        data = self.pre_transform(data)
-
-                    torch.save(data, osp.join(self.processed_dir, self.split, 'data_{}.pt'.format(i)))
-                    self.processed_filenames.append('data_{}.pt'.format(i))
-                    i += 1
+        pool = Pool()
+        processors = pool.map_async(self.process_file, used_paths)
+        processors.wait()
 
     def len(self):
         return len(self.processed_file_names)
@@ -405,3 +439,9 @@ def split_data(paths, val_split=0.2, test_split=0.2):
             "trainval": train + val,
             "test": test,
             'all': train + val + test}
+
+protons = np.loadtxt("/run/media/jacob/T7/proton_no_clean.txt", dtype=str)
+gammas = np.loadtxt("/run/media/jacob/T7/gamma_no_clean.txt", dtype=str)
+
+raw_names = {"proton": protons, "gamma": gammas}
+pickle.dump(raw_names, open(osp.join('/home/jacob/Development/factnn/factnn/data/resources','no_clean_raw_names.p'), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
