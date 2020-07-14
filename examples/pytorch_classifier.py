@@ -94,6 +94,7 @@ def default_argument_parser():
     parser.add_argument("--norm", action="store_true", help="whether to normalize point locations, default False")
     parser.add_argument("--max-points", type=int, default=0, help="max number of sampled points, if > 0, default 0")
     parser.add_argument("--dataset", type=str, default="", help="path to dataset folder")
+    parser.add_argument("--clean", type=str, default="no_clean", help="cleanliness value, one of 'no_clean', 'clump5','clump10', 'clump15', 'clump20', 'core5', 'core10', 'core15', 'core20'")
     parser.add_argument("--lr", type=float, default=0.001, help="learning rate")
     parser.add_argument("--batch", type=int, default=32, help="batch size")
     parser.add_argument("--epochs", type=int, default=200, help="number of epochs")
@@ -116,9 +117,9 @@ if __name__ == '__main__':
     if args.norm:
         transforms.append(T.NormalizeScale())
     transform = T.Compose(transforms=transforms) if transforms else None
-    train_dataset = EventDataset(args.dataset, 'trainval', include_proton=True, task="separation", pre_transform=None,
+    train_dataset = EventDataset(args.dataset, 'trainval', include_proton=True, task="separation", cleanliness=args.clean, pre_transform=None,
                                  transform=transform)
-    test_dataset = EventDataset(args.dataset, 'test', include_proton=True, task="separation", pre_transform=None,
+    test_dataset = EventDataset(args.dataset, 'test', include_proton=True, task="separation", cleanliness=args.clean, pre_transform=None,
                                 transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True,
                               num_workers=6)

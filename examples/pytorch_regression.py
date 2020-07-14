@@ -17,7 +17,7 @@ task.name += " {}".format(task.id)
 logger = task.get_logger()
 
 
-def calc_confsion_matrix(prediction, truth, log_xy = True):
+def calc_confsion_matrix(prediction, truth, log_xy=True):
     if log_xy is True:
         truth = np.log10(truth)
         prediction = np.log10(prediction)
@@ -52,7 +52,6 @@ def calc_confsion_matrix(prediction, truth, log_xy = True):
 
 
 def test(args, model, device, test_loader, epoch):
-
     save_test_loss = []
     save_predictions = []
     save_truth = []
@@ -96,8 +95,6 @@ def test(args, model, device, test_loader, epoch):
         logger.report_confusion_matrix(title="Confusion Matrix", series="Test Output", matrix=confusion_matrix,
                                        iteration=epoch, xaxis=r'$log_{10}(Phi_{MC}) (mm)$',
                                        yaxis=r'$log_{10}(Phi_{Est}) (mm)$')
-
-
 
 
 def train(args, model, device, train_loader, optimizer, epoch):
@@ -146,8 +143,11 @@ def default_argument_parser():
     parser.add_argument("--norm", action="store_true", help="whether to normalize point locations, default False")
     parser.add_argument("--max-points", type=int, default=0, help="max number of sampled points, if > 0, default 0")
     parser.add_argument("--dataset", type=str, default="", help="path to dataset folder")
+    parser.add_argument("--clean", type=str, default="no_clean",
+                        help="cleanliness value, one of 'no_clean', 'clump5','clump10', 'clump15', 'clump20', 'core5', 'core10', 'core15', 'core20'")
     parser.add_argument("--loss", type=str, default="mse", help="loss type, currently mse or mae, default mse")
-    parser.add_argument("--task", type=str, default="energy", help="regression task, one of 'energy', 'disp', 'phi', 'theta' for this model")
+    parser.add_argument("--task", type=str, default="energy",
+                        help="regression task, one of 'energy', 'disp', 'phi', 'theta' for this model")
     parser.add_argument("--lr", type=float, default=0.001, help="learning rate")
     parser.add_argument("--batch", type=int, default=32, help="batch size")
     parser.add_argument("--epochs", type=int, default=200, help="number of epochs")
@@ -162,24 +162,35 @@ if __name__ == '__main__':
     transforms = []
     if args.max_points > 0:
         transforms.append(T.FixedPoints(args.max_points))
-    if args.augment and args.task == "energy": # Currently haven't figured out rotating the Phi, Theta, and Disp values if points are moved
-        transforms.append(T.RandomRotate((-180,180), axis=2)) # Rotate around z axis
-        transforms.append(T.RandomFlip(0)) # Flp about x axis
-        transforms.append(T.RandomFlip(1)) # Flip about y axis
-        transforms.append(T.RandomTranslate(0.001)) # Random jitter
+    if args.augment and args.task == "energy":  # Currently haven't figured out rotating the Phi, Theta, and Disp values if points are moved
+        transforms.append(T.RandomRotate((-180, 180), axis=2))  # Rotate around z axis
+        transforms.append(T.RandomFlip(0))  # Flp about x axis
+        transforms.append(T.RandomFlip(1))  # Flip about y axis
+        transforms.append(T.RandomTranslate(0.001))  # Random jitter
     if args.norm:
         transforms.append(T.NormalizeScale())
     transform = T.Compose(transforms=transforms) if transforms else None
     if args.task == 'disp':
         train_dataset = DiffuseDataset(args.dataset, 'trainval',
+                                       pre_transform=None,
+                                       cleanliness=args.clean,
+                                       transform=transform)
+        test_dataset = DiffuseDataset(args.dataset, 'test',
+                                      pre_transform=None,
+                                      cleanliness=args.clean,
+                                      transform=transform)
+    else:
+        train_dataset = EventDataset(args.dataset, 'trainval',
+                                     include_proton=True,
+                                     task=args.task,
+                                     cleanliness=args.clean,
                                      pre_transform=None,
                                      transform=transform)
-        test_dataset = DiffuseDataset(args.dataset, 'test', pre_transform=None,
-                                    transform=transform)
-    else:
-        train_dataset = EventDataset(args.dataset, 'trainval', include_proton=True, task=args.task, pre_transform=None,
-                                     transform=transform)
-        test_dataset = EventDataset(args.dataset, 'test', include_proton=True, task=args.task, pre_transform=None,
+        test_dataset = EventDataset(args.dataset, 'test',
+                                    include_proton=True,
+                                    task=args.task,
+                                    cleanliness=args.clean,
+                                    pre_transform=None,
                                     transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True,
                               num_workers=6)
@@ -187,7 +198,7 @@ if __name__ == '__main__':
                              num_workers=6)
 
     config = {"sample_ratio_one": 0.5, "sample_radius_one": 0.2, "sample_max_neighbor": 64, "sample_ratio_two": 0.25,
-              "sample_radius_two": 0.4, "fc_1": 1024, "fc_1_out": 512, "fc_2_out": 256, "dropout": 0.5 }
+              "sample_radius_two": 0.4, "fc_1": 1024, "fc_1_out": 512, "fc_2_out": 256, "dropout": 0.5}
     config = task.connect_configuration(config)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
