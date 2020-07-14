@@ -34,8 +34,12 @@ def split_data(indicies, kfolds, seed=None):
 
     for train_index, test_index in kf.split(indicies):
         # Need to split train_index into validation data
-        train_data, validate_data = train_test_split(indicies[train_index],
-                                                     test_size=validate_fraction, random_state=seed, shuffle=True)
+        train_data, validate_data = train_test_split(
+            indicies[train_index],
+            test_size=validate_fraction,
+            random_state=seed,
+            shuffle=True,
+        )
         list_of_training.append(train_data)
         list_of_validate.append(validate_data)
         list_of_testing.append(indicies[test_index])
@@ -44,134 +48,182 @@ def split_data(indicies, kfolds, seed=None):
     return list_of_training, list_of_validate, list_of_testing
 
 
-def data(start_slice, end_slice, final_slices, rebin_size, gamma_train, proton_train=None, model_type="Separation",
-         batch_size=8, as_channels=True, normalize=False, kfold_index=0, truncate=True, dynamic_resize=True, equal_slices=False,
-         return_collapsed=False, return_features=False):
+def data(
+    start_slice,
+    end_slice,
+    final_slices,
+    rebin_size,
+    gamma_train,
+    proton_train=None,
+    model_type="Separation",
+    batch_size=8,
+    as_channels=True,
+    normalize=False,
+    kfold_index=0,
+    truncate=True,
+    dynamic_resize=True,
+    equal_slices=False,
+    return_collapsed=False,
+    return_features=False,
+):
     shape = [start_slice, end_slice]
 
     gamma_configuration = {
-        'rebin_size': rebin_size,
-        'shape': shape,
-        'paths': gamma_train[0][kfold_index],
-        'as_channels': as_channels
+        "rebin_size": rebin_size,
+        "shape": shape,
+        "paths": gamma_train[0][kfold_index],
+        "as_channels": as_channels,
     }
     gamma_train_preprocessor = EventFilePreprocessor(config=gamma_configuration)
-    gamma_configuration['paths'] = gamma_train[1][kfold_index]
+    gamma_configuration["paths"] = gamma_train[1][kfold_index]
     gamma_validate_preprocessor = EventFilePreprocessor(config=gamma_configuration)
-    gamma_configuration['paths'] = gamma_train[1][kfold_index]
+    gamma_configuration["paths"] = gamma_train[1][kfold_index]
     gamma_test_preprocessor = EventFilePreprocessor(config=gamma_configuration)
 
     if model_type == "Separation":
         proton_configuration = {
-            'rebin_size': rebin_size,
-            'shape': shape,
-            'paths': proton_train[0][kfold_index],
-            'as_channels': as_channels
+            "rebin_size": rebin_size,
+            "shape": shape,
+            "paths": proton_train[0][kfold_index],
+            "as_channels": as_channels,
         }
         proton_train_preprocessor = EventFilePreprocessor(config=proton_configuration)
-        proton_configuration['paths'] = proton_train[1][kfold_index]
-        proton_validate_preprocessor = EventFilePreprocessor(config=proton_configuration)
-        proton_configuration['paths'] = proton_train[1][kfold_index]
+        proton_configuration["paths"] = proton_train[1][kfold_index]
+        proton_validate_preprocessor = EventFilePreprocessor(
+            config=proton_configuration
+        )
+        proton_configuration["paths"] = proton_train[1][kfold_index]
         proton_test_preprocessor = EventFilePreprocessor(config=proton_configuration)
 
-        train = EventFileGenerator(paths=gamma_train[0][kfold_index], batch_size=batch_size,
-                                   preprocessor=gamma_train_preprocessor,
-                                   proton_paths=proton_train[0][kfold_index],
-                                   proton_preprocessor=proton_train_preprocessor,
-                                   as_channels=as_channels,
-                                   final_slices=final_slices,
-                                   slices=(start_slice, end_slice),
-                                   augment=True,
-                                   normalize=normalize,
-                                   training_type=model_type,
-                                   truncate=truncate,
-                                   dynamic_resize=dynamic_resize,
-                                   equal_slices=equal_slices,
-                                   return_collapsed=return_collapsed,
-                                   return_features=return_features)
-        validate = EventFileGenerator(paths=gamma_train[1][kfold_index], batch_size=batch_size,
-                                      proton_paths=proton_train[1][kfold_index],
-                                      proton_preprocessor=proton_validate_preprocessor,
-                                      preprocessor=gamma_validate_preprocessor,
-                                      as_channels=as_channels,
-                                      final_slices=final_slices,
-                                      slices=(start_slice, end_slice),
-                                      augment=False,
-                                      normalize=normalize,
-                                      training_type=model_type,
-                                      truncate=truncate,
-                                      dynamic_resize=dynamic_resize,
-                                      equal_slices=equal_slices,
-                                      return_collapsed=return_collapsed,
-                                      return_features=return_features)
-        test = EventFileGenerator(paths=gamma_train[2][kfold_index], batch_size=batch_size,
-                                  proton_paths=proton_train[2][kfold_index],
-                                  proton_preprocessor=proton_test_preprocessor,
-                                  preprocessor=gamma_test_preprocessor,
-                                  as_channels=as_channels,
-                                  final_slices=final_slices,
-                                  slices=(start_slice, end_slice),
-                                  augment=False,
-                                  normalize=normalize,
-                                  training_type=model_type,
-                                  truncate=truncate,
-                                  dynamic_resize=dynamic_resize,
-                                  equal_slices=equal_slices,
-                                  return_collapsed=return_collapsed,
-                                  return_features=return_features)
+        train = EventFileGenerator(
+            paths=gamma_train[0][kfold_index],
+            batch_size=batch_size,
+            preprocessor=gamma_train_preprocessor,
+            proton_paths=proton_train[0][kfold_index],
+            proton_preprocessor=proton_train_preprocessor,
+            as_channels=as_channels,
+            final_slices=final_slices,
+            slices=(start_slice, end_slice),
+            augment=True,
+            normalize=normalize,
+            training_type=model_type,
+            truncate=truncate,
+            dynamic_resize=dynamic_resize,
+            equal_slices=equal_slices,
+            return_collapsed=return_collapsed,
+            return_features=return_features,
+        )
+        validate = EventFileGenerator(
+            paths=gamma_train[1][kfold_index],
+            batch_size=batch_size,
+            proton_paths=proton_train[1][kfold_index],
+            proton_preprocessor=proton_validate_preprocessor,
+            preprocessor=gamma_validate_preprocessor,
+            as_channels=as_channels,
+            final_slices=final_slices,
+            slices=(start_slice, end_slice),
+            augment=False,
+            normalize=normalize,
+            training_type=model_type,
+            truncate=truncate,
+            dynamic_resize=dynamic_resize,
+            equal_slices=equal_slices,
+            return_collapsed=return_collapsed,
+            return_features=return_features,
+        )
+        test = EventFileGenerator(
+            paths=gamma_train[2][kfold_index],
+            batch_size=batch_size,
+            proton_paths=proton_train[2][kfold_index],
+            proton_preprocessor=proton_test_preprocessor,
+            preprocessor=gamma_test_preprocessor,
+            as_channels=as_channels,
+            final_slices=final_slices,
+            slices=(start_slice, end_slice),
+            augment=False,
+            normalize=normalize,
+            training_type=model_type,
+            truncate=truncate,
+            dynamic_resize=dynamic_resize,
+            equal_slices=equal_slices,
+            return_collapsed=return_collapsed,
+            return_features=return_features,
+        )
     else:
-        train = EventFileGenerator(paths=gamma_train[0][kfold_index], batch_size=batch_size,
-                                   preprocessor=gamma_train_preprocessor,
-                                   as_channels=as_channels,
-                                   final_slices=final_slices,
-                                   slices=(start_slice, end_slice),
-                                   augment=True,
-                                   normalize=normalize,
-                                   training_type=model_type,
-                                   truncate=truncate,
-                                   dynamic_resize=dynamic_resize,
-                                   equal_slices=equal_slices,
-                                   return_collapsed=return_collapsed,
-                                   return_features=return_features)
-        validate = EventFileGenerator(paths=gamma_train[1][kfold_index], batch_size=batch_size,
-                                      preprocessor=gamma_validate_preprocessor,
-                                      as_channels=as_channels,
-                                      final_slices=final_slices,
-                                      slices=(start_slice, end_slice),
-                                      augment=False,
-                                      normalize=normalize,
-                                      training_type=model_type,
-                                      truncate=truncate,
-                                      dynamic_resize=dynamic_resize,
-                                      equal_slices=equal_slices,
-                                      return_collapsed=return_collapsed,
-                                      return_features=return_features)
-        test = EventFileGenerator(paths=gamma_train[2][kfold_index], batch_size=batch_size,
-                                  preprocessor=gamma_test_preprocessor,
-                                  as_channels=as_channels,
-                                  final_slices=final_slices,
-                                  slices=(start_slice, end_slice),
-                                  augment=False,
-                                  normalize=normalize,
-                                  training_type=model_type,
-                                  truncate=truncate,
-                                  dynamic_resize=dynamic_resize,
-                                  equal_slices=equal_slices,
-                                  return_collapsed=return_collapsed,
-                                  return_features=return_features)
+        train = EventFileGenerator(
+            paths=gamma_train[0][kfold_index],
+            batch_size=batch_size,
+            preprocessor=gamma_train_preprocessor,
+            as_channels=as_channels,
+            final_slices=final_slices,
+            slices=(start_slice, end_slice),
+            augment=True,
+            normalize=normalize,
+            training_type=model_type,
+            truncate=truncate,
+            dynamic_resize=dynamic_resize,
+            equal_slices=equal_slices,
+            return_collapsed=return_collapsed,
+            return_features=return_features,
+        )
+        validate = EventFileGenerator(
+            paths=gamma_train[1][kfold_index],
+            batch_size=batch_size,
+            preprocessor=gamma_validate_preprocessor,
+            as_channels=as_channels,
+            final_slices=final_slices,
+            slices=(start_slice, end_slice),
+            augment=False,
+            normalize=normalize,
+            training_type=model_type,
+            truncate=truncate,
+            dynamic_resize=dynamic_resize,
+            equal_slices=equal_slices,
+            return_collapsed=return_collapsed,
+            return_features=return_features,
+        )
+        test = EventFileGenerator(
+            paths=gamma_train[2][kfold_index],
+            batch_size=batch_size,
+            preprocessor=gamma_test_preprocessor,
+            as_channels=as_channels,
+            final_slices=final_slices,
+            slices=(start_slice, end_slice),
+            augment=False,
+            normalize=normalize,
+            training_type=model_type,
+            truncate=truncate,
+            dynamic_resize=dynamic_resize,
+            equal_slices=equal_slices,
+            return_collapsed=return_collapsed,
+            return_features=return_features,
+        )
 
     if as_channels:
-        final_shape = (gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], final_slices)
+        final_shape = (
+            gamma_train_preprocessor.shape[1],
+            gamma_train_preprocessor.shape[2],
+            final_slices,
+        )
     else:
-        final_shape = (final_slices, gamma_train_preprocessor.shape[1], gamma_train_preprocessor.shape[2], 1)
+        final_shape = (
+            final_slices,
+            gamma_train_preprocessor.shape[1],
+            gamma_train_preprocessor.shape[2],
+            1,
+        )
     return train, validate, test, final_shape
 
 
 def fit_model(model, train_gen, val_gen, workers=10, verbose=1):
-    early_stop = tensorflow.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0002,
-                                                          patience=5,
-                                                          verbose=0, mode='auto',
-                                                          restore_best_weights=True)
+    early_stop = tensorflow.keras.callbacks.EarlyStopping(
+        monitor="val_loss",
+        min_delta=0.0002,
+        patience=5,
+        verbose=0,
+        mode="auto",
+        restore_best_weights=True,
+    )
     nan_stop = tensorflow.keras.callbacks.TerminateOnNaN()
 
     model.fit_generator(
@@ -198,11 +250,24 @@ def model_evaluate(model, test_gen, workers=10, verbose=0):
     return evaluation
 
 
-def get_data_generators(directory, proton_directory="", indicies=(30,129,3),
-                      rebin=50, as_channels=False, model_type="Separation",
-                      normalize=False, batch_size=32, truncate=True,
-                      dynamic_resize=True, equal_slices=False, seed=1337, max_elements=None,
-                      return_collapsed=False, return_features=False, kfolds=5):
+def get_data_generators(
+    directory,
+    proton_directory="",
+    indicies=(30, 129, 3),
+    rebin=50,
+    as_channels=False,
+    model_type="Separation",
+    normalize=False,
+    batch_size=32,
+    truncate=True,
+    dynamic_resize=True,
+    equal_slices=False,
+    seed=1337,
+    max_elements=None,
+    return_collapsed=False,
+    return_features=False,
+    kfolds=5,
+):
     """
     This is to obtain just the generators, for when cross-validation not needed
     Keeps 20% of the files out by default
@@ -245,37 +310,61 @@ def get_data_generators(directory, proton_directory="", indicies=(30,129,3),
         proton_paths = split_data(proton_paths, kfolds=kfolds, seed=seed)
 
     if model_type == "Separation":
-        train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
-                                                   final_slices=indicies[2],
-                                                   rebin_size=rebin, gamma_train=gamma_paths,
-                                                   proton_train=proton_paths, batch_size=batch_size,
-                                                   normalize=normalize,
-                                                   model_type=model_type, as_channels=as_channels,
-                                                   truncate=truncate,
-                                                   dynamic_resize=dynamic_resize,
-                                                   equal_slices=equal_slices,
-                                                   return_collapsed=return_collapsed,
-                                                   return_features=return_features)
+        train_gen, val_gen, test_gen, shape = data(
+            start_slice=indicies[0],
+            end_slice=indicies[1],
+            final_slices=indicies[2],
+            rebin_size=rebin,
+            gamma_train=gamma_paths,
+            proton_train=proton_paths,
+            batch_size=batch_size,
+            normalize=normalize,
+            model_type=model_type,
+            as_channels=as_channels,
+            truncate=truncate,
+            dynamic_resize=dynamic_resize,
+            equal_slices=equal_slices,
+            return_collapsed=return_collapsed,
+            return_features=return_features,
+        )
     else:
-        train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
-                                                   final_slices=indicies[2],
-                                                   rebin_size=rebin, gamma_train=gamma_paths,
-                                                   batch_size=batch_size, normalize=normalize,
-                                                   model_type=model_type, as_channels=as_channels,
-                                                   truncate=truncate,
-                                                   dynamic_resize=dynamic_resize,
-                                                   equal_slices=equal_slices,
-                                                   return_collapsed=return_collapsed,
-                                                   return_features=return_features)
+        train_gen, val_gen, test_gen, shape = data(
+            start_slice=indicies[0],
+            end_slice=indicies[1],
+            final_slices=indicies[2],
+            rebin_size=rebin,
+            gamma_train=gamma_paths,
+            batch_size=batch_size,
+            normalize=normalize,
+            model_type=model_type,
+            as_channels=as_channels,
+            truncate=truncate,
+            dynamic_resize=dynamic_resize,
+            equal_slices=equal_slices,
+            return_collapsed=return_collapsed,
+            return_features=return_features,
+        )
 
     return train_gen, val_gen, test_gen, shape
 
 
-def get_chunk_of_data(directory, proton_directory="", indicies=(30,129,3),
-                      rebin=50, as_channels=False, model_type="Separation",
-                      normalize=False, chunk_size=1000, truncate=True,
-                      dynamic_resize=True, equal_slices=False, seed=1337, max_elements=None,
-                      return_collapsed=False, return_features=False):
+def get_chunk_of_data(
+    directory,
+    proton_directory="",
+    indicies=(30, 129, 3),
+    rebin=50,
+    as_channels=False,
+    model_type="Separation",
+    normalize=False,
+    chunk_size=1000,
+    truncate=True,
+    dynamic_resize=True,
+    equal_slices=False,
+    seed=1337,
+    max_elements=None,
+    return_collapsed=False,
+    return_features=False,
+):
     """
     This is to obtain a single chunk of data, for situations where generators should not be used, only need a single block of data
 
@@ -319,28 +408,40 @@ def get_chunk_of_data(directory, proton_directory="", indicies=(30,129,3),
         proton_paths = split_data(proton_paths, kfolds=2, seed=seed)
 
     if model_type == "Separation":
-        train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
-                                                   final_slices=indicies[2],
-                                                   rebin_size=rebin, gamma_train=gamma_paths,
-                                                   proton_train=proton_paths, batch_size=1,
-                                                   normalize=normalize,
-                                                   model_type=model_type, as_channels=as_channels,
-                                                   truncate=truncate,
-                                                   dynamic_resize=dynamic_resize,
-                                                   equal_slices=equal_slices,
-                                                   return_collapsed=return_collapsed,
-                                                   return_features=return_features)
+        train_gen, val_gen, test_gen, shape = data(
+            start_slice=indicies[0],
+            end_slice=indicies[1],
+            final_slices=indicies[2],
+            rebin_size=rebin,
+            gamma_train=gamma_paths,
+            proton_train=proton_paths,
+            batch_size=1,
+            normalize=normalize,
+            model_type=model_type,
+            as_channels=as_channels,
+            truncate=truncate,
+            dynamic_resize=dynamic_resize,
+            equal_slices=equal_slices,
+            return_collapsed=return_collapsed,
+            return_features=return_features,
+        )
     else:
-        train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
-                                                   final_slices=indicies[2],
-                                                   rebin_size=rebin, gamma_train=gamma_paths,
-                                                   batch_size=1, normalize=normalize,
-                                                   model_type=model_type, as_channels=as_channels,
-                                                   truncate=truncate,
-                                                   dynamic_resize=dynamic_resize,
-                                                   equal_slices=equal_slices,
-                                                   return_collapsed=return_collapsed,
-                                                   return_features=return_features)
+        train_gen, val_gen, test_gen, shape = data(
+            start_slice=indicies[0],
+            end_slice=indicies[1],
+            final_slices=indicies[2],
+            rebin_size=rebin,
+            gamma_train=gamma_paths,
+            batch_size=1,
+            normalize=normalize,
+            model_type=model_type,
+            as_channels=as_channels,
+            truncate=truncate,
+            dynamic_resize=dynamic_resize,
+            equal_slices=equal_slices,
+            return_collapsed=return_collapsed,
+            return_features=return_features,
+        )
 
     x, y = train_gen.__getitem__(0)
     for i in range(1, chunk_size):
@@ -350,10 +451,29 @@ def get_chunk_of_data(directory, proton_directory="", indicies=(30,129,3),
 
     return x, y
 
-def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3), rebin=50,
-                   as_channels=False, kfolds=5, model_type="Separation", normalize=False, batch_size=32,
-                   workers=10, verbose=1, truncate=True, dynamic_resize=True, equal_slices=False, seed=1337, max_elements=None,
-                   return_collapsed=False, return_features=False, plot=False):
+
+def cross_validate(
+    model,
+    directory,
+    proton_directory="",
+    indicies=(30, 129, 3),
+    rebin=50,
+    as_channels=False,
+    kfolds=5,
+    model_type="Separation",
+    normalize=False,
+    batch_size=32,
+    workers=10,
+    verbose=1,
+    truncate=True,
+    dynamic_resize=True,
+    equal_slices=False,
+    seed=1337,
+    max_elements=None,
+    return_collapsed=False,
+    return_features=False,
+    plot=False,
+):
     """
 
     :param model: Keras Model
@@ -399,28 +519,40 @@ def cross_validate(model, directory, proton_directory="", indicies=(30, 129, 3),
     for i in range(kfolds):
         model.load_weights("cv_default.h5")
         if model_type == "Separation":
-            train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
-                                                       final_slices=indicies[2],
-                                                       rebin_size=rebin, gamma_train=gamma_paths,
-                                                       proton_train=proton_paths, batch_size=batch_size,
-                                                       normalize=normalize,
-                                                       model_type=model_type, as_channels=as_channels,
-                                                       truncate=truncate,
-                                                       dynamic_resize=dynamic_resize,
-                                                       equal_slices=equal_slices,
-                                                       return_collapsed=return_collapsed,
-                                                       return_features=return_features)
+            train_gen, val_gen, test_gen, shape = data(
+                start_slice=indicies[0],
+                end_slice=indicies[1],
+                final_slices=indicies[2],
+                rebin_size=rebin,
+                gamma_train=gamma_paths,
+                proton_train=proton_paths,
+                batch_size=batch_size,
+                normalize=normalize,
+                model_type=model_type,
+                as_channels=as_channels,
+                truncate=truncate,
+                dynamic_resize=dynamic_resize,
+                equal_slices=equal_slices,
+                return_collapsed=return_collapsed,
+                return_features=return_features,
+            )
         else:
-            train_gen, val_gen, test_gen, shape = data(start_slice=indicies[0], end_slice=indicies[1],
-                                                       final_slices=indicies[2],
-                                                       rebin_size=rebin, gamma_train=gamma_paths,
-                                                       batch_size=batch_size, normalize=normalize,
-                                                       model_type=model_type, as_channels=as_channels,
-                                                       truncate=truncate,
-                                                       dynamic_resize=dynamic_resize,
-                                                       equal_slices=equal_slices,
-                                                       return_collapsed=return_collapsed,
-                                                       return_features=return_features)
+            train_gen, val_gen, test_gen, shape = data(
+                start_slice=indicies[0],
+                end_slice=indicies[1],
+                final_slices=indicies[2],
+                rebin_size=rebin,
+                gamma_train=gamma_paths,
+                batch_size=batch_size,
+                normalize=normalize,
+                model_type=model_type,
+                as_channels=as_channels,
+                truncate=truncate,
+                dynamic_resize=dynamic_resize,
+                equal_slices=equal_slices,
+                return_collapsed=return_collapsed,
+                return_features=return_features,
+            )
 
         model = fit_model(model, train_gen, val_gen, workers=workers, verbose=verbose)
         evaluation = model_evaluate(model, test_gen, workers=workers, verbose=verbose)

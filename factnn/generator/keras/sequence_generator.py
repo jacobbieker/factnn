@@ -4,9 +4,18 @@ from tensorflow.keras.utils import Sequence
 
 
 class BaseSequence(Sequence):
-
-    def __init__(self, paths, num_elements, batch_size, preprocessor=None, proton_preprocessor=None, as_channels=False,
-                 final_slices=5, slices=(30, 70), augment=False):
+    def __init__(
+        self,
+        paths,
+        num_elements,
+        batch_size,
+        preprocessor=None,
+        proton_preprocessor=None,
+        as_channels=False,
+        final_slices=5,
+        slices=(30, 70),
+        augment=False,
+    ):
         """
         Idea for this is to be simpler than the base_generator, less options and less have everything and the kitchen sink
         Instead, each BaseSequence will do one thing, given the paths assigned to it, take a uniform sample of the images in each file,
@@ -107,11 +116,15 @@ class BaseSequence(Sequence):
         if self.augment:
             # Augmenting, so do a resoivor sample batch_size large of the whole file, the run it through the augment
             # Much slower, but with multiprocessing hopefully fine enough
-            images, data_format = self.preprocessor.on_batch_preprocess(datafile=self.paths[index], size=self.batch_size, augment=self.augment)
+            images, data_format = self.preprocessor.on_batch_preprocess(
+                datafile=self.paths[index], size=self.batch_size, augment=self.augment
+            )
             pass
         else:
             # Not augment, so take the first batch_size elements in the file
-            self.preprocessor.on_batch_preprocess(datafile=self.paths[index], size=self.batch_size, augment=self.augment)
+            self.preprocessor.on_batch_preprocess(
+                datafile=self.paths[index], size=self.batch_size, augment=self.augment
+            )
             pass
 
     def __len__(self):

@@ -9,8 +9,15 @@ import os
 from multiprocessing import Pool
 from functools import partial
 
-def process_diffuse_gamma_files(data_dir="", output_dir="", clump_size=5, num_workers=12, hdf_file="../gamma.hdf5",
-                                gamma_dl2="../gamma_simulations_diffuse_facttools_dl2.hdf5"):
+
+def process_diffuse_gamma_files(
+    data_dir="",
+    output_dir="",
+    clump_size=5,
+    num_workers=12,
+    hdf_file="../gamma.hdf5",
+    gamma_dl2="../gamma_simulations_diffuse_facttools_dl2.hdf5",
+):
     # Get paths from the directories
     paths = []
     for directory in data_dir:
@@ -21,16 +28,20 @@ def process_diffuse_gamma_files(data_dir="", output_dir="", clump_size=5, num_wo
 
     def process_diffuse_gamma(clump_size, path):
         gamma_configuration = {
-            'rebin_size': 5,
-            'output_file': hdf_file,
-            'shape': [30, 70],
-            'paths': [path],
-            'dl2_file': gamma_dl2
+            "rebin_size": 5,
+            "output_file": hdf_file,
+            "shape": [30, 70],
+            "paths": [path],
+            "dl2_file": gamma_dl2,
         }
 
         gamma_train_preprocessor = GammaDiffusePreprocessor(config=gamma_configuration)
-        gamma_train_preprocessor.event_processor(directory=output_dir, clean_images=True,
-                                                 only_core=True, clump_size=clump_size)
+        gamma_train_preprocessor.event_processor(
+            directory=output_dir,
+            clean_images=True,
+            only_core=True,
+            clump_size=clump_size,
+        )
 
     pool = Pool(num_workers)
     func = partial(process_diffuse_gamma, clump_size)
@@ -39,7 +50,9 @@ def process_diffuse_gamma_files(data_dir="", output_dir="", clump_size=5, num_wo
     return jobs
 
 
-def process_gamma_files(data_dir="", output_dir="", clump_size=5, num_workers=12, hdf_file="../gamma.hdf5"):
+def process_gamma_files(
+    data_dir="", output_dir="", clump_size=5, num_workers=12, hdf_file="../gamma.hdf5"
+):
     # Get paths from the directories
     paths = []
     for directory in data_dir:
@@ -52,15 +65,16 @@ def process_gamma_files(data_dir="", output_dir="", clump_size=5, num_workers=12
         print("Gamma")
         print("Size: ", clump_size)
         gamma_configuration = {
-            'rebin_size': 5,
-            'output_file': hdf_file,
-            'shape': [30, 70],
-            'paths': [path]
+            "rebin_size": 5,
+            "output_file": hdf_file,
+            "shape": [30, 70],
+            "paths": [path],
         }
 
         gamma_train_preprocessor = GammaPreprocessor(config=gamma_configuration)
-        gamma_train_preprocessor.event_processor(output_dir, clean_images=True,
-                                                 only_core=True, clump_size=clump_size)
+        gamma_train_preprocessor.event_processor(
+            output_dir, clean_images=True, only_core=True, clump_size=clump_size
+        )
 
     pool = Pool(num_workers)
     func = partial(process_gamma, clump_size)
@@ -69,7 +83,9 @@ def process_gamma_files(data_dir="", output_dir="", clump_size=5, num_workers=12
     return jobs
 
 
-def process_proton_files(data_dir="", output_dir="", clump_size=5, num_workers=12, hdf_file="../proton.hdf5"):
+def process_proton_files(
+    data_dir="", output_dir="", clump_size=5, num_workers=12, hdf_file="../proton.hdf5"
+):
     # Get paths from the directories
     paths = []
     for directory in data_dir:
@@ -80,15 +96,16 @@ def process_proton_files(data_dir="", output_dir="", clump_size=5, num_workers=1
 
     def process_proton(clump_size, path):
         proton_configuration = {
-            'rebin_size': 5,
-            'output_file': hdf_file,
-            'shape': [30, 70],
-            'paths': [path],
+            "rebin_size": 5,
+            "output_file": hdf_file,
+            "shape": [30, 70],
+            "paths": [path],
         }
 
         proton_train_preprocessor = ProtonPreprocessor(config=proton_configuration)
-        proton_train_preprocessor.event_processor(output_dir, clean_images=True,
-                                                  only_core=True, clump_size=clump_size)
+        proton_train_preprocessor.event_processor(
+            output_dir, clean_images=True, only_core=True, clump_size=clump_size
+        )
 
     pool = Pool(num_workers)
     func = partial(process_proton, clump_size)

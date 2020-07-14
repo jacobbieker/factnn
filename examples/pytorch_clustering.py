@@ -6,7 +6,11 @@ from torch_geometric.utils import intersection_and_union as i_and_u
 import numpy as np
 import argparse
 
-from factnn.generator.pytorch.datasets import ClusterDataset, DiffuseDataset, EventDataset
+from factnn.generator.pytorch.datasets import (
+    ClusterDataset,
+    DiffuseDataset,
+    EventDataset,
+)
 from factnn.models.pytorch_models import PointNet2Classifier, PointNet2Segmenter
 
 from trains import Task
@@ -46,10 +50,18 @@ def test(model, device, test_loader):
 
         # Add manual scalar reporting for loss metrics
         for i, iou in enumerate(ious):
-            logger.report_scalar(title='Test Class IoU'.format(epoch),
-                                 series=f'Class {i} IoU', value=iou.item(), iteration=1)
-        logger.report_scalar(title='Test Mean IoU'.format(epoch),
-                             series='Mean IoU.', value=torch.tensor(ious).mean().item(), iteration=1)
+            logger.report_scalar(
+                title="Test Class IoU".format(epoch),
+                series=f"Class {i} IoU",
+                value=iou.item(),
+                iteration=1,
+            )
+        logger.report_scalar(
+            title="Test Mean IoU".format(epoch),
+            series="Mean IoU.",
+            value=torch.tensor(ious).mean().item(),
+            iteration=1,
+        )
 
 
 def train(args, model, device, train_loader, optimizer, epoch):
@@ -71,13 +83,23 @@ def train(args, model, device, train_loader, optimizer, epoch):
         correct_nodes += output.argmax(dim=1).eq(data.y).sum().item()
         total_nodes += data.num_nodes
         if batch_idx % args.log_interval == 0:
-            print(f'[{batch_idx + 1}/{len(train_loader)}] Loss: {total_loss / 10:.4f} '
-                  f'Train Acc: {correct_nodes / total_nodes:.4f}')
+            print(
+                f"[{batch_idx + 1}/{len(train_loader)}] Loss: {total_loss / 10:.4f} "
+                f"Train Acc: {correct_nodes / total_nodes:.4f}"
+            )
             # Add manual scalar reporting for loss metrics
-            logger.report_scalar(title='Loss {} - epoch'.format(epoch),
-                                 series='Loss', value=loss.item(), iteration=batch_idx)
-            logger.report_scalar(title='Train Accuracy {} - epoch'.format(epoch),
-                                 series='Train Acc.', value=correct_nodes / total_nodes, iteration=batch_idx)
+            logger.report_scalar(
+                title="Loss {} - epoch".format(epoch),
+                series="Loss",
+                value=loss.item(),
+                iteration=batch_idx,
+            )
+            logger.report_scalar(
+                title="Train Accuracy {} - epoch".format(epoch),
+                series="Train Acc.",
+                value=correct_nodes / total_nodes,
+                iteration=batch_idx,
+            )
             total_loss = correct_nodes = total_nodes = 0
 
 
@@ -97,21 +119,48 @@ def default_argument_parser():
         action="store_true",
         help="whether to attempt to resume from the checkpoint directory",
     )
-    parser.add_argument("--augment", action="store_true", help="whether to augment input data, default False")
-    parser.add_argument("--norm", action="store_true", help="whether to normalize point locations, default False")
-    parser.add_argument("--max-points", type=int, default=0, help="max number of sampled points, if > 0, default 0")
-    parser.add_argument("--dataset", type=str, default="", help="path to dataset folder")
-    parser.add_argument("--unclean-dataset", type=str, default="", help="path to uncleaned dataset folder")
-    parser.add_argument("--clump-dataset", type=str, default="", help="path to clumped dataset folder")
+    parser.add_argument(
+        "--augment",
+        action="store_true",
+        help="whether to augment input data, default False",
+    )
+    parser.add_argument(
+        "--norm",
+        action="store_true",
+        help="whether to normalize point locations, default False",
+    )
+    parser.add_argument(
+        "--max-points",
+        type=int,
+        default=0,
+        help="max number of sampled points, if > 0, default 0",
+    )
+    parser.add_argument(
+        "--dataset", type=str, default="", help="path to dataset folder"
+    )
+    parser.add_argument(
+        "--unclean-dataset",
+        type=str,
+        default="",
+        help="path to uncleaned dataset folder",
+    )
+    parser.add_argument(
+        "--clump-dataset", type=str, default="", help="path to clumped dataset folder"
+    )
     parser.add_argument("--lr", type=float, default=0.001, help="learning rate")
     parser.add_argument("--batch", type=int, default=32, help="batch size")
     parser.add_argument("--epochs", type=int, default=200, help="number of epochs")
-    parser.add_argument("--log-interval", type=int, default=50, help="number of minibatches between logging")
+    parser.add_argument(
+        "--log-interval",
+        type=int,
+        default=50,
+        help="number of minibatches between logging",
+    )
 
     return parser
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = default_argument_parser().parse_args()
     transforms = []
     if args.max_points > 0:
@@ -123,18 +172,40 @@ if __name__ == '__main__':
     if args.norm:
         transforms.append(T.NormalizeScale())
     transform = T.Compose(transforms=transforms) if transforms else None
-    train_dataset = ClusterDataset(args.dataset, split='trainval', uncleaned_root=args.unclean_dataset,
-                                   pre_transform=None,
-                                   transform=transform, clump_root=args.clump_dataset if args.clump_dataset else None)
-    test_dataset = ClusterDataset(args.dataset, split='test', uncleaned_root=args.unclean_dataset, pre_transform=None,
-                                  transform=transform, clump_root=args.clump_dataset if args.clump_dataset else None)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True,
-                              num_workers=6)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch, shuffle=False,
-                             num_workers=6)
+    train_dataset = ClusterDataset(
+        args.dataset,
+        split="trainval",
+        uncleaned_root=args.unclean_dataset,
+        pre_transform=None,
+        transform=transform,
+        clump_root=args.clump_dataset if args.clump_dataset else None,
+    )
+    test_dataset = ClusterDataset(
+        args.dataset,
+        split="test",
+        uncleaned_root=args.unclean_dataset,
+        pre_transform=None,
+        transform=transform,
+        clump_root=args.clump_dataset if args.clump_dataset else None,
+    )
+    train_loader = DataLoader(
+        train_dataset, batch_size=args.batch, shuffle=True, num_workers=6
+    )
+    test_loader = DataLoader(
+        test_dataset, batch_size=args.batch, shuffle=False, num_workers=6
+    )
 
-    config = {"sample_ratio_one": 0.5, "sample_radius_one": 0.2, "sample_max_neighbor": 64, "sample_ratio_two": 0.25,
-              "sample_radius_two": 0.4, "fc_1": 128, "fc_2": 64, "dropout": 0.5, "knn_num": 3}
+    config = {
+        "sample_ratio_one": 0.5,
+        "sample_radius_one": 0.2,
+        "sample_max_neighbor": 64,
+        "sample_ratio_two": 0.25,
+        "sample_radius_two": 0.4,
+        "fc_1": 128,
+        "fc_2": 64,
+        "dropout": 0.5,
+        "knn_num": 3,
+    }
     config = task.connect_configuration(config)
     labels = {"Background": 0}
     if args.clump_dataset:
@@ -146,7 +217,7 @@ if __name__ == '__main__':
         num_classes = 2
     task.connect_label_enumeration(labels)
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = PointNet2Segmenter(num_classes, config).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 

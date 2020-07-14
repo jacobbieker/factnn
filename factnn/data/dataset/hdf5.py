@@ -14,16 +14,18 @@ def create_dataset(preprocessor, output_file="output.hdf5"):
     row_count = formatted_batch[data_format["Image"]].shape[0]
     print(row_count)
 
-    with h5py.File(output_file, 'w') as hdf:
+    with h5py.File(output_file, "w") as hdf:
         # Now go through each key in data_format, create the dataset
         dset_sets = [None for i in formatted_batch]
         for key, value in data_format:
             maxshape = (None,) + formatted_batch[value].shape[1:]
-            dset = hdf.create_dataset(key,
-                                      shape=formatted_batch[key].shape,
-                                      maxshape=maxshape,
-                                      chunks=formatted_batch[key].shape,
-                                      dtype=formatted_batch[key].dtype)
+            dset = hdf.create_dataset(
+                key,
+                shape=formatted_batch[key].shape,
+                maxshape=maxshape,
+                chunks=formatted_batch[key].shape,
+                dtype=formatted_batch[key].dtype,
+            )
             dset_sets[value] = dset
             dset_sets[value][:] = formatted_batch[key]
 

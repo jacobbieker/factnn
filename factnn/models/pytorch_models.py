@@ -1,6 +1,12 @@
 import torch
 import torch.nn.functional as F
-from torch.nn import Sequential as Sequential, Linear as Linear, ReLU, Dropout, BatchNorm1d
+from torch.nn import (
+    Sequential as Sequential,
+    Linear as Linear,
+    ReLU,
+    Dropout,
+    BatchNorm1d,
+)
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.nn.inits import reset
 from torch_geometric.utils.num_nodes import maybe_num_nodes
@@ -26,7 +32,14 @@ class PointNet2SAModule(torch.nn.Module):
         idx = fps(pos, batch, ratio=self.sample_ratio)
 
         # Group(Build graph)
-        row, col = radius(pos, pos[idx], self.radius, batch, batch[idx], max_num_neighbors=self.max_num_neighbors)
+        row, col = radius(
+            pos,
+            pos[idx],
+            self.radius,
+            batch,
+            batch[idx],
+            max_num_neighbors=self.max_num_neighbors,
+        )
         edge_index = torch.stack([col, row], dim=0)
 
         # Apply pointnet
@@ -37,10 +50,10 @@ class PointNet2SAModule(torch.nn.Module):
 
 
 class PointNet2GlobalSAModule(torch.nn.Module):
-    '''
+    """
     One group with all input points, can be viewed as a simple PointNet module.
     It also return the only one output point(set as origin point).
-    '''
+    """
 
     def __init__(self, mlp):
         super(PointNet2GlobalSAModule, self).__init__()
@@ -48,7 +61,8 @@ class PointNet2GlobalSAModule(torch.nn.Module):
 
     def forward(self, data):
         x, pos, batch = data
-        if x is not None: x = torch.cat([x, pos], dim=1)
+        if x is not None:
+            x = torch.cat([x, pos], dim=1)
         x1 = self.mlp(x)
 
         x1 = scatter_max(x1, batch, dim=0)[0]  # (batch_size, C1)
@@ -61,15 +75,15 @@ class PointNet2GlobalSAModule(torch.nn.Module):
 
 
 class PointConvFP(MessagePassing):
-    '''
+    """
     Core layer of Feature propagtaion module.
-    '''
+    """
 
     def __init__(self, mlp=None):
-        super(PointConvFP, self).__init__('add', 'source_to_target')
+        super(PointConvFP, self).__init__("add", "source_to_target")
         self.mlp = mlp
-        self.aggr = 'add'
-        self.flow = 'source_to_target'
+        self.aggr = "add"
+        self.flow = "source_to_target"
 
         self.reset_parameters()
 
@@ -90,22 +104,23 @@ class PointConvFP(MessagePassing):
         aggr_out = self.propagate(edge_index, x=x_tmp, pos=pos)
 
         #
-        i, j = (0, 1) if self.flow == 'target_to_source' else (1, 0)
+        i, j = (0, 1) if self.flow == "target_to_source" else (1, 0)
         x_target, pos_target = x[i], pos[i]
 
-        add = [pos_target, ] if x_target is None else [x_target, pos_target]
+        add = [pos_target,] if x_target is None else [x_target, pos_target]
         aggr_out = torch.cat([aggr_out, *add], dim=1)
 
-        if self.mlp is not None: aggr_out = self.mlp(aggr_out)
+        if self.mlp is not None:
+            aggr_out = self.mlp(aggr_out)
 
         return aggr_out
 
     def message(self, x_j, pos_j, pos_i, edge_index):
-        '''
+        """
         x_j: (E, in_channels)
         pos_j: (E, 3)
         pos_i: (E, 3)
-        '''
+        """
         dist = (pos_j - pos_i).pow(2).sum(dim=1).pow(0.5)
         dist = torch.max(dist, torch.Tensor([1e-10]).to(dist.device, dist.dtype))
         weight = 1.0 / dist  # (E,)
@@ -113,7 +128,9 @@ class PointConvFP(MessagePassing):
         row, col = edge_index
         index = col
         num_nodes = maybe_num_nodes(index, None)
-        wsum = scatter_add(weight, col, dim=0, dim_size=num_nodes)[index] + 1e-16  # (E,)
+        wsum = (
+            scatter_add(weight, col, dim=0, dim_size=num_nodes)[index] + 1e-16
+        )  # (E,)
         weight /= wsum
 
         return weight.view(-1, 1) * x_j
@@ -147,7 +164,8 @@ def make_mlp(in_channels, mlp_channels, batch_norm=True):
 
     for c in mlp_channels:
         layers += [Linear(in_channels, c)]
-        if batch_norm: layers += [BatchNorm1d(c)]
+        if batch_norm:
+            layers += [BatchNorm1d(c)]
         layers += [ReLU()]
 
         in_channels = c
@@ -156,11 +174,11 @@ def make_mlp(in_channels, mlp_channels, batch_norm=True):
 
 
 class PointNet2Segmenter(torch.nn.Module):
-    '''
+    """
     ref:
         - https://github.com/charlesq34/pointnet2/blob/master/models/pointnet2_part_seg.py
         - https://github.com/rusty1s/pytorch_geometric/blob/master/examples/pointnet++.py
-    '''
+    """
 
     def __init__(self, num_classes, config=None):
         super(PointNet2Segmenter, self).__init__()
@@ -172,14 +190,18 @@ class PointNet2Segmenter(torch.nn.Module):
         sa1_radius = self.config["sample_radius_one"]  # 0.2
         sa1_max_num_neighbours = self.config["sample_max_neighbor"]  # 64
         sa1_mlp = make_mlp(3, [64, 64, 128])
-        self.sa1_module = PointNet2SAModule(sa1_sample_ratio, sa1_radius, sa1_max_num_neighbours, sa1_mlp)
+        self.sa1_module = PointNet2SAModule(
+            sa1_sample_ratio, sa1_radius, sa1_max_num_neighbours, sa1_mlp
+        )
 
         # SA2
         sa2_sample_ratio = self.config["sample_ratio_two"]  # 0.25
         sa2_radius = self.config["sample_radius_two"]  # 0.4
         sa2_max_num_neighbours = self.config["sample_max_neighbor"]  # 64
         sa2_mlp = make_mlp(128 + 3, [128, 128, 256])
-        self.sa2_module = PointNet2SAModule(sa2_sample_ratio, sa2_radius, sa2_max_num_neighbours, sa2_mlp)
+        self.sa2_module = PointNet2SAModule(
+            sa2_sample_ratio, sa2_radius, sa2_max_num_neighbours, sa2_mlp
+        )
 
         # SA3
         sa3_mlp = make_mlp(256 + 3, [256, 512, 1024])
@@ -189,7 +211,9 @@ class PointNet2Segmenter(torch.nn.Module):
         knn_num = self.config["knn_num"] if self.config["knn_num"] else 3
 
         # FP3, reverse of sa3
-        fp3_knn_num = 1  # After global sa module, there is only one point in point cloud
+        fp3_knn_num = (
+            1  # After global sa module, there is only one point in point cloud
+        )
         fp3_mlp = make_mlp(1024 + 256 + 3, [256, 256])
         self.fp3_module = PointNet2FPModule(fp3_knn_num, fp3_mlp)
 
@@ -208,7 +232,7 @@ class PointNet2Segmenter(torch.nn.Module):
         self.fc2 = Linear(self.config["fc_2"], self.num_classes)
 
     def forward(self, data):
-        '''
+        """
         data: a batch of input, torch.Tensor or torch_geometric.data.Data type
             - torch.Tensor: (batch_size, 3, num_points), as common batch input
 
@@ -221,7 +245,7 @@ class PointNet2Segmenter(torch.nn.Module):
                 data.batch: (batch_size * ~num_points,), a column vector of graph/pointcloud
                     idendifiers for all nodes of all graphs/pointclouds in the batch. See
                     pytorch_gemometric documentation for more information
-        '''
+        """
         dense_input = True if isinstance(data, torch.Tensor) else False
 
         if dense_input:
@@ -230,13 +254,15 @@ class PointNet2Segmenter(torch.nn.Module):
             batch_size, N, _ = data.shape  # (batch_size, num_points, 3)
             pos = data.view(batch_size * N, -1)
             batch = torch.zeros((batch_size, N), device=pos.device, dtype=torch.long)
-            for i in range(batch_size): batch[i] = i
+            for i in range(batch_size):
+                batch[i] = i
             batch = batch.view(-1)
 
             data = Data()
             data.pos, data.batch = pos, batch
 
-        if not hasattr(data, 'x'): data.x = None
+        if not hasattr(data, "x"):
+            data.x = None
         data_in = data.x, data.pos, data.batch
 
         sa1_out = self.sa1_module(data_in)
@@ -268,14 +294,18 @@ class PointNet2Classifier(torch.nn.Module):
         sa1_radius = self.config["sample_radius_one"]  # 0.2
         sa1_max_num_neighbours = self.config["sample_max_neighbor"]  # 64
         sa1_mlp = make_mlp(3, [64, 64, 128])
-        self.sa1_module = PointNet2SAModule(sa1_sample_ratio, sa1_radius, sa1_max_num_neighbours, sa1_mlp)
+        self.sa1_module = PointNet2SAModule(
+            sa1_sample_ratio, sa1_radius, sa1_max_num_neighbours, sa1_mlp
+        )
 
         # SA2
         sa2_sample_ratio = self.config["sample_ratio_two"]  # 0.25
         sa2_radius = self.config["sample_radius_two"]  # 0.4
         sa2_max_num_neighbours = self.config["sample_max_neighbor"]  # 64
         sa2_mlp = make_mlp(128 + 3, [128, 128, 256])
-        self.sa2_module = PointNet2SAModule(sa2_sample_ratio, sa2_radius, sa2_max_num_neighbours, sa2_mlp)
+        self.sa2_module = PointNet2SAModule(
+            sa2_sample_ratio, sa2_radius, sa2_max_num_neighbours, sa2_mlp
+        )
 
         # SA3
         sa3_mlp = make_mlp(256 + 3, [256, 512, 1024])
@@ -294,13 +324,15 @@ class PointNet2Classifier(torch.nn.Module):
             batch_size, N, _ = data.shape  # (batch_size, num_points, 3)
             pos = data.view(batch_size * N, -1)
             batch = torch.zeros((batch_size, N), device=pos.device, dtype=torch.long)
-            for i in range(batch_size): batch[i] = i
+            for i in range(batch_size):
+                batch[i] = i
             batch = batch.view(-1)
 
             data = Data()
             data.pos, data.batch = pos, batch
 
-        if not hasattr(data, 'x'): data.x = None
+        if not hasattr(data, "x"):
+            data.x = None
         data_in = data.x, data.pos, data.batch
         sa1_out = self.sa1_module(data_in)
         sa2_out = self.sa2_module(sa1_out)
@@ -326,14 +358,18 @@ class PointNet2Regressor(torch.nn.Module):
         sa1_radius = self.config["sample_radius_one"]  # 0.2
         sa1_max_num_neighbours = self.config["sample_max_neighbor"]  # 64
         sa1_mlp = make_mlp(3, [64, 64, 128])
-        self.sa1_module = PointNet2SAModule(sa1_sample_ratio, sa1_radius, sa1_max_num_neighbours, sa1_mlp)
+        self.sa1_module = PointNet2SAModule(
+            sa1_sample_ratio, sa1_radius, sa1_max_num_neighbours, sa1_mlp
+        )
 
         # SA2
         sa2_sample_ratio = self.config["sample_ratio_two"]  # 0.25
         sa2_radius = self.config["sample_radius_two"]  # 0.4
         sa2_max_num_neighbours = self.config["sample_max_neighbor"]  # 64
         sa2_mlp = make_mlp(128 + 3, [128, 128, 256])
-        self.sa2_module = PointNet2SAModule(sa2_sample_ratio, sa2_radius, sa2_max_num_neighbours, sa2_mlp)
+        self.sa2_module = PointNet2SAModule(
+            sa2_sample_ratio, sa2_radius, sa2_max_num_neighbours, sa2_mlp
+        )
 
         # SA3
         sa3_mlp = make_mlp(256 + 3, [256, 512, 1024])
@@ -352,13 +388,15 @@ class PointNet2Regressor(torch.nn.Module):
             batch_size, N, _ = data.shape  # (batch_size, num_points, 3)
             pos = data.view(batch_size * N, -1)
             batch = torch.zeros((batch_size, N), device=pos.device, dtype=torch.long)
-            for i in range(batch_size): batch[i] = i
+            for i in range(batch_size):
+                batch[i] = i
             batch = batch.view(-1)
 
             data = Data()
             data.pos, data.batch = pos, batch
 
-        if not hasattr(data, 'x'): data.x = None
+        if not hasattr(data, "x"):
+            data.x = None
         data_in = data.x, data.pos, data.batch
         sa1_out = self.sa1_module(data_in)
         sa2_out = self.sa2_module(sa1_out)

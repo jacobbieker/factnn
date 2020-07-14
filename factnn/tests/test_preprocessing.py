@@ -4,14 +4,12 @@ from factnn.data.preprocess.simulation_preprocessors import GammaPreprocessor
 
 
 class TestProtonPreprocessor(unittest.TestCase):
-
     def setUp(self):
         self.configuration = {
-            'directories': None,
-            'paths': None,
-            'dl2_file': None,
-            'output_file': None,
-
+            "directories": None,
+            "paths": None,
+            "dl2_file": None,
+            "output_file": None,
         }
         return NotImplemented
 
@@ -26,15 +24,13 @@ class TestProtonPreprocessor(unittest.TestCase):
 
 
 class TestGammaPreprocessor(unittest.TestCase):
-
     def setUp(self):
         self.configuration = {
-            'directories': None,
-            'paths': None,
-            'rebin_size': 5,
-            'dl2_file': None,
-            'output_file': None,
-
+            "directories": None,
+            "paths": None,
+            "rebin_size": 5,
+            "dl2_file": None,
+            "output_file": None,
         }
         return NotImplemented
 
@@ -53,15 +49,13 @@ class TestGammaPreprocessor(unittest.TestCase):
 
 
 class TestObservationPreprocessor(unittest.TestCase):
-
     def setUp(self):
         self.configuration = {
-            'directories': None,
-            'paths': None,
-            'rebin_size': 5,
-            'dl2_file': None,
-            'output_file': None,
-
+            "directories": None,
+            "paths": None,
+            "rebin_size": 5,
+            "dl2_file": None,
+            "output_file": None,
         }
         return NotImplemented
 
@@ -75,5 +69,5 @@ class TestObservationPreprocessor(unittest.TestCase):
         return NotImplemented
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

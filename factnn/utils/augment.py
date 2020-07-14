@@ -95,8 +95,18 @@ def dual_image_augmenter(images, collapsed_images, as_channels=False):
     return images, collapsed_images
 
 
-def common_step(batch_images, positions=None, labels=None, proton_images=None, augment=True, swap=True, shape=None,
-                as_channels=False, return_collapsed=False, return_features=False):
+def common_step(
+    batch_images,
+    positions=None,
+    labels=None,
+    proton_images=None,
+    augment=True,
+    swap=True,
+    shape=None,
+    as_channels=False,
+    return_collapsed=False,
+    return_features=False,
+):
     # Get the correct index for the collapsed and feature data if used
     if return_features and return_collapsed:
         feature_index = 1
@@ -113,9 +123,9 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
 
     if augment:
         if return_collapsed:
-            batch_images[0], batch_images[collapsed_index] = dual_image_augmenter(batch_images[0],
-                                                                                  batch_images[collapsed_index],
-                                                                                  as_channels)
+            batch_images[0], batch_images[collapsed_index] = dual_image_augmenter(
+                batch_images[0], batch_images[collapsed_index], as_channels
+            )
         elif return_features:
             batch_images[0] = image_augmenter(batch_images[0], as_channels)
         else:
@@ -123,9 +133,9 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
     if proton_images is not None:
         if augment:
             if return_collapsed:
-                proton_images[0], proton_images[collapsed_index] = dual_image_augmenter(proton_images[0],
-                                                                                        proton_images[collapsed_index],
-                                                                                        as_channels)
+                proton_images[0], proton_images[collapsed_index] = dual_image_augmenter(
+                    proton_images[0], proton_images[collapsed_index], as_channels
+                )
             elif return_features:
                 proton_images[0] = image_augmenter(proton_images[0], as_channels)
             else:
@@ -138,47 +148,85 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
                 batch_images = batch_images.reshape(shape)
                 proton_images = proton_images.reshape(shape)
         if return_collapsed:
-            labels = np.array([True] * (len(batch_images[0])) + [False] * len(proton_images[0]))
+            labels = np.array(
+                [True] * (len(batch_images[0])) + [False] * len(proton_images[0])
+            )
             batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
-            batch_images[0] = np.concatenate([batch_images[0], proton_images[0]], axis=0)
+            batch_images[0] = np.concatenate(
+                [batch_images[0], proton_images[0]], axis=0
+            )
             if return_features:
                 batch_images[feature_index] = np.concatenate(
-                    [batch_images[feature_index], proton_images[feature_index]], axis=0)
+                    [batch_images[feature_index], proton_images[feature_index]], axis=0
+                )
             batch_images[collapsed_index] = np.concatenate(
-                [batch_images[collapsed_index], proton_images[collapsed_index]], axis=0)
+                [batch_images[collapsed_index], proton_images[collapsed_index]], axis=0
+            )
         else:
             if return_features:
                 batch_images[feature_index] = np.concatenate(
-                    [batch_images[feature_index], proton_images[feature_index]], axis=0)
-                labels = np.array([True] * (len(batch_images[0])) + [False] * len(proton_images[0]))
+                    [batch_images[feature_index], proton_images[feature_index]], axis=0
+                )
+                labels = np.array(
+                    [True] * (len(batch_images[0])) + [False] * len(proton_images[0])
+                )
                 batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
-                batch_images[0] = np.concatenate([batch_images[0], proton_images[0]], axis=0)
+                batch_images[0] = np.concatenate(
+                    [batch_images[0], proton_images[0]], axis=0
+                )
             else:
-                labels = np.array([True] * (len(batch_images)) + [False] * len(proton_images))
+                labels = np.array(
+                    [True] * (len(batch_images)) + [False] * len(proton_images)
+                )
                 batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
                 batch_images = np.concatenate([batch_images, proton_images], axis=0)
         if swap:
             if return_features and return_collapsed:
-                batch_images[0], batch_images[feature_index], batch_images[
-                    collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index],
-                                                                  batch_images[collapsed_index], batch_image_label)
-                batch_image_label = [batch_image_label, batch_image_label, batch_image_label]
+                (
+                    batch_images[0],
+                    batch_images[feature_index],
+                    batch_images[collapsed_index],
+                    batch_image_label,
+                ) = shuffle(
+                    batch_images[0],
+                    batch_images[feature_index],
+                    batch_images[collapsed_index],
+                    batch_image_label,
+                )
+                batch_image_label = [
+                    batch_image_label,
+                    batch_image_label,
+                    batch_image_label,
+                ]
             elif return_features and not return_collapsed:
-                batch_images[0], batch_images[feature_index], batch_image_label = shuffle(batch_images[0],
-                                                                                          batch_images[feature_index],
-                                                                                          batch_image_label)
+                (
+                    batch_images[0],
+                    batch_images[feature_index],
+                    batch_image_label,
+                ) = shuffle(
+                    batch_images[0], batch_images[feature_index], batch_image_label
+                )
                 batch_image_label = [batch_image_label, batch_image_label]
             elif not return_features and return_collapsed:
-                batch_images[0], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0],
-                                                                                            batch_images[
-                                                                                                collapsed_index],
-                                                                                            batch_image_label)
+                (
+                    batch_images[0],
+                    batch_images[collapsed_index],
+                    batch_image_label,
+                ) = shuffle(
+                    batch_images[0], batch_images[collapsed_index], batch_image_label
+                )
                 batch_image_label = [batch_image_label, batch_image_label]
             else:
-                batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
+                batch_images, batch_image_label = shuffle(
+                    batch_images, batch_image_label
+                )
         else:
             if return_features and return_collapsed:
-                batch_image_label = [batch_image_label, batch_image_label, batch_image_label]
+                batch_image_label = [
+                    batch_image_label,
+                    batch_image_label,
+                    batch_image_label,
+                ]
             elif return_features and not return_collapsed:
                 batch_image_label = [batch_image_label, batch_image_label]
             elif not return_features and return_collapsed:
@@ -197,26 +245,51 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
                 batch_images = batch_images.reshape(shape)
         if swap:
             if return_features and return_collapsed:
-                batch_images[0], batch_images[feature_index], batch_images[
-                    collapsed_index], batch_image_label = shuffle(batch_images[0], batch_images[feature_index],
-                                                                  batch_images[collapsed_index], batch_image_label)
-                batch_image_label = [batch_image_label, batch_image_label, batch_image_label]
+                (
+                    batch_images[0],
+                    batch_images[feature_index],
+                    batch_images[collapsed_index],
+                    batch_image_label,
+                ) = shuffle(
+                    batch_images[0],
+                    batch_images[feature_index],
+                    batch_images[collapsed_index],
+                    batch_image_label,
+                )
+                batch_image_label = [
+                    batch_image_label,
+                    batch_image_label,
+                    batch_image_label,
+                ]
             elif return_features and not return_collapsed:
-                batch_images[0], batch_images[feature_index], batch_image_label = shuffle(batch_images[0],
-                                                                                          batch_images[feature_index],
-                                                                                          batch_image_label)
+                (
+                    batch_images[0],
+                    batch_images[feature_index],
+                    batch_image_label,
+                ) = shuffle(
+                    batch_images[0], batch_images[feature_index], batch_image_label
+                )
                 batch_image_label = [batch_image_label, batch_image_label]
             elif not return_features and return_collapsed:
-                batch_images[0], batch_images[collapsed_index], batch_image_label = shuffle(batch_images[0],
-                                                                                            batch_images[
-                                                                                                collapsed_index],
-                                                                                            batch_image_label)
+                (
+                    batch_images[0],
+                    batch_images[collapsed_index],
+                    batch_image_label,
+                ) = shuffle(
+                    batch_images[0], batch_images[collapsed_index], batch_image_label
+                )
                 batch_image_label = [batch_image_label, batch_image_label]
             else:
-                batch_images, batch_image_label = shuffle(batch_images, batch_image_label)
+                batch_images, batch_image_label = shuffle(
+                    batch_images, batch_image_label
+                )
         else:
             if return_features and return_collapsed:
-                batch_image_label = [batch_image_label, batch_image_label, batch_image_label]
+                batch_image_label = [
+                    batch_image_label,
+                    batch_image_label,
+                    batch_image_label,
+                ]
             elif return_features and not return_collapsed:
                 batch_image_label = [batch_image_label, batch_image_label]
             elif not return_features and return_collapsed:
@@ -226,9 +299,21 @@ def common_step(batch_images, positions=None, labels=None, proton_images=None, a
         return batch_images, batch_image_label
 
 
-def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
-                          type_training=None, augment=True, swap=True, shape=None):
-    '''
+def get_random_hdf5_chunk(
+    start,
+    stop,
+    size,
+    time_slice,
+    total_slices,
+    gamma,
+    proton_input=None,
+    labels=None,
+    type_training=None,
+    augment=True,
+    swap=True,
+    shape=None,
+):
+    """
     Gets a random part of the HDF5 database within start and stop endpoints
     This is to help with shuffling data, as currently all the ones come and go in the same
     order
@@ -245,7 +330,7 @@ def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, gamma, pr
     :param time_slice: Last index in the time slices
     :param total_slices: Total slices to use starting from time_slice and going earlier
     :return:
-    '''
+    """
 
     # Get all possible starting positions given the end point and number of events
 
@@ -260,19 +345,56 @@ def get_random_hdf5_chunk(start, stop, size, time_slice, total_slices, gamma, pr
             with h5py.File(proton_input, "r") as images_two:
                 proton_data = images_two["Image"]
                 training_data = images_one["Image"]
-                batch_images = training_data[start_pos:int(start_pos + size), time_slice:time_slice + total_slices, ::]
-                proton_images = proton_data[start_pos:int(start_pos + size), time_slice:time_slice + total_slices, ::]
-                return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment,
-                                   swap=swap, shape=shape)
+                batch_images = training_data[
+                    start_pos : int(start_pos + size),
+                    time_slice : time_slice + total_slices,
+                    ::,
+                ]
+                proton_images = proton_data[
+                    start_pos : int(start_pos + size),
+                    time_slice : time_slice + total_slices,
+                    ::,
+                ]
+                return common_step(
+                    batch_images,
+                    positions,
+                    labels=labels,
+                    proton_images=proton_images,
+                    augment=augment,
+                    swap=swap,
+                    shape=shape,
+                )
         else:
             training_data = images_one["Image"]
-            batch_images = training_data[start_pos:int(start_pos + size), time_slice:time_slice + total_slices, ::]
-            return common_step(batch_images, positions, labels=labels, augment=augment, swap=swap, shape=shape)
+            batch_images = training_data[
+                start_pos : int(start_pos + size),
+                time_slice : time_slice + total_slices,
+                ::,
+            ]
+            return common_step(
+                batch_images,
+                positions,
+                labels=labels,
+                augment=augment,
+                swap=swap,
+                shape=shape,
+            )
 
 
-def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
-                               augment=True, swap=True, shape=None):
-    '''
+def get_completely_random_hdf5(
+    start,
+    stop,
+    size,
+    time_slice,
+    total_slices,
+    gamma,
+    proton_input=None,
+    labels=None,
+    augment=True,
+    swap=True,
+    shape=None,
+):
+    """
     Gets a random part of the HDF5 database within start and stop endpoints
     This is to help with shuffling data, as currently all the ones come and go in the same
     order
@@ -291,7 +413,7 @@ def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, gamm
     :param time_slice:
     :param total_slices:
     :return:
-    '''
+    """
 
     # Get random positions within the start and stop sizes
     positions = np.random.randint(start, stop, size=size)
@@ -301,19 +423,49 @@ def get_completely_random_hdf5(start, stop, size, time_slice, total_slices, gamm
             with h5py.File(proton_input, "r") as images_two:
                 proton_data = images_two["Image"]
                 training_data = images_one["Image"]
-                batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
-                proton_images = proton_data[positions, time_slice:time_slice + total_slices, ::]
-                return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment,
-                                   swap=swap, shape=shape)
+                batch_images = training_data[
+                    positions, time_slice : time_slice + total_slices, ::
+                ]
+                proton_images = proton_data[
+                    positions, time_slice : time_slice + total_slices, ::
+                ]
+                return common_step(
+                    batch_images,
+                    positions,
+                    labels=labels,
+                    proton_images=proton_images,
+                    augment=augment,
+                    swap=swap,
+                    shape=shape,
+                )
         else:
             training_data = images_one["Image"]
-            batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
-            return common_step(batch_images, positions, labels=labels, augment=augment, swap=swap, shape=shape)
+            batch_images = training_data[
+                positions, time_slice : time_slice + total_slices, ::
+            ]
+            return common_step(
+                batch_images,
+                positions,
+                labels=labels,
+                augment=augment,
+                swap=swap,
+                shape=shape,
+            )
 
 
-def get_random_from_list(indicies, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
-                         augment=True, swap=True, shape=None):
-    '''
+def get_random_from_list(
+    indicies,
+    size,
+    time_slice,
+    total_slices,
+    gamma,
+    proton_input=None,
+    labels=None,
+    augment=True,
+    swap=True,
+    shape=None,
+):
+    """
     Gets a random part of the HDF5 database within a list of given indicies
     This is to help with shuffling data, as currently all the ones come and go in the same
     order
@@ -332,7 +484,7 @@ def get_random_from_list(indicies, size, time_slice, total_slices, gamma, proton
     :param time_slice:
     :param total_slices:
     :return:
-    '''
+    """
 
     # Get random positions within the start and stop sizes
     positions = np.random.choice(indicies, size=size, replace=False)
@@ -342,19 +494,50 @@ def get_random_from_list(indicies, size, time_slice, total_slices, gamma, proton
             with h5py.File(proton_input, "r") as images_two:
                 proton_data = images_two["Image"]
                 training_data = images_one["Image"]
-                batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
-                proton_images = proton_data[positions, time_slice:time_slice + total_slices, ::]
-                return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment,
-                                   swap=swap, shape=shape)
+                batch_images = training_data[
+                    positions, time_slice : time_slice + total_slices, ::
+                ]
+                proton_images = proton_data[
+                    positions, time_slice : time_slice + total_slices, ::
+                ]
+                return common_step(
+                    batch_images,
+                    positions,
+                    labels=labels,
+                    proton_images=proton_images,
+                    augment=augment,
+                    swap=swap,
+                    shape=shape,
+                )
         else:
             training_data = images_one["Image"]
-            batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
-            return common_step(batch_images, positions, labels=labels, augment=augment, swap=swap, shape=shape)
+            batch_images = training_data[
+                positions, time_slice : time_slice + total_slices, ::
+            ]
+            return common_step(
+                batch_images,
+                positions,
+                labels=labels,
+                augment=augment,
+                swap=swap,
+                shape=shape,
+            )
 
 
-def get_chunk_from_list(indicies, size, time_slice, total_slices, gamma, proton_input=None, labels=None,
-                        augment=True, swap=True, shape=None, current_step=0):
-    '''
+def get_chunk_from_list(
+    indicies,
+    size,
+    time_slice,
+    total_slices,
+    gamma,
+    proton_input=None,
+    labels=None,
+    augment=True,
+    swap=True,
+    shape=None,
+    current_step=0,
+):
+    """
     Gets a section of the HDF5 from the list of indicies, but not randomly,so can iterate through all options
     This is to help with shuffling data, as currently all the ones come and go in the same
     order
@@ -373,16 +556,16 @@ def get_chunk_from_list(indicies, size, time_slice, total_slices, gamma, proton_
     :param time_slice:
     :param total_slices:
     :return:
-    '''
+    """
 
     # Get random positions within the start and stop sizes
     if (current_step + 1) * size < len(indicies):
-        positions = indicies[current_step * size:(current_step + 1) * size]
+        positions = indicies[current_step * size : (current_step + 1) * size]
     else:
         if current_step * size < len(indicies):
-            positions = indicies[current_step * size:]
+            positions = indicies[current_step * size :]
             if len(positions) < size:
-                positions += indicies[0:(size - len(positions))]
+                positions += indicies[0 : (size - len(positions))]
         else:
             # More overflow
             positions = indicies[0:size]
@@ -392,14 +575,34 @@ def get_chunk_from_list(indicies, size, time_slice, total_slices, gamma, proton_
             with h5py.File(proton_input, "r") as images_two:
                 proton_data = images_two["Image"]
                 training_data = images_one["Image"]
-                batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
-                proton_images = proton_data[positions, time_slice:time_slice + total_slices, ::]
-                return common_step(batch_images, positions, labels=labels, proton_images=proton_images, augment=augment,
-                                   swap=swap, shape=shape)
+                batch_images = training_data[
+                    positions, time_slice : time_slice + total_slices, ::
+                ]
+                proton_images = proton_data[
+                    positions, time_slice : time_slice + total_slices, ::
+                ]
+                return common_step(
+                    batch_images,
+                    positions,
+                    labels=labels,
+                    proton_images=proton_images,
+                    augment=augment,
+                    swap=swap,
+                    shape=shape,
+                )
         else:
             training_data = images_one["Image"]
-            batch_images = training_data[positions, time_slice:time_slice + total_slices, ::]
-            return common_step(batch_images, positions, labels=labels, augment=augment, swap=swap, shape=shape)
+            batch_images = training_data[
+                positions, time_slice : time_slice + total_slices, ::
+            ]
+            return common_step(
+                batch_images,
+                positions,
+                labels=labels,
+                augment=augment,
+                swap=swap,
+                shape=shape,
+            )
 
 
 def euclidean_distance(x1, y1, x2, y2):
@@ -407,25 +610,29 @@ def euclidean_distance(x1, y1, x2, y2):
 
 
 def true_delta(cog_y, source_y, cog_x, source_x):
-    return np.arctan2(
-        cog_y - source_y,
-        cog_x - source_x
-    )
+    return np.arctan2(cog_y - source_y, cog_x - source_x)
 
 
 def true_sign(source_x, source_y, cog_x, cog_y, delta):
-    true_delta = np.arctan2(
-        cog_y - source_y,
-        cog_x - source_x,
-    )
+    true_delta = np.arctan2(cog_y - source_y, cog_x - source_x,)
     true_sign = np.sign(np.abs(delta - true_delta) - np.pi / 2)
     return true_sign
 
 
-def get_random_from_paths(preprocessor, size, time_slice, total_slices,
-                          proton_preprocessor=None, type_training=None, augment=True, swap=True, shape=None,
-                          as_channels=False, final_slices=5):
-    '''
+def get_random_from_paths(
+    preprocessor,
+    size,
+    time_slice,
+    total_slices,
+    proton_preprocessor=None,
+    type_training=None,
+    augment=True,
+    swap=True,
+    shape=None,
+    as_channels=False,
+    final_slices=5,
+):
+    """
     Gets a random part of the HDF5 database within start and stop endpoints
     This is to help with shuffling data, as currently all the ones come and go in the same
     order
@@ -445,7 +652,7 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
     :param time_slice:
     :param total_slices:
     :return:
-    '''
+    """
 
     # For this, the single processors are assumed to infinitely iterate through their files, shuffling the order of the
     # files after every go through of the whole file set, so some kind of shuffling, but not much
@@ -467,27 +674,43 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
         labels = np.array(labels)
         training_data = [item[data_format["Image"]] for item in training_data]
     elif type_training == "Disp":
-        labels = [euclidean_distance(item[data_format['Source_X']], item[data_format['Source_Y']],
-                                     item[data_format['COG_X']], item[data_format['COG_Y']]) for item in training_data]
+        labels = [
+            euclidean_distance(
+                item[data_format["Source_X"]],
+                item[data_format["Source_Y"]],
+                item[data_format["COG_X"]],
+                item[data_format["COG_Y"]],
+            )
+            for item in training_data
+        ]
         labels = np.array(labels)
         training_data = [item[data_format["Image"]] for item in training_data]
     elif type_training == "Sign":
-        labels = [true_sign(item[data_format['Source_X']], item[data_format['Source_Y']],
-                            item[data_format['COG_X']], item[data_format['COG_Y']], item[data_format['Delta']]) for item
-                  in training_data]
+        labels = [
+            true_sign(
+                item[data_format["Source_X"]],
+                item[data_format["Source_Y"]],
+                item[data_format["COG_X"]],
+                item[data_format["COG_Y"]],
+                item[data_format["Delta"]],
+            )
+            for item in training_data
+        ]
         labels = np.array(labels)
         # Create own categorical one since only two sides anyway
         new_labels = np.zeros((labels.shape[0], 2))
         for index, element in enumerate(labels):
             if element < 0:
-                new_labels[index][0] = 1.
+                new_labels[index][0] = 1.0
             else:
-                new_labels[index][1] = 1.
+                new_labels[index][1] = 1.0
         labels = new_labels
         training_data = [item[data_format["Image"]] for item in training_data]
 
     training_data = np.array(training_data)
-    training_data = training_data.reshape(-1, training_data.shape[2], training_data.shape[3], training_data.shape[4])
+    training_data = training_data.reshape(
+        -1, training_data.shape[2], training_data.shape[3], training_data.shape[4]
+    )
 
     if proton_preprocessor is not None:
         proton_data = []
@@ -500,22 +723,39 @@ def get_random_from_paths(preprocessor, size, time_slice, total_slices,
             proton_data.append(processed_data)
         proton_data = [item[data_format["Image"]] for item in proton_data]
         proton_data = np.array(proton_data)
-        proton_data = proton_data.reshape(-1, proton_data.shape[2], proton_data.shape[3], proton_data.shape[4])
+        proton_data = proton_data.reshape(
+            -1, proton_data.shape[2], proton_data.shape[3], proton_data.shape[4]
+        )
         if not as_channels:
-            batch_images = training_data[::, time_slice:time_slice + total_slices, ::]
-            proton_images = proton_data[::, time_slice:time_slice + total_slices, ::]
+            batch_images = training_data[::, time_slice : time_slice + total_slices, ::]
+            proton_images = proton_data[::, time_slice : time_slice + total_slices, ::]
         else:
             batch_images = training_data
             proton_images = proton_data
-        return common_step(batch_images, positions=None, labels=labels, proton_images=proton_images, augment=augment,
-                           swap=swap, shape=shape, as_channels=as_channels)
+        return common_step(
+            batch_images,
+            positions=None,
+            labels=labels,
+            proton_images=proton_images,
+            augment=augment,
+            swap=swap,
+            shape=shape,
+            as_channels=as_channels,
+        )
     else:
         if not as_channels:
-            batch_images = training_data[::, time_slice:time_slice + total_slices, ::]
+            batch_images = training_data[::, time_slice : time_slice + total_slices, ::]
         else:
             batch_images = training_data
-        return common_step(batch_images, positions=None, labels=labels, augment=augment, swap=swap, shape=shape,
-                           as_channels=as_channels)
+        return common_step(
+            batch_images,
+            positions=None,
+            labels=labels,
+            augment=augment,
+            swap=swap,
+            shape=shape,
+            as_channels=as_channels,
+        )
 
 
 def point_cloud_augmenter(point_clouds, rotate=True, jitter=None):
@@ -529,20 +769,20 @@ def point_cloud_augmenter(point_clouds, rotate=True, jitter=None):
     tmp_clouds = []
     for point_cloud in point_clouds:
         if rotate:
-            rand_rot = R.from_euler("z", np.random.uniform(0.0,360.0), degrees=True)
+            rand_rot = R.from_euler("z", np.random.uniform(0.0, 360.0), degrees=True)
             point_cloud = rand_rot.apply(point_cloud)
 
         if jitter is not None and jitter > 0.0:
             tmp_cloud = []
             for point in point_cloud:
                 # Only add jitter in the x, and y directions.
-                point[0] += np.random.uniform(-1.0,1.0)*jitter
-                point[1] += np.random.uniform(-1.0,1.0)*jitter
+                point[0] += np.random.uniform(-1.0, 1.0) * jitter
+                point[1] += np.random.uniform(-1.0, 1.0) * jitter
                 # Since point[1] is the y coordinate, in radians, should stay between 0 and 2pi, works for non-crazy jitters
-                if point[1] >= 2*np.pi:
-                    point[1] -= 2*np.pi
+                if point[1] >= 2 * np.pi:
+                    point[1] -= 2 * np.pi
                 elif point[1] < 0.0:
-                    point[1] += 2*np.pi
+                    point[1] += 2 * np.pi
                 tmp_cloud.append(point)
 
             point_cloud = np.asarray(tmp_cloud)
@@ -552,8 +792,17 @@ def point_cloud_augmenter(point_clouds, rotate=True, jitter=None):
     return point_clouds
 
 
-def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augment=True, swap=False,
-                             return_features=False, rotate=False, jitter=None, feature_index=-99):
+def point_cloud_augmentation(
+    gamma_clouds,
+    proton_clouds=None,
+    labels=None,
+    augment=True,
+    swap=False,
+    return_features=False,
+    rotate=False,
+    jitter=None,
+    feature_index=-99,
+):
     """
     Returns labels and images for point clouds. As point clouds need to be augmented differently than images, common_step does not work
 
@@ -568,9 +817,13 @@ def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augm
 
     if augment:
         if return_features:
-            gamma_clouds[0] = point_cloud_augmenter(gamma_clouds[0], rotate=rotate, jitter=jitter)
+            gamma_clouds[0] = point_cloud_augmenter(
+                gamma_clouds[0], rotate=rotate, jitter=jitter
+            )
         else:
-            gamma_clouds = point_cloud_augmenter(gamma_clouds, rotate=rotate, jitter=jitter)
+            gamma_clouds = point_cloud_augmenter(
+                gamma_clouds, rotate=rotate, jitter=jitter
+            )
 
     if proton_clouds is not None:
         if augment:
@@ -579,23 +832,36 @@ def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augm
             else:
                 proton_clouds = point_cloud_augmenter(proton_clouds)
         if return_features:
-            gamma_clouds[feature_index] = np.concatenate([gamma_clouds[feature_index], proton_clouds[feature_index]],
-                                                         axis=0)
-            labels = np.array([True] * (len(gamma_clouds[0])) + [False] * len(proton_clouds[0]))
+            gamma_clouds[feature_index] = np.concatenate(
+                [gamma_clouds[feature_index], proton_clouds[feature_index]], axis=0
+            )
+            labels = np.array(
+                [True] * (len(gamma_clouds[0])) + [False] * len(proton_clouds[0])
+            )
             batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
-            gamma_clouds[0] = np.concatenate([gamma_clouds[0], proton_clouds[0]], axis=0)
+            gamma_clouds[0] = np.concatenate(
+                [gamma_clouds[0], proton_clouds[0]], axis=0
+            )
         else:
-            labels = np.array([True] * (len(gamma_clouds)) + [False] * len(proton_clouds))
+            labels = np.array(
+                [True] * (len(gamma_clouds)) + [False] * len(proton_clouds)
+            )
             batch_image_label = (np.arange(2) == labels[:, None]).astype(np.float32)
             gamma_clouds = np.concatenate([gamma_clouds, proton_clouds], axis=0)
         if swap:
             if return_features:
-                gamma_clouds[0], gamma_clouds[feature_index], batch_image_label = shuffle(gamma_clouds[0],
-                                                                                          gamma_clouds[feature_index],
-                                                                                          batch_image_label)
+                (
+                    gamma_clouds[0],
+                    gamma_clouds[feature_index],
+                    batch_image_label,
+                ) = shuffle(
+                    gamma_clouds[0], gamma_clouds[feature_index], batch_image_label
+                )
                 batch_image_label = [batch_image_label, batch_image_label]
             else:
-                gamma_clouds, batch_image_label = shuffle(gamma_clouds, batch_image_label)
+                gamma_clouds, batch_image_label = shuffle(
+                    gamma_clouds, batch_image_label
+                )
         else:
             if return_features:
                 batch_image_label = [batch_image_label, batch_image_label]
@@ -606,12 +872,18 @@ def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augm
         batch_image_label = labels
         if swap:
             if return_features:
-                gamma_clouds[0], gamma_clouds[feature_index], batch_image_label = shuffle(gamma_clouds[0],
-                                                                                          gamma_clouds[feature_index],
-                                                                                          batch_image_label)
+                (
+                    gamma_clouds[0],
+                    gamma_clouds[feature_index],
+                    batch_image_label,
+                ) = shuffle(
+                    gamma_clouds[0], gamma_clouds[feature_index], batch_image_label
+                )
                 batch_image_label = [batch_image_label, batch_image_label]
             else:
-                gamma_clouds, batch_image_label = shuffle(gamma_clouds, batch_image_label)
+                gamma_clouds, batch_image_label = shuffle(
+                    gamma_clouds, batch_image_label
+                )
         else:
             if return_features:
                 batch_image_label = [batch_image_label, batch_image_label]
@@ -620,8 +892,16 @@ def point_cloud_augmentation(gamma_clouds, proton_clouds=None, labels=None, augm
         return gamma_clouds, batch_image_label
 
 
-def augment_pointcloud_batch(images, proton_images=None, type_training=None, augment=False, swap=True,
-                             return_features=False, rotate=False, jitter=None):
+def augment_pointcloud_batch(
+    images,
+    proton_images=None,
+    type_training=None,
+    augment=False,
+    swap=True,
+    return_features=False,
+    rotate=False,
+    jitter=None,
+):
     """
     This is for use with the eventfile_generator, given a set of Pointclouds, return the possibly augmented ones and labels
     :param images:
@@ -657,23 +937,37 @@ def augment_pointcloud_batch(images, proton_images=None, type_training=None, aug
         labels = np.array(labels)
         training_data = [item[data_format["Image"]] for item in training_data]
     elif type_training == "Disp":
-        labels = [euclidean_distance(item[data_format['Source_X']], item[data_format['Source_Y']],
-                                     item[data_format['COG_X']], item[data_format['COG_Y']]) for item in training_data]
+        labels = [
+            euclidean_distance(
+                item[data_format["Source_X"]],
+                item[data_format["Source_Y"]],
+                item[data_format["COG_X"]],
+                item[data_format["COG_Y"]],
+            )
+            for item in training_data
+        ]
         labels = np.array(labels)
         training_data = [item[data_format["Image"]] for item in training_data]
     elif type_training == "Sign":
-        labels = [true_sign(item[data_format['Source_X']], item[data_format['Source_Y']],
-                            item[data_format['COG_X']], item[data_format['COG_Y']], item[data_format['Delta']]) for item
-                  in training_data]
+        labels = [
+            true_sign(
+                item[data_format["Source_X"]],
+                item[data_format["Source_Y"]],
+                item[data_format["COG_X"]],
+                item[data_format["COG_Y"]],
+                item[data_format["Delta"]],
+            )
+            for item in training_data
+        ]
         training_data = [item[data_format["Image"]] for item in training_data]
         labels = np.array(labels)
         # Create own categorical one since only two sides anyway
         new_labels = np.zeros((labels.shape[0], 2))
         for index, element in enumerate(labels):
             if element < 0:
-                new_labels[index][0] = 1.
+                new_labels[index][0] = 1.0
             else:
-                new_labels[index][1] = 1.
+                new_labels[index][1] = 1.0
         labels = new_labels
         training_data = [item[data_format["Image"]] for item in training_data]
 
@@ -704,17 +998,42 @@ def augment_pointcloud_batch(images, proton_images=None, type_training=None, aug
             proton_images.append(features)
 
         # Because most of the common_step is only relevant to image version, going without it here
-        return point_cloud_augmentation(batch_images, proton_clouds=proton_images, labels=labels, augment=augment,
-                                        swap=swap, return_features=return_features, feature_index=feature_index,
-                                        rotate=rotate, jitter=jitter)
+        return point_cloud_augmentation(
+            batch_images,
+            proton_clouds=proton_images,
+            labels=labels,
+            augment=augment,
+            swap=swap,
+            return_features=return_features,
+            feature_index=feature_index,
+            rotate=rotate,
+            jitter=jitter,
+        )
     else:
-        return point_cloud_augmentation(batch_images, proton_clouds=proton_images, labels=labels, augment=augment,
-                                        swap=swap, return_features=return_features, feature_index=feature_index,
-                                        rotate=rotate, jitter=jitter)
+        return point_cloud_augmentation(
+            batch_images,
+            proton_clouds=proton_images,
+            labels=labels,
+            augment=augment,
+            swap=swap,
+            return_features=return_features,
+            feature_index=feature_index,
+            rotate=rotate,
+            jitter=jitter,
+        )
 
 
-def augment_image_batch(images, proton_images=None, type_training=None, augment=False, swap=True, shape=None,
-                        as_channels=False, return_collapsed=False, return_features=False):
+def augment_image_batch(
+    images,
+    proton_images=None,
+    type_training=None,
+    augment=False,
+    swap=True,
+    shape=None,
+    as_channels=False,
+    return_collapsed=False,
+    return_features=False,
+):
     """
     This is for use with the eventfile_generator, given a set of images, return the possibly augmented ones and labels
     :param images:
@@ -760,28 +1079,44 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
         labels = np.array(labels)
         training_data = [item[data_format["Image"]] for item in training_data]
     elif type_training == "Disp":
-        labels = [euclidean_distance(item[data_format['Source_X']], item[data_format['Source_Y']],
-                                     item[data_format['COG_X']], item[data_format['COG_Y']]) for item in training_data]
+        labels = [
+            euclidean_distance(
+                item[data_format["Source_X"]],
+                item[data_format["Source_Y"]],
+                item[data_format["COG_X"]],
+                item[data_format["COG_Y"]],
+            )
+            for item in training_data
+        ]
         labels = np.array(labels)
         training_data = [item[data_format["Image"]] for item in training_data]
     elif type_training == "Sign":
-        labels = [true_sign(item[data_format['Source_X']], item[data_format['Source_Y']],
-                            item[data_format['COG_X']], item[data_format['COG_Y']], item[data_format['Delta']]) for item
-                  in training_data]
+        labels = [
+            true_sign(
+                item[data_format["Source_X"]],
+                item[data_format["Source_Y"]],
+                item[data_format["COG_X"]],
+                item[data_format["COG_Y"]],
+                item[data_format["Delta"]],
+            )
+            for item in training_data
+        ]
         training_data = [item[data_format["Image"]] for item in training_data]
         labels = np.array(labels)
         # Create own categorical one since only two sides anyway
         new_labels = np.zeros((labels.shape[0], 2))
         for index, element in enumerate(labels):
             if element < 0:
-                new_labels[index][0] = 1.
+                new_labels[index][0] = 1.0
             else:
-                new_labels[index][1] = 1.
+                new_labels[index][1] = 1.0
         labels = new_labels
         training_data = [item[data_format["Image"]] for item in training_data]
 
     training_data = np.array(training_data)
-    training_data = training_data.reshape(-1, training_data.shape[2], training_data.shape[3], training_data.shape[4])
+    training_data = training_data.reshape(
+        -1, training_data.shape[2], training_data.shape[3], training_data.shape[4]
+    )
 
     if return_collapsed or return_features:
         batch_images = [training_data]
@@ -795,7 +1130,9 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
     if return_collapsed:
         # Gather collapsed data
         collapsed_image = np.array(collapsed_list)
-        collapsed_image = collapsed_image.reshape(-1, collapsed_image.shape[3], collapsed_image.shape[4], 1)
+        collapsed_image = collapsed_image.reshape(
+            -1, collapsed_image.shape[3], collapsed_image.shape[4], 1
+        )
         batch_images.append(collapsed_image)
 
     if proton_images is not None:
@@ -806,7 +1143,9 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
             proton_collapsed_list = [item[collapsed_index] for item in proton_images]
         proton_data = [item[data_format["Image"]] for item in proton_data]
         proton_data = np.array(proton_data)
-        proton_data = proton_data.reshape(-1, proton_data.shape[2], proton_data.shape[3], proton_data.shape[4])
+        proton_data = proton_data.reshape(
+            -1, proton_data.shape[2], proton_data.shape[3], proton_data.shape[4]
+        )
         if return_collapsed or return_features:
             proton_images = [proton_data]
         else:
@@ -819,12 +1158,32 @@ def augment_image_batch(images, proton_images=None, type_training=None, augment=
         if return_collapsed:
             # Gather collapsed data
             collapsed_image = np.array(proton_collapsed_list)
-            collapsed_image = collapsed_image.reshape(-1, collapsed_image.shape[3], collapsed_image.shape[4], 1)
+            collapsed_image = collapsed_image.reshape(
+                -1, collapsed_image.shape[3], collapsed_image.shape[4], 1
+            )
             proton_images.append(collapsed_image)
 
-        return common_step(batch_images, positions=None, labels=labels, proton_images=proton_images, augment=augment,
-                           swap=swap, shape=shape, as_channels=as_channels, return_features=return_features,
-                           return_collapsed=return_collapsed)
+        return common_step(
+            batch_images,
+            positions=None,
+            labels=labels,
+            proton_images=proton_images,
+            augment=augment,
+            swap=swap,
+            shape=shape,
+            as_channels=as_channels,
+            return_features=return_features,
+            return_collapsed=return_collapsed,
+        )
     else:
-        return common_step(batch_images, positions=None, labels=labels, augment=augment, swap=swap, shape=shape,
-                           as_channels=as_channels, return_collapsed=return_collapsed, return_features=return_features)
+        return common_step(
+            batch_images,
+            positions=None,
+            labels=labels,
+            augment=augment,
+            swap=swap,
+            shape=shape,
+            as_channels=as_channels,
+            return_collapsed=return_collapsed,
+            return_features=return_features,
+        )

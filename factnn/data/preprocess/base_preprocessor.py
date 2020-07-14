@@ -9,12 +9,11 @@ import pkg_resources as res
 
 
 class BasePreprocessor(object):
-
     def __init__(self, config):
-        if 'directories' in config:
-            self.directories = config['directories']
-        if 'paths' in config:
-            self.paths = config['paths']
+        if "directories" in config:
+            self.directories = config["directories"]
+        if "paths" in config:
+            self.paths = config["paths"]
         else:
             # Get paths from the directories
             self.paths = []
@@ -24,47 +23,58 @@ class BasePreprocessor(object):
                         if file.endswith("phs.jsonl.gz"):
                             self.paths.append(os.path.join(root, file))
 
-        if 'dl2_file' in config:
-            self.dl2_file = config['dl2_file']
+        if "dl2_file" in config:
+            self.dl2_file = config["dl2_file"]
         else:
             self.dl2_file = None
 
-        if 'rebin_size' in config:
-            if config['rebin_size'] <= 300:
+        if "rebin_size" in config:
+            if config["rebin_size"] <= 300:
                 try:
-                    with open(res.resource_filename('factnn.data.resources', "rebinning_" + str(config['rebin_size']) + ".p"), "rb") as rebinning_file:
+                    with open(
+                        res.resource_filename(
+                            "factnn.data.resources",
+                            "rebinning_" + str(config["rebin_size"]) + ".p",
+                        ),
+                        "rb",
+                    ) as rebinning_file:
                         self.rebinning = pickle.load(rebinning_file)
                 except Exception as e:
-                    self.rebinning = self.generate_rebinning(config['rebin_size'])
+                    self.rebinning = self.generate_rebinning(config["rebin_size"])
             else:
-                self.rebinning = self.generate_rebinning(config['rebin_size'])
+                self.rebinning = self.generate_rebinning(config["rebin_size"])
         else:
             self.rebinning = self.generate_rebinning(50)
 
-        if 'gaussian' in config:
-            if config['gaussian']:
+        if "gaussian" in config:
+            if config["gaussian"]:
                 self.rebinning = self.generate_rebin_fractions()
 
-        if 'shape' in config:
-            self.start = config['shape'][0]
-            self.end = config['shape'][1]
+        if "shape" in config:
+            self.start = config["shape"][0]
+            self.end = config["shape"][1]
         else:
             # Get it from the rebinning
             self.end = 100
             self.start = 0
 
-        self.shape = [-1, config['rebin_size'], config['rebin_size'], self.end - self.start]
+        self.shape = [
+            -1,
+            config["rebin_size"],
+            config["rebin_size"],
+            self.end - self.start,
+        ]
 
         self.dataset = None
-        if 'output_file' in config:
-            self.output_file = config['output_file']
+        if "output_file" in config:
+            self.output_file = config["output_file"]
         else:
             self.output_file = None
 
         self.num_events = -1
 
-        if 'as_channels' in config:
-            self.as_channels = config['as_channels']
+        if "as_channels" in config:
+            self.as_channels = config["as_channels"]
         else:
             self.as_channels = False
 
@@ -102,7 +112,7 @@ class BasePreprocessor(object):
         x /= np.max(x)
         y /= np.max(y)
 
-        ratio = (range_x/range_y)
+        ratio = range_x / range_y
         y *= ratio
 
         pixel_fractions = []
@@ -125,26 +135,33 @@ class BasePreprocessor(object):
         # Bottom one
         p2 = Point(0.0, -PIXEL_EDGE)
         # Bottom right
-        p3 = Point(-PIXEL_EDGE * (np.sqrt(3) / 2), -PIXEL_EDGE * .5)
+        p3 = Point(-PIXEL_EDGE * (np.sqrt(3) / 2), -PIXEL_EDGE * 0.5)
         # Bottom left
-        p4 = Point(PIXEL_EDGE * (np.sqrt(3) / 2), PIXEL_EDGE * .5)
+        p4 = Point(PIXEL_EDGE * (np.sqrt(3) / 2), PIXEL_EDGE * 0.5)
         # right
-        p5 = Point(PIXEL_EDGE * (np.sqrt(3) / 2), -PIXEL_EDGE * .5)
+        p5 = Point(PIXEL_EDGE * (np.sqrt(3) / 2), -PIXEL_EDGE * 0.5)
         #  left
-        p6 = Point(-PIXEL_EDGE * (np.sqrt(3) / 2), PIXEL_EDGE * .5)
+        p6 = Point(-PIXEL_EDGE * (np.sqrt(3) / 2), PIXEL_EDGE * 0.5)
 
         hexagon = MultiPoint([p1, p2, p3, p4, p5, p6]).convex_hull
 
         square_start = 186
 
-        steps = size # Now size of 100 should make a 100x100 grid
+        steps = size  # Now size of 100 should make a 100x100 grid
 
-        square_size = np.abs(square_start * 2 / steps) # Now this is the size of the grid
+        square_size = np.abs(
+            square_start * 2 / steps
+        )  # Now this is the size of the grid
 
-        square = Polygon([(-square_start, square_start), (-square_start + square_size, square_start),
-                          (-square_start + square_size, square_start - square_size),
-                          (-square_start, square_start - square_size),
-                          (-square_start, square_start)])
+        square = Polygon(
+            [
+                (-square_start, square_start),
+                (-square_start + square_size, square_start),
+                (-square_start + square_size, square_start - square_size),
+                (-square_start, square_start - square_size),
+                (-square_start, square_start),
+            ]
+        )
 
         list_of_squares = [square]
 
@@ -153,7 +170,9 @@ class BasePreprocessor(object):
         # Generate tessellation of grid
         for x_step in range(steps):
             for y_step in range(steps):
-                new_square = translate(square, xoff=x_step * square_size, yoff=-square_size * y_step)
+                new_square = translate(
+                    square, xoff=x_step * square_size, yoff=-square_size * y_step
+                )
                 pixel_index_to_grid[pix_index] = [x_step, y_step]
                 pix_index += 1
                 list_of_squares.append(new_square)
@@ -178,8 +197,12 @@ class BasePreprocessor(object):
                     fraction_whole = intersection.area / hexagon.area
                     if not np.isclose(fraction_whole, 0.0):
                         # so not close to zero overlap, add to list for that pixel
-                        list_pixels_and_fractions[np.abs(pixel_index)].append((chid, fraction_whole))
-                        chid_to_pixel[np.abs(1439 - chid)].append((pixel_index, fraction_whole))
+                        list_pixels_and_fractions[np.abs(pixel_index)].append(
+                            (chid, fraction_whole)
+                        )
+                        chid_to_pixel[np.abs(1439 - chid)].append(
+                            (pixel_index, fraction_whole)
+                        )
 
         hex_to_grid = [chid_to_pixel, pixel_index_to_grid]
         return hex_to_grid
@@ -187,10 +210,21 @@ class BasePreprocessor(object):
     def batch_processor(self, clean_images=False):
         return NotImplemented
 
-    def single_processor(self, normalize=False, collapse_time=False, final_slices=5, clean_images=False):
+    def single_processor(
+        self, normalize=False, collapse_time=False, final_slices=5, clean_images=False
+    ):
         return NotImplemented
 
-    def on_batch_processor(self, filepath, size, sample=False, normalize=False, collapse_time=False, final_slices=5, clean_images=False):
+    def on_batch_processor(
+        self,
+        filepath,
+        size,
+        sample=False,
+        normalize=False,
+        collapse_time=False,
+        final_slices=5,
+        clean_images=False,
+    ):
         """
         Returns at most size-elements from the file at filepath, if sample=True, then does resevoir sampling of the entire
         file, otherwise takes the first size-elements
@@ -235,19 +269,21 @@ class BasePreprocessor(object):
                         # Each time slice you normalize
                         mean = np.mean(image_slice)
                         stddev = np.std(image_slice)
-                        denom = np.max([stddev, 1.0/np.sqrt(image_slice.size)])
+                        denom = np.max([stddev, 1.0 / np.sqrt(image_slice.size)])
                         image_slice = (image_slice - mean) / denom
                         temp_matrix.append(image_slice)
         else:
             # Do it over the whole timeslice/channels
             mean = np.mean(image)
             stddev = np.std(image)
-            denom = np.max([stddev, 1.0/np.sqrt(image.size)])
+            denom = np.max([stddev, 1.0 / np.sqrt(image.size)])
             image = (image - mean) / denom
             return image
         # Should be normalized now
         temp_matrix = np.array(temp_matrix)
-        temp_matrix = temp_matrix.reshape(1, temp_matrix.shape[0], temp_matrix.shape[1], temp_matrix.shape[2])
+        temp_matrix = temp_matrix.reshape(
+            1, temp_matrix.shape[0], temp_matrix.shape[1], temp_matrix.shape[2]
+        )
         return temp_matrix
 
     def collapse_image_time(self, image, final_slices, as_channels=False):
@@ -269,10 +305,18 @@ class BasePreprocessor(object):
             # Need to now sum up along each smaller section
             for time_slice in range(final_slices):
                 if time_slice < (final_slices - 1):
-                    image_slice = data_cube[time_slice*num_slices_per_final_slice:((time_slice+1)*num_slices_per_final_slice), ::]
+                    image_slice = data_cube[
+                        time_slice
+                        * num_slices_per_final_slice : (
+                            (time_slice + 1) * num_slices_per_final_slice
+                        ),
+                        ::,
+                    ]
                 else:
                     # To use all the available slices
-                    image_slice = data_cube[time_slice*num_slices_per_final_slice:, ::]
+                    image_slice = data_cube[
+                        time_slice * num_slices_per_final_slice :, ::
+                    ]
                 image_slice = np.sum(image_slice, axis=0)
                 temp_matrix.append(image_slice)
         # Should be normalized now
@@ -282,10 +326,14 @@ class BasePreprocessor(object):
             temp_matrix = np.swapaxes(temp_matrix, 0, 2)
             # Second one is to keep the order of the width/height
             temp_matrix = np.swapaxes(temp_matrix, 0, 1)
-            temp_matrix = temp_matrix.reshape(1, temp_matrix.shape[0], temp_matrix.shape[1], temp_matrix.shape[2])
+            temp_matrix = temp_matrix.reshape(
+                1, temp_matrix.shape[0], temp_matrix.shape[1], temp_matrix.shape[2]
+            )
         else:
             # Else keep same format as before
-            temp_matrix = temp_matrix.reshape(1, temp_matrix.shape[0], temp_matrix.shape[1], temp_matrix.shape[2])
+            temp_matrix = temp_matrix.reshape(
+                1, temp_matrix.shape[0], temp_matrix.shape[1], temp_matrix.shape[2]
+            )
         return temp_matrix
 
     def reformat(self, image):
@@ -295,10 +343,22 @@ class BasePreprocessor(object):
         :return:
         """
         dataset = np.swapaxes(image, 1, 3)
-        dataset = np.array(dataset).reshape((self.shape[0], self.shape[3], self.shape[2], self.shape[1])).astype(np.float32)
+        dataset = (
+            np.array(dataset)
+            .reshape((self.shape[0], self.shape[3], self.shape[2], self.shape[1]))
+            .astype(np.float32)
+        )
         return dataset
 
-    def convert_to_gaussian_image(self, phs_photons, sigma, size, delta=PIXEL_SPACING_MM/2, normalize=None, as_channels=False):
+    def convert_to_gaussian_image(
+        self,
+        phs_photons,
+        sigma,
+        size,
+        delta=PIXEL_SPACING_MM / 2,
+        normalize=None,
+        as_channels=False,
+    ):
         """
         Converts a list of lists of number of photons to create a final gaussian image
         :param phs_photons: e.g. for final slices = 2, would be similar to [[2,3,4,...],[5,1,2,...]]
@@ -363,7 +423,7 @@ class BasePreprocessor(object):
         :param raw_photons:
         :return: New raw photon event, or None if no clumps are found
         """
-        TIME_SLICE_DURATION_S = 0.5e-9 # Taken from FACT magic constants
+        TIME_SLICE_DURATION_S = 0.5e-9  # Taken from FACT magic constants
 
         core_sample = dbscan.core_sample_indices_
         labels = dbscan.labels_
@@ -372,7 +432,7 @@ class BasePreprocessor(object):
         # That format will be passed to raw_photons_to_list_of_lists to create a new list_of_lists repr
 
         pixels = fact.instrument.get_pixel_dataframe()
-        pixels.sort_values('CHID', inplace=True)
+        pixels.sort_values("CHID", inplace=True)
 
         x_angle = np.deg2rad(pixels.x_angle.values)
         y_angle = np.deg2rad(pixels.y_angle.values)
@@ -390,8 +450,12 @@ class BasePreprocessor(object):
                 else:
                     current_photon = point_cloud[idx]
                 for index in range(1440):
-                    if np.isclose(current_photon[0], x_angle[index]) and np.isclose(current_photon[1], y_angle[index]):
-                        time_slice = int(np.round(current_photon[2] / TIME_SLICE_DURATION_S))
+                    if np.isclose(current_photon[0], x_angle[index]) and np.isclose(
+                        current_photon[1], y_angle[index]
+                    ):
+                        time_slice = int(
+                            np.round(current_photon[2] / TIME_SLICE_DURATION_S)
+                        )
                         list_of_slices.append(time_slice)
                         # Now add to new_raw
                         new_list_of_list[index].append(time_slice)
@@ -412,10 +476,22 @@ class BasePreprocessor(object):
             # No clumps, so returns None
             return None
         if debug:
-            print("Start: {}, End: {}, Mean: {}, Std: {} Clumps: {} Photons Before: {} Photons Saved: {}".format(np.min(list_of_slices), np.max(list_of_slices), np.round(np.mean(list_of_slices),3), np.round(np.std(list_of_slices),3), number, len(point_cloud), len(new_raw)-1440))
+            print(
+                "Start: {}, End: {}, Mean: {}, Std: {} Clumps: {} Photons Before: {} Photons Saved: {}".format(
+                    np.min(list_of_slices),
+                    np.max(list_of_slices),
+                    np.round(np.mean(list_of_slices), 3),
+                    np.round(np.std(list_of_slices), 3),
+                    number,
+                    len(point_cloud),
+                    len(new_raw) - 1440,
+                )
+            )
         return new_raw
 
-    def clean_image(self, event, min_samples=20, eps=0.1, method='dbscan', only_core=True):
+    def clean_image(
+        self, event, min_samples=20, eps=0.1, method="dbscan", only_core=True
+    ):
         """
         Clean the image with various methods, currently only DBSCAN
 
@@ -432,15 +508,19 @@ class BasePreprocessor(object):
 
         point_cloud = event.photon_stream.point_cloud
 
-        if method=='dbscan':
+        if method == "dbscan":
             dbscan = self.find_clumps(point_cloud, min_samples, eps)
-            core_photons = self.select_clustered_photons(dbscan, point_cloud, only_core=True)
-            clump_photons = self.select_clustered_photons(dbscan, point_cloud, only_core=False)
-        elif method == 'facttools':
-            dbscan=None
+            core_photons = self.select_clustered_photons(
+                dbscan, point_cloud, only_core=True
+            )
+            clump_photons = self.select_clustered_photons(
+                dbscan, point_cloud, only_core=False
+            )
+        elif method == "facttools":
+            dbscan = None
             return NotImplementedError
         else:
-            raise NotImplementedError('Only dbscan or facttools implemented for now')
+            raise NotImplementedError("Only dbscan or facttools implemented for now")
         all_photons = event.photon_stream.raw
 
         return all_photons, clump_photons, core_photons, dbscan
@@ -451,7 +531,7 @@ class BasePreprocessor(object):
         xyt[:, 2] *= np.deg2rad(deg_over_s)
 
         fov_radius = np.deg2rad(fact.instrument.camera.FOV_RADIUS)
-        abs_eps = eps * (2.0*fov_radius)
+        abs_eps = eps * (2.0 * fov_radius)
 
         dbscan = DBSCAN(eps=abs_eps, min_samples=min_samples).fit(xyt)
 
@@ -466,8 +546,8 @@ class BasePreprocessor(object):
         :return: (start,end)
         """
 
-        length = len(sorted(photon_stream,key=len, reverse=True)[0])
-        arr = np.array([xi+[np.nan]*(length-len(xi)) for xi in photon_stream])
+        length = len(sorted(photon_stream, key=len, reverse=True)[0])
+        arr = np.array([xi + [np.nan] * (length - len(xi)) for xi in photon_stream])
         try:
             start = int(np.nanmin(arr))
             end = int(np.nanmax(arr))
@@ -475,9 +555,9 @@ class BasePreprocessor(object):
             std = np.nanstd(arr)
         except Exception as e:
             # Should only fail if no photons are present
-            #print("Failed")
-            #print(photon_stream)
-            #print(len(photon_stream))
+            # print("Failed")
+            # print(photon_stream)
+            # print(len(photon_stream))
             start = self.start
             end = self.end
             return -1, -1, -1, -1

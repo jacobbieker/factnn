@@ -10,9 +10,23 @@ class PointCloudGenerator(Sequence):
 
     """
 
-    def __init__(self, paths, batch_size, preprocessor=None, proton_preprocessor=None, proton_paths=None,
-                 slices=(30, 70), final_points=2048, replacement=False, augment=False, training_type=None,
-                 truncate=True, return_features=False, rotate=True, jitter=None):
+    def __init__(
+        self,
+        paths,
+        batch_size,
+        preprocessor=None,
+        proton_preprocessor=None,
+        proton_paths=None,
+        slices=(30, 70),
+        final_points=2048,
+        replacement=False,
+        augment=False,
+        training_type=None,
+        truncate=True,
+        return_features=False,
+        rotate=True,
+        jitter=None,
+    ):
         self.paths = paths
         self.batch_size = batch_size
         self.preprocessor = preprocessor
@@ -35,28 +49,39 @@ class PointCloudGenerator(Sequence):
             self.multiple = False
 
     def __getitem__(self, index):
-        batch_files = self.paths[index * self.batch_size:(index + 1) * self.batch_size]
+        batch_files = self.paths[
+            index * self.batch_size : (index + 1) * self.batch_size
+        ]
         if self.proton_paths is not None:
-            proton_batch_files = self.proton_paths[index * self.batch_size:(index + 1) * self.batch_size]
-            proton_images = self.proton_preprocessor.on_files_processor(paths=proton_batch_files,
-                                                                        final_points=self.final_points,
-                                                                        replacement=self.replacement,
-                                                                        truncate=self.truncate,
-                                                                        return_features=self.features)
+            proton_batch_files = self.proton_paths[
+                index * self.batch_size : (index + 1) * self.batch_size
+            ]
+            proton_images = self.proton_preprocessor.on_files_processor(
+                paths=proton_batch_files,
+                final_points=self.final_points,
+                replacement=self.replacement,
+                truncate=self.truncate,
+                return_features=self.features,
+            )
         else:
             proton_images = None
-        images = self.preprocessor.on_files_processor(paths=batch_files,
-                                                      final_points=self.final_points,
-                                                      replacement=self.replacement,
-                                                      truncate=self.truncate,
-                                                      return_features=self.features)
-        images, labels = augment_pointcloud_batch(images, proton_images=proton_images,
-                                                  type_training=self.training_type,
-                                                  augment=self.augment,
-                                                  swap=self.augment,
-                                                  jitter=self.jitter,
-                                                  rotate=self.rotate,
-                                                  return_features=self.features)
+        images = self.preprocessor.on_files_processor(
+            paths=batch_files,
+            final_points=self.final_points,
+            replacement=self.replacement,
+            truncate=self.truncate,
+            return_features=self.features,
+        )
+        images, labels = augment_pointcloud_batch(
+            images,
+            proton_images=proton_images,
+            type_training=self.training_type,
+            augment=self.augment,
+            swap=self.augment,
+            jitter=self.jitter,
+            rotate=self.rotate,
+            return_features=self.features,
+        )
 
         return images, labels
 
