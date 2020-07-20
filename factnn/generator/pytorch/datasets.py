@@ -71,7 +71,7 @@ class PhotonStreamDataset(Dataset):
             if not self.include_proton and "proton" in raw_path:
                 continue
             # load the pickled file from the disk
-            if osp.exists(osp.join(self.processed_dir, self.split, f"{raw_path}.pt")):
+            if osp.exists(osp.join(self.processed_dir, f"{raw_path}.pt")):
                 self.processed_filenames.append(f"{raw_path}.pt")
             else:
                 if self.simulated:
@@ -115,7 +115,7 @@ class PhotonStreamDataset(Dataset):
                     torch.save(
                         data,
                         osp.join(
-                            self.processed_dir, self.split, "{}.pt".format(raw_path)
+                            self.processed_dir, "{}.pt".format(raw_path)
                         ),
                     )
                     self.processed_filenames.append("{}.pt".format(raw_path))
@@ -125,7 +125,7 @@ class PhotonStreamDataset(Dataset):
 
     def get(self, idx):
         data = torch.load(
-            osp.join(self.processed_dir, self.split, self.processed_file_names[idx])
+            osp.join(self.processed_dir, self.processed_file_names[idx])
         )
         if self.simulated:
             if self.task == "energy":
@@ -208,8 +208,7 @@ class EventDataset(Dataset):
         :return:
         """
         # load the pickled file from the disk
-        # TODO Change so don't repeat processing for trainval and all splits
-        if osp.exists(osp.join(self.processed_dir, self.split, f"{raw_path}.pt")):
+        if osp.exists(osp.join(self.processed_dir, f"{raw_path}.pt")):
             print(f"Skipping: {raw_path}.pt")
             self.processed_filenames.append(f"{raw_path}.pt")
         else:
@@ -247,16 +246,15 @@ class EventDataset(Dataset):
 
                 if self.pre_transform is not None:
                     data = self.pre_transform(data)
-                print(f"Saving at: {osp.join(self.processed_dir, self.split, '{}.pt'.format(raw_path))}")
+                print(f"Saving at: {osp.join(self.processed_dir, '{}.pt'.format(raw_path))}")
                 torch.save(
                     data,
-                    osp.join(self.processed_dir, self.split, "{}.pt".format(raw_path)),
+                    osp.join(self.processed_dir, "{}.pt".format(raw_path)),
                 )
                 self.processed_filenames.append("{}.pt".format(raw_path))
 
     def process(self):
         used_paths = split_data(self.raw_file_names)[self.split]
-        os.makedirs(osp.join(self.processed_dir, self.split), exist_ok=True)
         protons = np.intersect1d(used_paths, self.event_dict["proton"], assume_unique=True)
         gammas = np.intersect1d(used_paths, self.event_dict["gamma"], assume_unique=True)
         if self.balanced_classes:
@@ -276,7 +274,7 @@ class EventDataset(Dataset):
 
     def get(self, idx):
         data = torch.load(
-            osp.join(self.processed_dir, self.split, self.processed_file_names[idx])
+            osp.join(self.processed_dir, self.processed_file_names[idx])
         )
         if self.task == "energy":
             data.y = data.energy
@@ -351,7 +349,7 @@ class DiffuseDataset(Dataset):
         if not self.include_proton and "proton" in raw_path:
             return
         # load the pickled file from the disk
-        if osp.exists(osp.join(self.processed_dir, self.split, f"{raw_path}.pt")):
+        if osp.exists(osp.join(self.processed_dir, f"{raw_path}.pt")):
             self.processed_filenames.append(f"{raw_path}.pt")
         else:
             # Checks that file is not 0
@@ -394,7 +392,7 @@ class DiffuseDataset(Dataset):
 
                 torch.save(
                     data,
-                    osp.join(self.processed_dir, self.split, "{}.pt".format(raw_path)),
+                    osp.join(self.processed_dir, "{}.pt".format(raw_path)),
                 )
                 self.processed_filenames.append("{}.pt".format(raw_path))
 
@@ -410,7 +408,7 @@ class DiffuseDataset(Dataset):
 
     def get(self, idx):
         data = torch.load(
-            osp.join(self.processed_dir, self.split, self.processed_file_names[idx])
+            osp.join(self.processed_dir, self.processed_file_names[idx])
         )
         return data
 
@@ -485,7 +483,7 @@ class ClusterDataset(Dataset):
         uncleaned_path = osp.join(self.uncleaned_root, "raw", base_path)
         clump_path = osp.join(self.clump_root, "raw", base_path)
         # load the pickled file from the disk
-        if osp.exists(osp.join(self.processed_dir, self.split, f"cluster_{base_path}.pt")):
+        if osp.exists(osp.join(self.processed_dir, f"cluster_{base_path}.pt")):
             self.processed_filenames.append(f"cluster_{base_path}.pt")
             print(f"Skip: {osp.join(self.processed_dir,self.split,'cluster_{}.pt'.format(base_path))}")
         else:
@@ -554,7 +552,6 @@ class ClusterDataset(Dataset):
                             data,
                             osp.join(
                                 self.processed_dir,
-                                self.split,
                                 "cluster_{}.pt".format(base_path),
                             ),
                         )
@@ -566,7 +563,6 @@ class ClusterDataset(Dataset):
     def process(self):
 
         used_paths = split_data(self.raw_file_names)[self.split]
-        os.makedirs(osp.join(self.processed_dir, self.split), exist_ok=True)
         pool = Pool()
         processors = pool.map_async(self.process_file, used_paths)
         processors.wait()
@@ -578,7 +574,7 @@ class ClusterDataset(Dataset):
 
     def get(self, idx):
         data = torch.load(
-            osp.join(self.processed_dir, self.split, self.processed_file_names[idx])
+            osp.join(self.processed_dir, self.processed_file_names[idx])
         )
         return data
 
