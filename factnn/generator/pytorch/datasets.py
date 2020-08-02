@@ -7,7 +7,7 @@ import pkg_resources as res
 from functools import partial
 
 
-from multiprocessing import Pool
+from multiprocessing import Pool, Manager
 
 import torch
 from torch_geometric.data import Dataset
@@ -22,6 +22,12 @@ import photon_stream as ps
 
 
 from factnn.utils.augment import euclidean_distance, true_sign
+
+
+def to_list(x):
+    if not isinstance(x, (tuple, list)) or isinstance(x, str):
+        x = [x]
+    return x
 
 
 class PhotonStreamDataset(Dataset):
@@ -151,6 +157,7 @@ class EventDataset(Dataset):
         task="separation",
         cleanliness="no_clean",
         balanced_classes=False,
+        fraction=1.0,
         transform=None,
         pre_transform=None,
     ):
@@ -160,15 +167,17 @@ class EventDataset(Dataset):
         :param root: Root directory for the dataset
         :param balanced_classes: Whether to keep the number of gamma and proton events the same or not
         :param include_proton: Whether to include proton events or not
+        :param fraction: Fraction of dataset to use, if not 1.0, then takes randomly the fraction of the dataset to use
         :param cleanliness: str, which version of the DBSCAN cleaned files to use, and which raw filenames to load, one of 'no_clean', 'clump5',
         'clump10', 'clump15', 'clump20', 'core5', 'core10', 'core15', 'core20'
         """
-        self.processed_filenames = []
         self.task = task.lower()
         self.split = split.lower()
         self.include_proton = include_proton
         self.balanced_classes = balanced_classes
         self.cleanliness = cleanliness.strip().lower()
+        self.fraction = fraction
+
         try:
             self.event_dict = pickle.load(
                 open(
@@ -178,12 +187,13 @@ class EventDataset(Dataset):
                     "rb",
                 )
             )
-            #self.event_dict["proton"] = list(self.event_dict["proton"])
-            #self.event_dict["gamma"] = list(self.event_dict["gamma"])
         except:
             raise ValueError(
                 "cleanliness value is not one of: 'no_clean', 'clump5','clump10', 'clump15', 'clump20', 'core5', 'core10', 'core15', 'core20'"
             )
+        self.processed_filenames = (
+            []
+        )  # Because of multithreading, its faster than using file_exists in base class on actual list
         super(EventDataset, self).__init__(root, transform, pre_transform)
 
     @property
@@ -200,18 +210,19 @@ class EventDataset(Dataset):
     def download(self):
         pass
 
-    def process_file(self, is_proton, raw_path):
+    def process_file(
+        self, is_proton, processed_list, raw_path
+    ):
         """
         Processes a single file given the path
         :param is_proton: Whether the events are proton events or not
         :param raw_path: raw filename of the event to process
+        :param processed_list: Threadsafe list to append filenames to
         :return:
         """
         # load the pickled file from the disk
-        # TODO Change so don't repeat processing for trainval and all splits
-        if osp.exists(osp.join(self.processed_dir, self.split, f"{raw_path}.pt")):
-            print(f"Skipping: {raw_path}.pt")
-            self.processed_filenames.append(f"{raw_path}.pt")
+        if osp.exists(osp.join(self.processed_dir, f"{raw_path}.pt")):
+            processed_list.append(f"{raw_path}.pt")
         else:
             with open(osp.join(self.raw_dir, raw_path), "rb") as pickled_event:
                 event_data, data_format, features, feature_cluster = pickle.load(
@@ -226,66 +237,134 @@ class EventDataset(Dataset):
                     )
                 )
                 # Read data from `raw_path`.
-                data = Data(pos=point_cloud)  # Just need x,y,z ignore derived features
-                if (
-                    is_proton
-                ):
-                    data.event_type = torch.tensor(0, dtype=torch.int8)
+                data = Data(
+                    pos=torch.tensor(point_cloud, dtype=torch.float).squeeze(),
+                )  # Just need x,y,z ignore derived features
+                if is_proton:
+                    data.event_type = torch.tensor([0], dtype=torch.long
+                    )
                 else:
-                    data.event_type = torch.tensor(1, dtype=torch.int8)
+                    data.event_type = torch.tensor([1], dtype=torch.long
+                    )
                 data.energy = torch.tensor(
-                    event_data[data_format["Energy"]], dtype=torch.float
+                    [event_data[data_format["Energy"]]],
+                    dtype=torch.long,
                 )
                 data.phi = torch.tensor(
-                    event_data[4], dtype=torch.float # Needed because most the proton events had the wrong data_format
+                    [event_data[4]],
+                    dtype=torch.long,  # Needed because most the proton events had the wrong data_format
                 )
                 data.theta = torch.tensor(
-                    event_data[5], dtype=torch.float # Needed because most the proton events had the wrong data_format
+                    [event_data[5]],
+                    dtype=torch.long,  # Needed because most the proton events had the wrong data_format
                 )
+
+                # Now add the features from the feature extraction
+                if (
+                    features["extraction"] == 1
+                ):  # Failed extraction, so has no features to use
+                    return
+                else:
+                    feature_list = []
+                    feature_list.append(features["head_tail_ratio"])
+                    feature_list.append(features["length"])
+                    feature_list.append(features["width"])
+                    feature_list.append(features["time_gradient"])
+                    feature_list.append(features["number_photons"])
+                    feature_list.append(
+                        features["length"] * features["width"] * np.pi
+                    )
+                    feature_list.append(
+                        (
+                            (features["length"] * features["width"] * np.pi)
+                            / np.log(features["number_photons"]) ** 2
+                        )
+                    )
+                    feature_list.append(
+                        (
+                            features["number_photons"]
+                            / (features["length"] * features["width"] * np.pi)
+                        )
+                    )
+                # Now make it the node features
+                data.features = torch.tensor(
+                    np.asarray(feature_list),
+                    dtype=torch.float,
+                )
+
                 if self.pre_filter is not None and not self.pre_filter(data):
                     return
 
                 if self.pre_transform is not None:
                     data = self.pre_transform(data)
-                print(f"Saving at: {osp.join(self.processed_dir, self.split, '{}.pt'.format(raw_path))}")
                 torch.save(
-                    data,
-                    osp.join(self.processed_dir, self.split, "{}.pt".format(raw_path)),
+                    data, osp.join(self.processed_dir, "{}.pt".format(raw_path)),
                 )
-                self.processed_filenames.append("{}.pt".format(raw_path))
+                processed_list.append("{}.pt".format(raw_path))
 
     def process(self):
         used_paths = split_data(self.raw_file_names)[self.split]
-        os.makedirs(osp.join(self.processed_dir, self.split), exist_ok=True)
-        protons = np.intersect1d(used_paths, self.event_dict["proton"], assume_unique=True)
-        gammas = np.intersect1d(used_paths, self.event_dict["gamma"], assume_unique=True)
+        protons = np.intersect1d(
+            used_paths, self.event_dict["proton"], assume_unique=True
+        )
+        gammas = np.intersect1d(
+            used_paths, self.event_dict["gamma"], assume_unique=True
+        )
         if self.balanced_classes:
-            num_events = np.min(len(protons), len(gammas))
-            protons = np.random.choice(protons, size=num_events, replace=False)
-            gammas = np.random.choice(gammas, size=num_events, replace=False)
-        gamma_proc = partial(self.process_file, False)
-        proton_proc = partial(self.process_file, True)
+            num_events = len(protons) if len(protons) < len(gammas) else len(gammas)
+            if 0.0 < self.fraction < 1.0:
+                num_events *= self.fraction
+            protons = np.random.choice(protons, size=int(num_events), replace=False)
+            gammas = np.random.choice(gammas, size=int(num_events), replace=False)
+        elif 0.0 < self.fraction < 1.0:
+            protons = np.random.choice(
+                protons, size=int(self.fraction * len(protons)), replace=False
+            )
+            gammas = np.random.choice(
+                gammas, size=int(self.fraction * len(gammas)), replace=False
+            )
+        manager = Manager()
         pool = Pool()
+        threaded_filenames = manager.list()
+        gamma_proc = partial(self.process_file, False, threaded_filenames)
+        proton_proc = partial(self.process_file, True, threaded_filenames)
         processors = pool.map_async(proton_proc, protons)
         processors.wait()
         processors = pool.map_async(gamma_proc, gammas)
         processors.wait()
+        for element in threaded_filenames:
+            self.processed_filenames.append(element)
 
     def len(self):
-        return len(self.processed_file_names)
+        return len(self.processed_filenames)
 
     def get(self, idx):
-        data = torch.load(
-            osp.join(self.processed_dir, self.split, self.processed_file_names[idx])
-        )
+        data = torch.load(osp.join(self.processed_dir, self.processed_file_names[idx]))
         if self.task == "energy":
-            data.y = data.energy
+            del data.phi
+            del data.theta
+            del data.event_type
+            del data.features
+            data.y = torch.tensor(data.energy, dtype=torch.long)
         elif self.task == "phi":
+            del data.event_type
+            del data.theta
+            del data.energy
+            del data.features
             data.y = data.phi
         elif self.task == "theta":
+            del data.phi
+            del data.event_type
+            del data.energy
+            del data.features
             data.y = data.theta
         elif self.task == "separation":
-            data.y = data.event_type
+            del data.phi
+            del data.theta
+            data.y = torch.tensor(data.event_type, dtype=torch.long)
+            del data.event_type
+            del data.energy
+            del data.features
         else:
             print("Not recognized task type")
             return NotImplementedError
@@ -369,7 +448,9 @@ class DiffuseDataset(Dataset):
                     )
                 )
                 # Read data from `raw_path`.
-                data = Data(pos=point_cloud)  # Just need x,y,z ignore derived features
+                data = Data(
+                    pos=torch.tensor(point_cloud, dtype=torch.float).squeeze(),
+                )  # Just need x,y,z ignore derived features
                 data.y = torch.tensor(
                     true_sign(
                         event_data[data_format["Source_X"]],
@@ -435,7 +516,6 @@ class ClusterDataset(Dataset):
         :param clump_root: Root for files that hold the non-core clump outputs from DBSCAN, optional
         :param cleanliness: name of DBSCAN output eventfiles for the files in root, one of 'no_clean', 'clump5','clump10', 'clump15', 'clump20', 'core5', 'core10', 'core15', 'core20'
         """
-        self.processed_filenames = []
         self.split = split.lower()
         self.uncleaned_root = uncleaned_root
         self.clump_root = clump_root
@@ -445,7 +525,7 @@ class ClusterDataset(Dataset):
         else:
             self.clumps = False
         try:
-            self.event_dict = pickle.load( # Only need one
+            self.event_dict = pickle.load(  # Only need one
                 open(
                     res.resource_filename(
                         "factnn.data.resources", f"{self.cleanliness}_raw_names.p"
@@ -457,6 +537,9 @@ class ClusterDataset(Dataset):
             raise ValueError(
                 "cleanliness value is not one of: 'no_clean', 'clump5','clump10', 'clump15', 'clump20', 'core5', 'core10', 'core15', 'core20'"
             )
+        self.processed_filenames = [
+            f"cluster_{event}.pt" for event in self.raw_file_names
+        ]
         super(ClusterDataset, self).__init__(root, transform, pre_transform)
 
     @property
@@ -469,7 +552,7 @@ class ClusterDataset(Dataset):
 
     @property
     def processed_dir(self):
-        return osp.join(self.root, 'cluster') # To not overlap with the non-clustering
+        return osp.join(self.root, "cluster")  # To not overlap with the non-clustering
 
     def download(self):
         pass
@@ -485,9 +568,10 @@ class ClusterDataset(Dataset):
         uncleaned_path = osp.join(self.uncleaned_root, "raw", base_path)
         clump_path = osp.join(self.clump_root, "raw", base_path)
         # load the pickled file from the disk
-        if osp.exists(osp.join(self.processed_dir, self.split, f"cluster_{base_path}.pt")):
+        if osp.exists(
+            osp.join(self.processed_dir, f"cluster_{base_path}.pt")
+        ):
             self.processed_filenames.append(f"cluster_{base_path}.pt")
-            print(f"Skip: {osp.join(self.processed_dir,self.split,'cluster_{}.pt'.format(base_path))}")
         else:
             try:
                 with open(raw_path, "rb") as pickled_event:
@@ -516,7 +600,9 @@ class ClusterDataset(Dataset):
                                 event_photons, cx=GEOMETRY.x_angle, cy=GEOMETRY.y_angle
                             )
                         )
-                        out = np.where((uncleaned_cloud==point_cloud[:,None]).all(-1))[1]
+                        out = np.where(
+                            (uncleaned_cloud == point_cloud[:, None]).all(-1)
+                        )[1]
                         point_values = np.zeros(uncleaned_cloud.shape)
                         point_values[out] = 1
                         if self.clumps:
@@ -531,34 +617,38 @@ class ClusterDataset(Dataset):
                                         cy=GEOMETRY.y_angle,
                                     )
                                 )
-                                out = np.where((uncleaned_cloud==clump_cloud[:,None]).all(-1))[1]
+                                out = np.where(
+                                    (uncleaned_cloud == clump_cloud[:, None]).all(-1)
+                                )[1]
                                 clump_values = np.zeros(uncleaned_cloud.shape)
                                 clump_values[out] = 1
-                                #clump_values = np.isclose(clump_cloud, point_cloud)
+                                # clump_values = np.isclose(clump_cloud, point_cloud)
                                 # Convert to ints so that addition works, gives 0 for outside, 1 clump, 2 core
-                                point_values = point_values.astype(int) + clump_values.astype(int)
-                                point_values = point_values[:,0]
+                                point_values = point_values.astype(
+                                    int
+                                ) + clump_values.astype(int)
+                                point_values = point_values[:, 0]
                         else:
                             point_values = point_values.astype(int)
-                            point_values = point_values[:,0]
+                            point_values = point_values[:, 0]
                         data = Data(
-                            pos=uncleaned_cloud, y=point_values
+                            pos=torch.tensor(uncleaned_cloud, dtype=torch.float).squeeze(), y=point_values
                         )  # Just need x,y,z ignore derived features
                         if self.pre_filter is not None and not self.pre_filter(data):
                             return
 
                         if self.pre_transform is not None:
                             data = self.pre_transform(data)
-                        print(f"Save: {osp.join(self.processed_dir,self.split,'cluster_{}.pt'.format(base_path))}")
                         torch.save(
                             data,
                             osp.join(
                                 self.processed_dir,
-                                self.split,
                                 "cluster_{}.pt".format(base_path),
                             ),
                         )
-                        self.processed_filenames.append("cluster_{}.pt".format(base_path))
+                        self.processed_filenames.append(
+                            "cluster_{}.pt".format(base_path)
+                        )
             except Exception as e:
                 print(f"Failed: {e}")
                 return
@@ -566,19 +656,17 @@ class ClusterDataset(Dataset):
     def process(self):
 
         used_paths = split_data(self.raw_file_names)[self.split]
-        os.makedirs(osp.join(self.processed_dir, self.split), exist_ok=True)
         pool = Pool()
         processors = pool.map_async(self.process_file, used_paths)
         processors.wait()
         print("Done Processing!")
-
 
     def len(self):
         return len(self.processed_file_names)
 
     def get(self, idx):
         data = torch.load(
-            osp.join(self.processed_dir, self.split, self.processed_file_names[idx])
+            osp.join(self.processed_dir, self.processed_file_names[idx])
         )
         return data
 
@@ -618,3 +706,9 @@ def split_data(paths, val_split=0.2, test_split=0.2):
         "test": test,
         "all": np.concatenate((train, val, test)),
     }
+
+
+# gammas = np.loadtxt("/run/media/jacob/T7/no_clean/processed/tv.txt", dtype=str)
+# pickle.dump(list(gammas), open(osp.join('/home/jacob/Development/factnn/factnn/data/resources','no_clean_trainval_processed.p'), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+# gammas = np.loadtxt("/run/media/jacob/T7/no_clean/processed/t.txt", dtype=str)
+# pickle.dump(list(gammas), open(osp.join('/home/jacob/Development/factnn/factnn/data/resources','no_clean_test_processed.p'), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
