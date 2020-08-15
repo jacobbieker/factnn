@@ -10,15 +10,16 @@ from factnn.generator.pytorch.datasets import (
     DiffuseDataset,
     EventDataset,
 )
-from factnn.models.pytorch_models import PointNet2Regressor
+from factnn.models.pytorch_models import PointNet2
 from factnn.utils.plotting import plot_energy_confusion, plot_disp_confusion
 
-from trains import Task
+"""from trains import Task
 
 task = Task.init(project_name="IACT Regression", task_name="pytorch pointnet++")
 task.name += " {}".format(task.id)
 
 logger = task.get_logger()
+"""
 
 
 def calc_confsion_matrix(prediction, truth, log_xy=True):
@@ -72,6 +73,14 @@ def test(args, model, device, test_loader, epoch):
 
     test_loss /= len(test_loader)
 
+    print(
+        "\nTest set: Average loss: {:.4f})\n".format(
+            test_loss
+        )
+    )
+
+
+"""
     print("\nTest set: Average loss: {:.4f})\n".format(test_loss))
     logger.report_scalar(
         title="Test Loss {} - epoch".format(epoch),
@@ -116,14 +125,15 @@ def test(args, model, device, test_loader, epoch):
             xaxis=r"$log_{10}(Phi_{MC}) (mm)$",
             yaxis=r"$log_{10}(Phi_{Est}) (mm)$",
         )
+"""
 
 
 def train(args, model, device, train_loader, optimizer, epoch):
-    save_loss = []
 
     model.train()
+    total = 0
     for batch_idx, data in enumerate(train_loader):
-        data, target = data.to(device)
+        data = data.to(device)
         optimizer.zero_grad()
         output = model(data)
         if args.loss == "mse":
@@ -132,26 +142,22 @@ def train(args, model, device, train_loader, optimizer, epoch):
             loss = F.l1_loss(output, data.y)
         loss.backward()
 
-        save_loss.append(loss)
-
         optimizer.step()
+        total += loss.item()
         if batch_idx % args.log_interval == 0:
             print(
-                "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                    epoch,
-                    batch_idx * len(data),
-                    len(train_loader.dataset),
-                    100.0 * batch_idx / len(train_loader),
-                    loss.item(),
+                "Train Epoch: {}\tLoss: {:.6f} \t Average loss {:.6f}".format(
+                    epoch, loss.item(), total / (batch_idx + 1)
                 )
             )
+            """
             # Add manual scalar reporting for loss metrics
             logger.report_scalar(
                 title="Train Loss {} - epoch".format(epoch),
                 series="Loss",
                 value=loss.item(),
                 iteration=batch_idx,
-            )
+            )"""
 
 
 def default_argument_parser():
@@ -256,20 +262,22 @@ if __name__ == "__main__":
         train_dataset = EventDataset(
             args.dataset,
             "trainval",
-            include_proton=True,
+            include_proton=False,
             task=args.task,
             cleanliness=args.clean,
             pre_transform=None,
             transform=transform,
+            fraction=0.001
         )
         test_dataset = EventDataset(
             args.dataset,
             "test",
-            include_proton=True,
+            include_proton=False,
             task=args.task,
             cleanliness=args.clean,
             pre_transform=None,
             transform=transform,
+            fraction=0.001
         )
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch, shuffle=True, num_workers=6
@@ -284,15 +292,15 @@ if __name__ == "__main__":
         "sample_max_neighbor": 64,
         "sample_ratio_two": 0.25,
         "sample_radius_two": 0.4,
-        "fc_1": 1024,
-        "fc_1_out": 512,
-        "fc_2_out": 256,
+        "fc_1": 512,
+        "fc_1_out": 256,
+        "fc_2_out": 128,
         "dropout": 0.5,
     }
-    config = task.connect_configuration(config)
+    # config = task.connect_configuration(config)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = PointNet2Regressor(num_classes, config).to(device)
+    model = PointNet2(num_classes, config).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     for epoch in range(args.epochs):

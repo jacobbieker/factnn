@@ -310,7 +310,7 @@ class EventDataset(Dataset):
         gammas = np.intersect1d(
             used_paths, self.event_dict["gamma"], assume_unique=True
         )
-        if self.balanced_classes:
+        if self.balanced_classes and self.task == 'separation': # Only matters for separation task, all others only need gamma
             num_events = len(protons) if len(protons) < len(gammas) else len(gammas)
             if 0.0 < self.fraction < 1.0:
                 num_events *= self.fraction
@@ -326,10 +326,11 @@ class EventDataset(Dataset):
         manager = Manager()
         pool = Pool()
         threaded_filenames = manager.list()
+        if self.task == 'separation':
+            proton_proc = partial(self.process_file, True, threaded_filenames)
+            processors = pool.map_async(proton_proc, protons)
+            processors.wait()
         gamma_proc = partial(self.process_file, False, threaded_filenames)
-        proton_proc = partial(self.process_file, True, threaded_filenames)
-        processors = pool.map_async(proton_proc, protons)
-        processors.wait()
         processors = pool.map_async(gamma_proc, gammas)
         processors.wait()
         for element in threaded_filenames:
@@ -345,7 +346,8 @@ class EventDataset(Dataset):
             del data.theta
             del data.event_type
             del data.features
-            data.y = torch.tensor(data.energy, dtype=torch.long)
+            data.y = torch.tensor(data.energy, dtype=torch.float)
+            del data.energy
         elif self.task == "phi":
             del data.event_type
             del data.theta
@@ -379,6 +381,7 @@ class DiffuseDataset(Dataset):
         cleanliness="no_clean",
         transform=None,
         pre_transform=None,
+            fraction=1.0,
     ):
         """
         EventFile Dataloader for specifically Disp calculations,
@@ -391,52 +394,50 @@ class DiffuseDataset(Dataset):
         self.processed_filenames = []
         self.split = split.lower()
         self.cleanliness = cleanliness.strip().lower()
-        super(DiffuseDataset, self).__init__(root, transform, pre_transform)
-
-    @property
-    def raw_file_names(self):
+        self.fraction = fraction
         try:
-            name_dict = pickle.load(
+            self.event_list = pickle.load(
                 open(
                     res.resource_filename(
-                        "factnn.data.resources",
-                        f"{self.cleanliness}_diffuse_raw_names.p",
+                        "factnn.data.resources", f"{self.cleanliness}_diffuse_raw_names.p"
                     ),
                     "rb",
                 )
             )
-            if self.include_proton:
-                return name_dict["proton"] + name_dict["gamma"]
-            else:
-                return name_dict["gamma"]
         except:
             raise ValueError(
-                "cleanliness value is not one of: 'no_clean', 'clump5','clump10', 'clump15', 'clump20', 'core5', 'core10', 'core15', 'core20'"
+                "cleanliness value is not one of: 'no_clean', 'clump20', 'core20'"
             )
+        super(DiffuseDataset, self).__init__(root, transform, pre_transform)
+
+    @property
+    def raw_file_names(self):
+        return self.event_list
 
     @property
     def processed_file_names(self):
         return self.processed_filenames
 
+    @property
+    def raw_dir(self):
+        return osp.join(self.root, 'diffuse_raw')
+
     def download(self):
         pass
 
-    def process_file(self, raw_path):
+    def process_file(self, processed_list, raw_path):
         """
         Processes a single file given the path
         :param raw_path:
         :return:
         """
-        if not self.include_proton and "proton" in raw_path:
-            return
         # load the pickled file from the disk
-        if osp.exists(osp.join(self.processed_dir, self.split, f"{raw_path}.pt")):
-            self.processed_filenames.append(f"{raw_path}.pt")
+        if osp.exists(osp.join(self.processed_dir, f"diffuse_{raw_path}.pt")):
+            processed_list.append(f"diffuse_{raw_path}.pt")
         else:
             # Checks that file is not 0
-            with open(raw_path, "rb") as pickled_event:
-                print(raw_path)
-                event_data, data_format, features, feature_cluster = pickle.load(
+            with open(osp.join(self.raw_dir, raw_path), "rb") as pickled_event:
+                event_data, data_format, features = pickle.load(
                     pickled_event
                 )
                 # Convert List of List to Point Cloud, then truncation is simply cutting in the z direction
@@ -452,7 +453,7 @@ class DiffuseDataset(Dataset):
                     pos=torch.tensor(point_cloud, dtype=torch.float).squeeze(),
                 )  # Just need x,y,z ignore derived features
                 data.y = torch.tensor(
-                    true_sign(
+                    [true_sign(
                         event_data[data_format["Source_X"]],
                         event_data[data_format["Source_Y"]],
                         event_data[data_format["COG_X"]],
@@ -464,34 +465,39 @@ class DiffuseDataset(Dataset):
                         event_data[data_format["Source_Y"]],
                         event_data[data_format["COG_X"]],
                         event_data[data_format["COG_Y"]],
-                    ),
-                    dtype=torch.float16,
+                    )],
+                    dtype=torch.float,
                 )
                 if self.pre_filter is not None and not self.pre_filter(data):
                     return
 
                 if self.pre_transform is not None:
                     data = self.pre_transform(data)
-
                 torch.save(
                     data,
-                    osp.join(self.processed_dir, self.split, "{}.pt".format(raw_path)),
+                    osp.join(self.processed_dir, "diffuse_{}.pt".format(raw_path)),
                 )
-                self.processed_filenames.append("{}.pt".format(raw_path))
+                processed_list.append("diffuse_{}.pt".format(raw_path))
 
     def process(self):
-
-        used_paths = split_data(self.raw_paths)[self.split]
+        used_paths = split_data(self.raw_file_names)[self.split]
+        if 0.0 < self.fraction < 1.0:
+            used_paths = np.random.choice(used_paths, size=int(self.fraction*len(used_paths)), replace=False)
+        manager = Manager()
+        threaded_filenames = manager.list()
         pool = Pool()
-        processors = pool.map_async(self.process_file, used_paths)
+        func = partial(self.process_file, threaded_filenames)
+        processors = pool.map_async(func, used_paths)
         processors.wait()
+        for element in threaded_filenames:
+            self.processed_filenames.append(element)
 
     def len(self):
         return len(self.processed_file_names)
 
     def get(self, idx):
         data = torch.load(
-            osp.join(self.processed_dir, self.split, self.processed_file_names[idx])
+            osp.join(self.processed_dir, self.processed_file_names[idx])
         )
         return data
 
@@ -708,7 +714,11 @@ def split_data(paths, val_split=0.2, test_split=0.2):
     }
 
 
-# gammas = np.loadtxt("/run/media/jacob/T7/no_clean/processed/tv.txt", dtype=str)
-# pickle.dump(list(gammas), open(osp.join('/home/jacob/Development/factnn/factnn/data/resources','no_clean_trainval_processed.p'), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+#gammas = np.loadtxt("/run/media/jacob/SSD_Backup/iact_events/gamma_diffuse/no_clean/no_clean_diffuse.txt", dtype=str)
+#pickle.dump(list(gammas), open(osp.join('/home/jacob/Development/factnn/factnn/data/resources','no_clean_diffuse_raw_names.p'), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+#gammas = np.loadtxt("/run/media/jacob/SSD_Backup/iact_events/gamma_diffuse/clump20/clump20_diffuse.txt", dtype=str)
+#pickle.dump(list(gammas), open(osp.join('/home/jacob/Development/factnn/factnn/data/resources','clump20_diffuse_raw_names.p'), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+#gammas = np.loadtxt("/run/media/jacob/SSD_Backup/iact_events/gamma_diffuse/core20/core20_diffuse.txt", dtype=str)
+#pickle.dump(list(gammas), open(osp.join('/home/jacob/Development/factnn/factnn/data/resources','core20_diffuse_raw_names.p'), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 # gammas = np.loadtxt("/run/media/jacob/T7/no_clean/processed/t.txt", dtype=str)
 # pickle.dump(list(gammas), open(osp.join('/home/jacob/Development/factnn/factnn/data/resources','no_clean_test_processed.p'), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)

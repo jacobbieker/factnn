@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 import torch_geometric.transforms as T
-from torch_geometric.data import DataLoader
+from torch_geometric.data import DataLoader, DenseDataLoader
 import numpy as np
 import argparse
 
@@ -10,15 +10,17 @@ from factnn.generator.pytorch.datasets import (
     DiffuseDataset,
     EventDataset,
 )
-from factnn.models.pytorch_models import PointNet2Classifier, PointNet2Segmenter
+from factnn.models.pytorch_models import PointNet2, PointNet2Segmenter
 
+"""
 from trains import Task
 
-task = Task.init(project_name="IACT Classification", task_name="pytorch pointnet++")
+task = Task.init(project_name="IACT Classification", task_name="pytorch pointnet++", output_uri="/mnt/T7/")
 task.name += " {}".format(task.id)
 
 
 logger = task.get_logger()
+"""
 
 
 def test(args, model, device, test_loader):
@@ -30,7 +32,7 @@ def test(args, model, device, test_loader):
     test_loss = 0
     correct = 0
     with torch.no_grad():
-        for _, data in enumerate(test_loader):
+        for data in test_loader:
             data = data.to(device)
             output = model(data)
             # sum up batch loss
@@ -50,6 +52,8 @@ def test(args, model, device, test_loader):
         )
     )
 
+
+"""
     logger.report_histogram(
         title="Test Histogram",
         series="correct",
@@ -67,39 +71,40 @@ def test(args, model, device, test_loader):
         matrix=matrix,
         iteration=1,
     )
+"""
 
 
 def train(args, model, device, train_loader, optimizer, epoch):
     save_loss = []
-
+    total_loss = 0
     model.train()
     for batch_idx, data in enumerate(train_loader):
-        data, target = data.to(device)
+        data = data.to(device)
         optimizer.zero_grad()
         output = model(data)
-        loss = F.nll_loss(output, data.y)
+        loss = F.nll_loss(F.log_softmax(output, dim=-1), data.y)
         loss.backward()
 
-        save_loss.append(loss)
+        # save_loss.append(loss.item())
 
         optimizer.step()
+        total_loss += loss.item()
         if batch_idx % args.log_interval == 0:
             print(
-                "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                    epoch,
-                    batch_idx * len(data),
-                    len(train_loader.dataset),
-                    100.0 * batch_idx / len(train_loader),
-                    loss.item(),
+                "Train Epoch: {}\tLoss: {:.6f} \t Average loss {:.6f}".format(
+                    epoch, loss.item(), total_loss / (batch_idx + 1)
                 )
             )
-            # Add manual scalar reporting for loss metrics
+
+
+"""           # Add manual scalar reporting for loss metrics
             logger.report_scalar(
                 title="Training Loss {} - epoch".format(epoch),
                 series="Loss",
                 value=loss.item(),
                 iteration=batch_idx,
             )
+"""
 
 
 def default_argument_parser():
@@ -144,6 +149,7 @@ def default_argument_parser():
     )
     parser.add_argument("--lr", type=float, default=0.001, help="learning rate")
     parser.add_argument("--batch", type=int, default=32, help="batch size")
+    parser.add_argument("--seed", type=int, default=1337, help="random seed for numpy")
     parser.add_argument("--epochs", type=int, default=200, help="number of epochs")
     parser.add_argument(
         "--log-interval",
@@ -157,6 +163,7 @@ def default_argument_parser():
 
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
+    np.random.seed(args.seed)
     num_classes = 2
     transforms = []
     if args.max_points > 0:
@@ -165,7 +172,7 @@ if __name__ == "__main__":
         transforms.append(T.RandomRotate((-180, 180), axis=2))  # Rotate around z axis
         transforms.append(T.RandomFlip(0))  # Flp about x axis
         transforms.append(T.RandomFlip(1))  # Flip about y axis
-        transforms.append(T.RandomTranslate(0.001))  # Random jitter
+        transforms.append(T.RandomTranslate(0.0001))  # Random jitter
     if args.norm:
         transforms.append(T.NormalizeScale())
     transform = T.Compose(transforms=transforms) if transforms else None
@@ -177,6 +184,8 @@ if __name__ == "__main__":
         cleanliness=args.clean,
         pre_transform=None,
         transform=transform,
+        balanced_classes=True,
+        fraction=0.001
     )
     test_dataset = EventDataset(
         args.dataset,
@@ -186,12 +195,22 @@ if __name__ == "__main__":
         cleanliness=args.clean,
         pre_transform=None,
         transform=transform,
+        fraction=0.001
     )
+    print(len(test_dataset))
+    print(len(train_dataset))
     train_loader = DataLoader(
-        train_dataset, batch_size=args.batch, shuffle=True, num_workers=6
+        train_dataset,
+        batch_size=args.batch,
+        shuffle=True,
+        num_workers=12,
     )
+    print(next(iter(train_loader)))
     test_loader = DataLoader(
-        test_dataset, batch_size=args.batch, shuffle=False, num_workers=6
+        test_dataset,
+        batch_size=args.batch,
+        shuffle=False,
+        num_workers=12,
     )
 
     config = {
@@ -205,13 +224,13 @@ if __name__ == "__main__":
         "fc_2_out": 256,
         "dropout": 0.5,
     }
-    config = task.connect_configuration(config)
-    task.connect_label_enumeration({"Gamma": 0, "Proton": 1})
+    # config = task.connect_configuration(config)
+    # task.connect_label_enumeration({"Gamma": 0, "Proton": 1})
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = PointNet2Classifier(num_classes, config).to(device)
+    model = PointNet2(num_classes, config).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-
+    print("Model created")
     for epoch in range(args.epochs):
         train(args, model, device, train_loader, optimizer, epoch)
-        test(args, model, device, test_loader)
+    test(args, model, device, test_loader)

@@ -13,12 +13,12 @@ from factnn.generator.pytorch.datasets import (
 )
 from factnn.models.pytorch_models import PointNet2Classifier, PointNet2Segmenter
 
-from trains import Task
+# from trains import Task
 
-task = Task.init(project_name="IACT Clustering", task_name="pytorch pointnet++")
-task.name += " {}".format(task.id)
+# task = Task.init(project_name="IACT Clustering", task_name="pytorch pointnet++")
+# task.name += " {}".format(task.id)
 
-logger = task.get_logger()
+# logger = task.get_logger()
 
 
 def test(model, device, test_loader):
@@ -49,19 +49,19 @@ def test(model, device, test_loader):
         save_correct.append(ious)
 
         # Add manual scalar reporting for loss metrics
-        for i, iou in enumerate(ious):
-            logger.report_scalar(
-                title="Test Class IoU".format(epoch),
-                series=f"Class {i} IoU",
-                value=iou.item(),
-                iteration=1,
-            )
-        logger.report_scalar(
-            title="Test Mean IoU".format(epoch),
-            series="Mean IoU.",
-            value=torch.tensor(ious).mean().item(),
-            iteration=1,
-        )
+        # for i, iou in enumerate(ious):
+        #    logger.report_scalar(
+        #        title="Test Class IoU".format(epoch),
+        #        series=f"Class {i} IoU",
+        #        value=iou.item(),
+        #        iteration=1,
+        #    )
+        # logger.report_scalar(
+        #    title="Test Mean IoU".format(epoch),
+        #    series="Mean IoU.",
+        #    value=torch.tensor(ious).mean().item(),
+        #    iteration=1,
+        # )
 
 
 def train(args, model, device, train_loader, optimizer, epoch):
@@ -88,18 +88,18 @@ def train(args, model, device, train_loader, optimizer, epoch):
                 f"Train Acc: {correct_nodes / total_nodes:.4f}"
             )
             # Add manual scalar reporting for loss metrics
-            logger.report_scalar(
-                title="Loss {} - epoch".format(epoch),
-                series="Loss",
-                value=loss.item(),
-                iteration=batch_idx,
-            )
-            logger.report_scalar(
-                title="Train Accuracy {} - epoch".format(epoch),
-                series="Train Acc.",
-                value=correct_nodes / total_nodes,
-                iteration=batch_idx,
-            )
+            # logger.report_scalar(
+            #    title="Loss {} - epoch".format(epoch),
+            #    series="Loss",
+            #    value=loss.item(),
+            #    iteration=batch_idx,
+            # )
+            # logger.report_scalar(
+            #    title="Train Accuracy {} - epoch".format(epoch),
+            #    series="Train Acc.",
+            #    value=correct_nodes / total_nodes,
+            #    iteration=batch_idx,
+            # )
             total_loss = correct_nodes = total_nodes = 0
 
 
@@ -139,6 +139,14 @@ def default_argument_parser():
         "--dataset", type=str, default="", help="path to dataset folder"
     )
     parser.add_argument(
+        "--clean",
+        type=str,
+        default="core20",
+        help="cleanliness value, used to load valid filenames, should be the option with the least amount of available files, one of 'no_clean', "
+        "'clump5','clump10', 'clump15', 'clump20', "
+        "'core5', 'core10', 'core15', 'core20'",
+    )
+    parser.add_argument(
         "--unclean-dataset",
         type=str,
         default="",
@@ -172,19 +180,21 @@ if __name__ == "__main__":
     if args.norm:
         transforms.append(T.NormalizeScale())
     transform = T.Compose(transforms=transforms) if transforms else None
-    train_dataset = ClusterDataset(
-        args.dataset,
-        split="trainval",
-        uncleaned_root=args.unclean_dataset,
-        pre_transform=None,
-        transform=transform,
-        clump_root=args.clump_dataset if args.clump_dataset else None,
-    )
+    # train_dataset = ClusterDataset(
+    #    args.dataset,
+    #    split="trainval",
+    #    uncleaned_root=args.unclean_dataset,
+    #    pre_transform=None,
+    #    cleanliness=args.clean,
+    #    transform=transform,
+    #    clump_root=args.clump_dataset if args.clump_dataset else None,
+    # )
     test_dataset = ClusterDataset(
         args.dataset,
         split="test",
         uncleaned_root=args.unclean_dataset,
         pre_transform=None,
+        cleanliness=args.clean,
         transform=transform,
         clump_root=args.clump_dataset if args.clump_dataset else None,
     )
