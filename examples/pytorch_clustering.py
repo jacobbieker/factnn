@@ -11,9 +11,8 @@ from factnn.generator.pytorch.datasets import (
     DiffuseDataset,
     EventDataset,
 )
-from factnn.models.pytorch_models import PointNet2Classifier, PointNet2Segmenter
-
-# from trains import Task
+from factnn.models.pytorch_models import PointNet2Segmenter
+#from torch_points3d.applications.pointnet2 import PointNet2
 
 # task = Task.init(project_name="IACT Clustering", task_name="pytorch pointnet++")
 # task.name += " {}".format(task.id)
@@ -180,15 +179,15 @@ if __name__ == "__main__":
     if args.norm:
         transforms.append(T.NormalizeScale())
     transform = T.Compose(transforms=transforms) if transforms else None
-    # train_dataset = ClusterDataset(
-    #    args.dataset,
-    #    split="trainval",
-    #    uncleaned_root=args.unclean_dataset,
-    #    pre_transform=None,
-    #    cleanliness=args.clean,
-    #    transform=transform,
-    #    clump_root=args.clump_dataset if args.clump_dataset else None,
-    # )
+    train_dataset = ClusterDataset(
+       args.dataset,
+       split="trainval",
+       uncleaned_root=args.unclean_dataset,
+       pre_transform=None,
+       cleanliness=args.clean,
+       transform=transform,
+       clump_root=args.clump_dataset if args.clump_dataset else None,
+    )
     test_dataset = ClusterDataset(
         args.dataset,
         split="test",
@@ -216,7 +215,7 @@ if __name__ == "__main__":
         "dropout": 0.5,
         "knn_num": 3,
     }
-    config = task.connect_configuration(config)
+    #config = task.connect_configuration(config)
     labels = {"Background": 0}
     if args.clump_dataset:
         labels["Clump"] = 1
@@ -225,7 +224,7 @@ if __name__ == "__main__":
     else:
         labels["Core"] = 1
         num_classes = 2
-    task.connect_label_enumeration(labels)
+    #task.connect_label_enumeration(labels)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = PointNet2Segmenter(num_classes, config).to(device)
