@@ -67,6 +67,8 @@ def split_data(paths, val_split=0.2, test_split=0.2):
 
 def write_dataset(base="/run/media/bieker/T7/", split="train"):
     num = 20
+    import numpy.lib.format
+    import io
     uncleaned = "/run/media/bieker/T7/gamma/no_clean/raw/"
     core = f"/run/media/bieker/T7/gamma/core{num}/raw/"
     clump = f"/run/media/bieker/T7/gamma/clump{num}/raw/"
@@ -91,7 +93,7 @@ def write_dataset(base="/run/media/bieker/T7/", split="train"):
 
     pattern = os.path.join(base, f"fact-{split}-{num}-%07d.tar")
 
-    with ShardWriter(pattern, maxcount=num_examples_per_shard) as sink:
+    with ShardWriter(pattern, maxcount=num_examples_per_shard, compress=True) as sink:
         for p in used_paths:
             if os.path.exists(os.path.join(core, p)):
                 raw_path = os.path.join(core, p)
@@ -158,17 +160,18 @@ def write_dataset(base="/run/media/bieker/T7/", split="train"):
                                 int
                             ) + clump_values.astype(int)
                             point_values = point_values[:, 0]
-                        energy = np.array(
+                            point_values = torch.from_numpy(point_values)
+                        energy = torch.tensor(
                             [event_data[data_format["Energy"]]],
-                            dtype=np.long,
+                            dtype=torch.long,
                         )
-                        phi = np.array(
+                        phi = torch.tensor(
                             [event_data[4]],
-                            dtype=np.long,  # Needed because most the proton events had the wrong data_format
+                            dtype=torch.long,  # Needed because most the proton events had the wrong data_format
                         )
-                        theta = np.array(
+                        theta = torch.tensor(
                             [event_data[5]],
-                            dtype=np.long,  # Needed because most the proton events had the wrong data_format
+                            dtype=torch.long,  # Needed because most the proton events had the wrong data_format
                         )
                         # Now add the features from the feature extraction
                         if (
@@ -200,7 +203,7 @@ def write_dataset(base="/run/media/bieker/T7/", split="train"):
                         if is_gamma:
                             try:
                                 # Try Diffuse
-                                disp = np.array(
+                                disp = torch.tensor(
                                     [true_sign(
                                         event_data[data_format["Source_X"]],
                                         event_data[data_format["Source_Y"]],
@@ -214,17 +217,17 @@ def write_dataset(base="/run/media/bieker/T7/", split="train"):
                                         event_data[data_format["COG_X"]],
                                         event_data[data_format["COG_Y"]],
                                     )],
-                                    dtype=np.float,
+                                    dtype=torch.float,
                                 )
                             except:
-                                disp = None
+                                disp = torch.zeros((1,))
                         else:
-                            disp = None
-                        points = torch.tensor(uncleaned_cloud, dtype=torch.float).squeeze().numpy()
-                        print(f"Points: {points.shape}, Points Mask: {point_values.shape}, Values: Min: {np.min(point_values)} Max: {np.max(point_values)} Values: {np.unique(point_values)}")
-                        sample = {"__key__": p, "points.pyd": points, "mask.pyd": point_values,
-                                  "features.pyd": np.asarray(feature_list, dtype=np.float), "disp.pyd": disp,
-                                  "energy.pyd": energy, "theta.pyd": theta, "phi.pyd": phi, "class.pyd": is_gamma}
+                            disp = torch.zeros((1,))
+                        points = torch.tensor(uncleaned_cloud, dtype=torch.float).squeeze()
+                        print(f"Points: {points.shape}, Points Mask: {point_values.shape}, Values: {np.unique(point_values)} Gamma: {is_gamma}")
+                        sample = {"__key__": p, "points.pth": points, "mask.pth": point_values,
+                                  "features.pth": torch.tensor(feature_list, dtype=torch.float), "disp.pth": disp,
+                                  "energy.pth": energy, "theta.pth": theta, "phi.pth": phi, "class.cls": is_gamma}
                         sink.write(sample)
             except Exception as e:
                 print(f"Failed: {e}")

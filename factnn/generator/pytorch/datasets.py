@@ -676,7 +676,6 @@ class ClusterDataset(Dataset):
         )
         return data
 
-
 # Function to check test set's identifier.
 def test_set_check(identifier, test_ratio):
     return crc32(np.int64(identifier)) & 0xFFFFFFFF < test_ratio * 2 ** 32
