@@ -66,10 +66,11 @@ def split_data(paths, val_split=0.2, test_split=0.2):
 
 
 def write_dataset(base="/run/media/bieker/T7/", split="train"):
-    num = 20
+    num = 10
     import numpy.lib.format
     import io
-    uncleaned = "/run/media/bieker/T7/gamma/no_clean/raw/"
+    uncleaned = "/run/media/bieker/T7/gamma/no_clean/diffuse_raw/"
+    diffuse = "/run/media/bieker/T7/no_clean/raw/"
     core = f"/run/media/bieker/T7/gamma/core{num}/raw/"
     clump = f"/run/media/bieker/T7/gamma/clump{num}/raw/"
     puncleaned = "/run/media/bieker/T7/proton/no_clean/raw/"
@@ -116,6 +117,7 @@ def write_dataset(base="/run/media/bieker/T7/", split="train"):
                         ) = pickle.load(pickled_event)
                         uncleaned_data, _, _, _ = pickle.load(pickled_original)
                         uncleaned_photons = uncleaned_data[data_format["Image"]]
+                        uncleaned_photons_list = uncleaned_data[data_format["Image"]]
                         uncleaned_photons = list_of_lists_to_raw_phs(uncleaned_photons)
                         uncleaned_cloud = np.asarray(
                             raw_phs_to_point_cloud(
@@ -200,34 +202,60 @@ def write_dataset(base="/run/media/bieker/T7/", split="train"):
                                         / (features["length"] * features["width"] * np.pi)
                                 )
                             )
-                        if is_gamma:
-                            try:
-                                # Try Diffuse
-                                disp = torch.tensor(
-                                    [true_sign(
-                                        event_data[data_format["Source_X"]],
-                                        event_data[data_format["Source_Y"]],
-                                        event_data[data_format["COG_X"]],
-                                        event_data[data_format["COG_Y"]],
-                                        event_data[data_format["Delta"]],
+                        is_diffuse = False
+                        if os.path.exists(os.path.join(diffuse, p)):
+                            with open(os.path.join(diffuse, p), "rb") as pickled_diffuse:
+                                (
+                                    diffuse_event_data,
+                                    diffuse_data_format,
+                                    features_d,
+                                    feature_cluster_d,
+                                ) = pickle.load(pickled_diffuse)
+                                # Should check that the point clouds are the same for both uncleaned ones?
+                                uncleaned_diffuse_list = diffuse_event_data[diffuse_data_format["Image"]]
+                                match_lists = False
+                                if uncleaned_diffuse_list == uncleaned_photons_list:
+                                    match_lists = True
+                                else:
+                                    print(f"Points did not match betweeen diffuse and no_clean gamma")
+                                try:
+                                    # Try Diffuse
+                                    disp = torch.tensor(
+                                        [true_sign(
+                                            diffuse_event_data[diffuse_data_format["Source_X"]],
+                                            diffuse_event_data[diffuse_data_format["Source_Y"]],
+                                            diffuse_event_data[diffuse_data_format["COG_X"]],
+                                            diffuse_event_data[diffuse_data_format["COG_Y"]],
+                                            diffuse_event_data[diffuse_data_format["Delta"]],
+                                        )
+                                         * euclidean_distance(
+                                            diffuse_event_data[diffuse_data_format["Source_X"]],
+                                            diffuse_event_data[diffuse_data_format["Source_Y"]],
+                                            diffuse_event_data[diffuse_data_format["COG_X"]],
+                                            diffuse_event_data[diffuse_data_format["COG_Y"]],
+                                        )],
+                                        dtype=torch.float,
                                     )
-                                     * euclidean_distance(
-                                        event_data[data_format["Source_X"]],
-                                        event_data[data_format["Source_Y"]],
-                                        event_data[data_format["COG_X"]],
-                                        event_data[data_format["COG_Y"]],
-                                    )],
-                                    dtype=torch.float,
-                                )
-                            except:
-                                disp = torch.zeros((1,))
+                                    sign = torch.tensor(true_sign(
+                                        diffuse_event_data[diffuse_data_format["Source_X"]],
+                                        diffuse_event_data[diffuse_data_format["Source_Y"]],
+                                        diffuse_event_data[diffuse_data_format["COG_X"]],
+                                        diffuse_event_data[diffuse_data_format["COG_Y"]],
+                                        diffuse_event_data[diffuse_data_format["Delta"]],
+                                    ), dtype=torch.int)
+                                    is_diffuse = True
+                                except Exception as e:
+                                    print(f"Failed Diffuse Extraction With: {e}")
+                                    disp = torch.zeros((1,))
+                                    sign = torch.zeros((1,))
                         else:
                             disp = torch.zeros((1,))
+                            sign = torch.zeros((1,))
                         points = torch.tensor(uncleaned_cloud, dtype=torch.float).squeeze()
                         print(f"Points: {points.shape}, Points Mask: {point_values.shape}, Values: {np.unique(point_values)} Gamma: {is_gamma}")
-                        sample = {"__key__": p, "points.pth": points, "mask.pth": point_values,
-                                  "features.pth": torch.tensor(feature_list, dtype=torch.float), "disp.pth": disp,
-                                  "energy.pth": energy, "theta.pth": theta, "phi.pth": phi, "class.cls": is_gamma}
+                        sample = {"__key__": p, "points.npy": points.numpy(), "mask.npy": point_values.numpy(),
+                                  "features.npy": torch.tensor(feature_list, dtype=torch.float).numpy(), "disp.npy": disp.numpy(), "sign.npy": sign.numpy(),
+                                  "energy.npy": energy.numpy(), "theta.npy": theta.numpy(), "phi.npy": phi.numpy(), "class.cls": is_gamma, "diffuse.cls": is_diffuse}
                         sink.write(sample)
             except Exception as e:
                 print(f"Failed: {e}")

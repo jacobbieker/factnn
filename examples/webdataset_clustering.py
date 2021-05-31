@@ -15,6 +15,7 @@ from factnn.models.pytorch_models import PointNet2Segmenter
 #from torch_points3d.applications.pointnet2 import PointNet2
 import webdataset as wds
 
+
 def test(model, device, test_loader):
     save_test_loss = []
     save_correct = []
@@ -42,59 +43,36 @@ def test(model, device, test_loader):
         save_test_loss.append(torch.tensor(ious).mean().item())
         save_correct.append(ious)
 
-        # Add manual scalar reporting for loss metrics
-        # for i, iou in enumerate(ious):
-        #    logger.report_scalar(
-        #        title="Test Class IoU".format(epoch),
-        #        series=f"Class {i} IoU",
-        #        value=iou.item(),
-        #        iteration=1,
-        #    )
-        # logger.report_scalar(
-        #    title="Test Mean IoU".format(epoch),
-        #    series="Mean IoU.",
-        #    value=torch.tensor(ious).mean().item(),
-        #    iteration=1,
-        # )
-
 
 def train(args, model, device, train_loader, optimizer, epoch):
     save_loss = []
+    global_iteration = 0
+    max_iterations = 5000
 
     model.train()
     total_loss = correct_nodes = total_nodes = 0
     for batch_idx, data in enumerate(train_loader):
-        data, target = data.to(device)
+        global_iteration += 1
+        data = data.to(device)
         optimizer.zero_grad()
         output = model(data)
-        loss = F.nll_loss(output, data.y)
+        loss = F.nll_loss(output[0], data.y)
         loss.backward()
 
         save_loss.append(loss)
 
         optimizer.step()
         total_loss += loss.item()
-        correct_nodes += output.argmax(dim=1).eq(data.y).sum().item()
+        correct_nodes += output[0].argmax(dim=1).eq(data.y).sum().item()
         total_nodes += data.num_nodes
         if batch_idx % args.log_interval == 0:
             print(
-                f"[{batch_idx + 1}/{len(train_loader)}] Loss: {total_loss / 10:.4f} "
+                f"[{batch_idx + 1}/{max_iterations}] Loss: {total_loss / 8:.4f} "
                 f"Train Acc: {correct_nodes / total_nodes:.4f}"
             )
-            # Add manual scalar reporting for loss metrics
-            # logger.report_scalar(
-            #    title="Loss {} - epoch".format(epoch),
-            #    series="Loss",
-            #    value=loss.item(),
-            #    iteration=batch_idx,
-            # )
-            # logger.report_scalar(
-            #    title="Train Accuracy {} - epoch".format(epoch),
-            #    series="Train Acc.",
-            #    value=correct_nodes / total_nodes,
-            #    iteration=batch_idx,
-            # )
             total_loss = correct_nodes = total_nodes = 0
+        if global_iteration % max_iterations == 0:
+            break
 
 
 def default_argument_parser():
@@ -108,40 +86,8 @@ def default_argument_parser():
         argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--resume",
-        action="store_true",
-        help="whether to attempt to resume from the checkpoint directory",
-    )
-    parser.add_argument(
-        "--augment",
-        action="store_true",
-        help="whether to augment input data, default False",
-    )
-    parser.add_argument(
-        "--norm",
-        action="store_true",
-        help="whether to normalize point locations, default False",
-    )
-    parser.add_argument(
-        "--max-points",
-        type=int,
-        default=0,
-        help="max number of sampled points, if > 0, default 0",
-    )
-    parser.add_argument(
-        "--dataset", type=str, default="", help="path to dataset folder"
-    )
-    parser.add_argument(
-        "--clean",
-        type=str,
-        default="core20",
-        help="cleanliness value, used to load valid filenames, should be the option with the least amount of available files, one of 'no_clean', "
-             "'clump5','clump10', 'clump15', 'clump20', "
-             "'core5', 'core10', 'core15', 'core20'",
-    )
     parser.add_argument("--lr", type=float, default=0.001, help="learning rate")
-    parser.add_argument("--batch", type=int, default=32, help="batch size")
+    parser.add_argument("--batch", type=int, default=8, help="batch size")
     parser.add_argument("--epochs", type=int, default=200, help="number of epochs")
     parser.add_argument(
         "--log-interval",
@@ -153,34 +99,31 @@ def default_argument_parser():
     return parser
 
 
+def torch_loads(data):
+    import io
+    import torch
+    stream = io.BytesIO(data)
+    return torch.load(stream)
+
+
 def decode_to_torch(sample):
-    result = dict(__key__=sample["__key__"])
-    for key, value in sample.items():
-        if key == "points.pyd":
-            result["data"] = torch.from_numpy(value)
-        elif key == "mask.pyd":
-            result["target"] = torch.from_numpy(value)
+    from torch_geometric.data import Data
+    result = Data(
+        pos=sample["points.pth"], y=sample["mask.pth"]
+    )  # Just need x,y,z ignore derived features
     return result
 
 
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
-    transforms = []
-    if args.max_points > 0:
-        transforms.append(T.FixedPoints(args.max_points))
-    if args.augment:
-        transforms.append(T.RandomRotate((-180, 180), axis=2))  # Rotate around z axis
-        transforms.append(T.RandomFlip(0))  # Flp about x axis
-        transforms.append(T.RandomFlip(1))  # Flip about y axis
-    if args.norm:
-        transforms.append(T.NormalizeScale())
-    transform = T.Compose(transforms=transforms) if transforms else None
 
-    dataset = wds.WebDataset(args.dataset).shuffle(1000)
-
+    dataset = wds.WebDataset("/run/media/bieker/T7/fact-train-5-{0000000..0000008}.tar").shuffle(1000).decode()
+    #test_dataset = wds.WebDataset(args.dataset)
     dataset = wds.Processor(dataset, wds.map, decode_to_torch)
+    #test_dataset = wds.Processor(test_dataset, wds.map, decode_to_torch)
 
-    dataloader = DataLoader(dataset.batched(args.batch_size), num_workers=4, batch_size=None)
+    train_loader = DataLoader(dataset, num_workers=4, batch_size=8)
+    #test_loader = DataLoader(test_dataset, num_workers=4, batch_size=1)
 
     config = {
         "sample_ratio_one": 0.5,
@@ -189,25 +132,21 @@ if __name__ == "__main__":
         "sample_ratio_two": 0.25,
         "sample_radius_two": 0.4,
         "fc_1": 128,
-        "fc_2": 64,
+        "fc_2": 128,
         "dropout": 0.5,
         "knn_num": 3,
     }
-    #config = task.connect_configuration(config)
+
     labels = {"Background": 0}
-    if args.clump_dataset:
-        labels["Clump"] = 1
-        labels["Core"] = 2
-        num_classes = 3
-    else:
-        labels["Core"] = 1
-        num_classes = 2
-    #task.connect_label_enumeration(labels)
+    labels["Clump"] = 1
+    labels["Core"] = 2
+    num_classes = 3
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = PointNet2Segmenter(num_classes, config).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-
+    print("Made Model")
     for epoch in range(args.epochs):
+        print(f"Epoch {epoch}")
         train(args, model, device, train_loader, optimizer, epoch)
-        test(model, device, test_loader)
+        #test(model, device, test_loader)
