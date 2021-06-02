@@ -69,8 +69,9 @@ def write_dataset(base="/run/media/bieker/T7/", split="train"):
     num = 10
     import numpy.lib.format
     import io
-    uncleaned = "/run/media/bieker/T7/gamma/no_clean/diffuse_raw/"
-    diffuse = "/run/media/bieker/T7/no_clean/raw/"
+    diffuse = "/run/media/bieker/T7/no_clean/"
+    pdiffuse = "/run/media/bieker/T7/proton/no_clean/"
+    uncleaned = "/run/media/bieker/T7/gamma/no_clean/raw/"
     core = f"/run/media/bieker/T7/gamma/core{num}/raw/"
     clump = f"/run/media/bieker/T7/gamma/clump{num}/raw/"
     puncleaned = "/run/media/bieker/T7/proton/no_clean/raw/"
@@ -92,7 +93,7 @@ def write_dataset(base="/run/media/bieker/T7/", split="train"):
     random.shuffle(raw_names)
     used_paths = split_data(raw_names)[split]
 
-    pattern = os.path.join(base, f"fact-{split}-{num}-%07d.tar")
+    pattern = os.path.join(base, f"fact-diffuse-{split}-{num}-%07d.tar")
 
     with ShardWriter(pattern, maxcount=num_examples_per_shard, compress=True) as sink:
         for p in used_paths:
@@ -203,21 +204,14 @@ def write_dataset(base="/run/media/bieker/T7/", split="train"):
                                 )
                             )
                         is_diffuse = False
-                        if os.path.exists(os.path.join(diffuse, p)):
-                            with open(os.path.join(diffuse, p), "rb") as pickled_diffuse:
+                        d_path = diffuse if is_gamma else pdiffuse
+                        if os.path.exists(os.path.join(d_path, p)):
+                            with open(os.path.join(d_path, p), "rb") as pickled_diffuse:
                                 (
                                     diffuse_event_data,
                                     diffuse_data_format,
                                     features_d,
-                                    feature_cluster_d,
                                 ) = pickle.load(pickled_diffuse)
-                                # Should check that the point clouds are the same for both uncleaned ones?
-                                uncleaned_diffuse_list = diffuse_event_data[diffuse_data_format["Image"]]
-                                match_lists = False
-                                if uncleaned_diffuse_list == uncleaned_photons_list:
-                                    match_lists = True
-                                else:
-                                    print(f"Points did not match betweeen diffuse and no_clean gamma")
                                 try:
                                     # Try Diffuse
                                     disp = torch.tensor(

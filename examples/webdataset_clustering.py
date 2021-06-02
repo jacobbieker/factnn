@@ -47,7 +47,7 @@ def test(model, device, test_loader):
 def train(args, model, device, train_loader, optimizer, epoch):
     save_loss = []
     global_iteration = 0
-    max_iterations = 5000
+    max_iterations = 50000
 
     model.train()
     total_loss = correct_nodes = total_nodes = 0
@@ -87,7 +87,7 @@ def default_argument_parser():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--lr", type=float, default=0.001, help="learning rate")
-    parser.add_argument("--batch", type=int, default=8, help="batch size")
+    parser.add_argument("--batch", type=int, default=1, help="batch size")
     parser.add_argument("--epochs", type=int, default=200, help="number of epochs")
     parser.add_argument(
         "--log-interval",
