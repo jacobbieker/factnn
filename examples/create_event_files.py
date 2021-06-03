@@ -16,7 +16,7 @@ obs_dir = [base_dir + "public/"]
 gamma_dir = [base_dir + "sim/gamma/werner", base_dir + "sim/gamma/gustav"]
 proton_dir = [base_dir + "sim/proton/"]
 gamma_dl2 = "/run/media/bieker/T7/gamma_simulations_diffuse_facttools_dl2 (1).hdf5"
-gamma_dl2 = "/run/media/bieker/T7/proton_simulations_facttools_dl2.hdf5"
+gamma_dl2 = "/run/media/bieker/T7/gamma_simulations_facttools_dl2.hdf5"
 
 
 # output_path = "/home/jacob/Documents/cleaned_event_files_test"
@@ -27,7 +27,7 @@ rebin_size = 5
 
 # Get paths from the directories
 gamma_paths = []
-for directory in proton_dir:
+for directory in gamma_dir:
     for root, dirs, files in os.walk(directory):
         for file in files:
             if file.endswith("phs.jsonl.gz"):

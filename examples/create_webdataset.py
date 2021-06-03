@@ -26,6 +26,7 @@ import photon_stream as ps
 import random
 
 from factnn.utils.augment import euclidean_distance, true_sign
+from multiprocessing import Manager, Queue, Pool
 
 
 # Function to check test set's identifier.
@@ -65,7 +66,7 @@ def split_data(paths, val_split=0.2, test_split=0.2):
     }
 
 
-def write_dataset(base="/run/media/bieker/T7/", split="train"):
+def get_single_example(p, q):
     num = 10
     import numpy.lib.format
     import io
@@ -79,6 +80,176 @@ def write_dataset(base="/run/media/bieker/T7/", split="train"):
     pclump = f"/run/media/bieker/T7/proton/clump{num}/raw/"
     num_examples_per_shard = 20000
     max_size = 1e10
+    if os.path.exists(os.path.join(core, p)):
+        raw_path = os.path.join(core, p)
+        clump_path = os.path.join(clump, p)
+        uncleaned_path = os.path.join(uncleaned, p)
+        is_gamma = True
+    elif os.path.exists(os.path.join(pcore, p)):
+        raw_path = os.path.join(pcore, p)
+        clump_path = os.path.join(pclump, p)
+        uncleaned_path = os.path.join(puncleaned, p)
+        is_gamma = False
+    try:
+        with open(raw_path, "rb") as pickled_event:
+            with open(uncleaned_path, "rb") as pickled_original:
+                (
+                    event_data,
+                    data_format,
+                    features,
+                    feature_cluster,
+                ) = pickle.load(pickled_event)
+                uncleaned_data, _, _, _ = pickle.load(pickled_original)
+                uncleaned_photons = uncleaned_data[data_format["Image"]]
+                uncleaned_photons = list_of_lists_to_raw_phs(uncleaned_photons)
+                uncleaned_cloud = np.asarray(
+                    raw_phs_to_point_cloud(
+                        uncleaned_photons,
+                        cx=GEOMETRY.x_angle,
+                        cy=GEOMETRY.y_angle,
+                    )
+                )
+                # Convert List of List to Point Cloud
+                event_photons = event_data[data_format["Image"]]
+                event_photons = list_of_lists_to_raw_phs(event_photons)
+                point_cloud = np.asarray(
+                    raw_phs_to_point_cloud(
+                        event_photons, cx=GEOMETRY.x_angle, cy=GEOMETRY.y_angle
+                    )
+                )
+                out = np.where(
+                    (uncleaned_cloud == point_cloud[:, None]).all(-1)
+                )[1]
+                point_values = np.zeros(uncleaned_cloud.shape)
+                point_values[out] = 1
+
+                with open(clump_path, "rb") as pickled_clump:
+                    clump_data, _, _, _ = pickle.load(pickled_clump)
+                    clump_photons = clump_data[data_format["Image"]]
+                    clump_photons = list_of_lists_to_raw_phs(clump_photons)
+                    clump_cloud = np.asarray(
+                        raw_phs_to_point_cloud(
+                            clump_photons,
+                            cx=GEOMETRY.x_angle,
+                            cy=GEOMETRY.y_angle,
+                        )
+                    )
+                    out = np.where(
+                        (uncleaned_cloud == clump_cloud[:, None]).all(-1)
+                    )[1]
+                    clump_values = np.zeros(uncleaned_cloud.shape)
+                    clump_values[out] = 1
+                    # clump_values = np.isclose(clump_cloud, point_cloud)
+                    # Convert to ints so that addition works, gives 0 for outside, 1 clump, 2 core
+                    point_values = point_values.astype(
+                        int
+                    ) + clump_values.astype(int)
+                    point_values = point_values[:, 0]
+                    point_values = torch.from_numpy(point_values)
+                energy = torch.tensor(
+                    [event_data[data_format["Energy"]]],
+                    dtype=torch.long,
+                )
+                phi = torch.tensor(
+                    [event_data[4]],
+                    dtype=torch.long,  # Needed because most the proton events had the wrong data_format
+                )
+                theta = torch.tensor(
+                    [event_data[5]],
+                    dtype=torch.long,  # Needed because most the proton events had the wrong data_format
+                )
+                # Now add the features from the feature extraction
+                if (
+                        features["extraction"] == 1
+                ):  # Failed extraction, so has no features to use
+                    feature_list = []
+                else:
+                    feature_list = []
+                    feature_list.append(features["head_tail_ratio"])
+                    feature_list.append(features["length"])
+                    feature_list.append(features["width"])
+                    feature_list.append(features["time_gradient"])
+                    feature_list.append(features["number_photons"])
+                    feature_list.append(
+                        features["length"] * features["width"] * np.pi
+                    )
+                    feature_list.append(
+                        (
+                                (features["length"] * features["width"] * np.pi)
+                                / np.log(features["number_photons"]) ** 2
+                        )
+                    )
+                    feature_list.append(
+                        (
+                                features["number_photons"]
+                                / (features["length"] * features["width"] * np.pi)
+                        )
+                    )
+                is_diffuse = False
+                d_path = diffuse if is_gamma else pdiffuse
+                if os.path.exists(os.path.join(d_path, p)):
+                    with open(os.path.join(d_path, p), "rb") as pickled_diffuse:
+                        (
+                            diffuse_event_data,
+                            diffuse_data_format,
+                            features_d,
+                        ) = pickle.load(pickled_diffuse)
+                        try:
+                            # Try Diffuse
+                            disp = torch.tensor(
+                                [true_sign(
+                                    diffuse_event_data[diffuse_data_format["Source_X"]],
+                                    diffuse_event_data[diffuse_data_format["Source_Y"]],
+                                    diffuse_event_data[diffuse_data_format["COG_X"]],
+                                    diffuse_event_data[diffuse_data_format["COG_Y"]],
+                                    diffuse_event_data[diffuse_data_format["Delta"]],
+                                )
+                                 * euclidean_distance(
+                                    diffuse_event_data[diffuse_data_format["Source_X"]],
+                                    diffuse_event_data[diffuse_data_format["Source_Y"]],
+                                    diffuse_event_data[diffuse_data_format["COG_X"]],
+                                    diffuse_event_data[diffuse_data_format["COG_Y"]],
+                                )],
+                                dtype=torch.float,
+                            )
+                            sign = torch.tensor(true_sign(
+                                diffuse_event_data[diffuse_data_format["Source_X"]],
+                                diffuse_event_data[diffuse_data_format["Source_Y"]],
+                                diffuse_event_data[diffuse_data_format["COG_X"]],
+                                diffuse_event_data[diffuse_data_format["COG_Y"]],
+                                diffuse_event_data[diffuse_data_format["Delta"]],
+                            ), dtype=torch.int)
+                            is_diffuse = True
+                        except Exception as e:
+                            print(f"Failed Diffuse Extraction With: {e}")
+                            disp = torch.zeros((1,))
+                            sign = torch.zeros((1,))
+                else:
+                    disp = torch.zeros((1,))
+                    sign = torch.zeros((1,))
+                points = torch.tensor(uncleaned_cloud, dtype=torch.float).squeeze()
+                print(f"Points: {points.shape}, Points Mask: {point_values.shape}, Values: {np.unique(point_values)} Gamma: {is_gamma}")
+                sample = {"__key__": p, "points.npy": points.numpy(), "mask.npy": point_values.numpy(),
+                          "features.npy": torch.tensor(feature_list, dtype=torch.float).numpy(), "disp.npy": disp.numpy(), "sign.npy": sign.numpy(),
+                          "energy.npy": energy.numpy(), "theta.npy": theta.numpy(), "phi.npy": phi.numpy(), "class.cls": is_gamma, "diffuse.cls": is_diffuse}
+                q.put(sample)
+    except:
+        print("Failed")
+
+
+def writer(pattern, q):
+    num_examples_per_shard = 20000
+    with ShardWriter(pattern, maxcount=num_examples_per_shard, compress=True) as sink:
+        while True:
+            sample = q.get()
+            if sample == "kill":
+                break
+            sink.write(sample)
+
+
+def write_dataset(base="/run/media/bieker/T7/", split="train"):
+    num = 10
+    num_examples_per_shard = 20000
 
     event_dict = pickle.load(  # Only need one
         open(
@@ -92,167 +263,27 @@ def write_dataset(base="/run/media/bieker/T7/", split="train"):
     raw_names = list(event_dict["proton"]) + list(event_dict["gamma"])
     random.shuffle(raw_names)
     used_paths = split_data(raw_names)[split]
-
+    pool = Pool()
     pattern = os.path.join(base, f"fact-diffuse-{split}-{num}-%07d.tar")
+    import multiprocessing as mp
+    manager = mp.Manager()
+    q = manager.Queue()
+    watcher = pool.apply_async(writer, (pattern, q,))
 
-    with ShardWriter(pattern, maxcount=num_examples_per_shard, compress=True) as sink:
-        for p in used_paths:
-            if os.path.exists(os.path.join(core, p)):
-                raw_path = os.path.join(core, p)
-                clump_path = os.path.join(clump, p)
-                uncleaned_path = os.path.join(uncleaned, p)
-                is_gamma = True
-            elif os.path.exists(os.path.join(pcore, p)):
-                raw_path = os.path.join(pcore, p)
-                clump_path = os.path.join(pclump, p)
-                uncleaned_path = os.path.join(puncleaned, p)
-                is_gamma = False
-            try:
-                with open(raw_path, "rb") as pickled_event:
-                    with open(uncleaned_path, "rb") as pickled_original:
-                        (
-                            event_data,
-                            data_format,
-                            features,
-                            feature_cluster,
-                        ) = pickle.load(pickled_event)
-                        uncleaned_data, _, _, _ = pickle.load(pickled_original)
-                        uncleaned_photons = uncleaned_data[data_format["Image"]]
-                        uncleaned_photons_list = uncleaned_data[data_format["Image"]]
-                        uncleaned_photons = list_of_lists_to_raw_phs(uncleaned_photons)
-                        uncleaned_cloud = np.asarray(
-                            raw_phs_to_point_cloud(
-                                uncleaned_photons,
-                                cx=GEOMETRY.x_angle,
-                                cy=GEOMETRY.y_angle,
-                            )
-                        )
-                        # Convert List of List to Point Cloud
-                        event_photons = event_data[data_format["Image"]]
-                        event_photons = list_of_lists_to_raw_phs(event_photons)
-                        point_cloud = np.asarray(
-                            raw_phs_to_point_cloud(
-                                event_photons, cx=GEOMETRY.x_angle, cy=GEOMETRY.y_angle
-                            )
-                        )
-                        out = np.where(
-                            (uncleaned_cloud == point_cloud[:, None]).all(-1)
-                        )[1]
-                        point_values = np.zeros(uncleaned_cloud.shape)
-                        point_values[out] = 1
+    jobs = []
+    for p in used_paths:
+        job = pool.apply_async(get_single_example, (p, q))
+        jobs.append(job)
 
-                        with open(clump_path, "rb") as pickled_clump:
-                            clump_data, _, _, _ = pickle.load(pickled_clump)
-                            clump_photons = clump_data[data_format["Image"]]
-                            clump_photons = list_of_lists_to_raw_phs(clump_photons)
-                            clump_cloud = np.asarray(
-                                raw_phs_to_point_cloud(
-                                    clump_photons,
-                                    cx=GEOMETRY.x_angle,
-                                    cy=GEOMETRY.y_angle,
-                                )
-                            )
-                            out = np.where(
-                                (uncleaned_cloud == clump_cloud[:, None]).all(-1)
-                            )[1]
-                            clump_values = np.zeros(uncleaned_cloud.shape)
-                            clump_values[out] = 1
-                            # clump_values = np.isclose(clump_cloud, point_cloud)
-                            # Convert to ints so that addition works, gives 0 for outside, 1 clump, 2 core
-                            point_values = point_values.astype(
-                                int
-                            ) + clump_values.astype(int)
-                            point_values = point_values[:, 0]
-                            point_values = torch.from_numpy(point_values)
-                        energy = torch.tensor(
-                            [event_data[data_format["Energy"]]],
-                            dtype=torch.long,
-                        )
-                        phi = torch.tensor(
-                            [event_data[4]],
-                            dtype=torch.long,  # Needed because most the proton events had the wrong data_format
-                        )
-                        theta = torch.tensor(
-                            [event_data[5]],
-                            dtype=torch.long,  # Needed because most the proton events had the wrong data_format
-                        )
-                        # Now add the features from the feature extraction
-                        if (
-                                features["extraction"] == 1
-                        ):  # Failed extraction, so has no features to use
-                            feature_list = []
-                        else:
-                            feature_list = []
-                            feature_list.append(features["head_tail_ratio"])
-                            feature_list.append(features["length"])
-                            feature_list.append(features["width"])
-                            feature_list.append(features["time_gradient"])
-                            feature_list.append(features["number_photons"])
-                            feature_list.append(
-                                features["length"] * features["width"] * np.pi
-                            )
-                            feature_list.append(
-                                (
-                                        (features["length"] * features["width"] * np.pi)
-                                        / np.log(features["number_photons"]) ** 2
-                                )
-                            )
-                            feature_list.append(
-                                (
-                                        features["number_photons"]
-                                        / (features["length"] * features["width"] * np.pi)
-                                )
-                            )
-                        is_diffuse = False
-                        d_path = diffuse if is_gamma else pdiffuse
-                        if os.path.exists(os.path.join(d_path, p)):
-                            with open(os.path.join(d_path, p), "rb") as pickled_diffuse:
-                                (
-                                    diffuse_event_data,
-                                    diffuse_data_format,
-                                    features_d,
-                                ) = pickle.load(pickled_diffuse)
-                                try:
-                                    # Try Diffuse
-                                    disp = torch.tensor(
-                                        [true_sign(
-                                            diffuse_event_data[diffuse_data_format["Source_X"]],
-                                            diffuse_event_data[diffuse_data_format["Source_Y"]],
-                                            diffuse_event_data[diffuse_data_format["COG_X"]],
-                                            diffuse_event_data[diffuse_data_format["COG_Y"]],
-                                            diffuse_event_data[diffuse_data_format["Delta"]],
-                                        )
-                                         * euclidean_distance(
-                                            diffuse_event_data[diffuse_data_format["Source_X"]],
-                                            diffuse_event_data[diffuse_data_format["Source_Y"]],
-                                            diffuse_event_data[diffuse_data_format["COG_X"]],
-                                            diffuse_event_data[diffuse_data_format["COG_Y"]],
-                                        )],
-                                        dtype=torch.float,
-                                    )
-                                    sign = torch.tensor(true_sign(
-                                        diffuse_event_data[diffuse_data_format["Source_X"]],
-                                        diffuse_event_data[diffuse_data_format["Source_Y"]],
-                                        diffuse_event_data[diffuse_data_format["COG_X"]],
-                                        diffuse_event_data[diffuse_data_format["COG_Y"]],
-                                        diffuse_event_data[diffuse_data_format["Delta"]],
-                                    ), dtype=torch.int)
-                                    is_diffuse = True
-                                except Exception as e:
-                                    print(f"Failed Diffuse Extraction With: {e}")
-                                    disp = torch.zeros((1,))
-                                    sign = torch.zeros((1,))
-                        else:
-                            disp = torch.zeros((1,))
-                            sign = torch.zeros((1,))
-                        points = torch.tensor(uncleaned_cloud, dtype=torch.float).squeeze()
-                        print(f"Points: {points.shape}, Points Mask: {point_values.shape}, Values: {np.unique(point_values)} Gamma: {is_gamma}")
-                        sample = {"__key__": p, "points.npy": points.numpy(), "mask.npy": point_values.numpy(),
-                                  "features.npy": torch.tensor(feature_list, dtype=torch.float).numpy(), "disp.npy": disp.numpy(), "sign.npy": sign.numpy(),
-                                  "energy.npy": energy.numpy(), "theta.npy": theta.numpy(), "phi.npy": phi.numpy(), "class.cls": is_gamma, "diffuse.cls": is_diffuse}
-                        sink.write(sample)
-            except Exception as e:
-                print(f"Failed: {e}")
+    # collect results from the workers through the pool result queue
+    for job in jobs:
+        job.get()
+
+    #now we are done, kill the listener
+    q.put('kill')
+    pool.close()
+    pool.join()
+
 
 
 write_dataset()
