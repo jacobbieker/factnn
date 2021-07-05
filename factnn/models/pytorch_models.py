@@ -15,6 +15,8 @@ from torch_scatter import scatter_add, scatter_max
 import torch_geometric.transforms as T
 from torch_geometric.data import DataLoader
 from torch_geometric.nn import PointConv, fps, radius, global_max_pool, knn
+import pytorch_lightning as pl
+
 
 
 class PointNet2SAModule(torch.nn.Module):
@@ -281,6 +283,265 @@ class PointNet2Segmenter(torch.nn.Module):
         else:
             return x, fp1_out_batch
 
+
+
+
+class LitPointNetSegmenter(pl.LightningModule):
+
+    def __init__(self, num_classes, lr, config=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.num_classes = num_classes
+        self.config = config
+        self.criterion = F.nll_loss
+        self.lr = lr
+
+        # SA1
+        sa1_sample_ratio = self.config["sample_ratio_one"]  # 0.5
+        sa1_radius = self.config["sample_radius_one"]  # 0.2
+        sa1_max_num_neighbours = self.config["sample_max_neighbor"]  # 64
+        sa1_mlp = make_mlp(3, [64, 64, 128])
+        self.sa1_module = PointNet2SAModule(
+            sa1_sample_ratio, sa1_radius, sa1_max_num_neighbours, sa1_mlp
+        )
+
+        # SA2
+        sa2_sample_ratio = self.config["sample_ratio_two"]  # 0.25
+        sa2_radius = self.config["sample_radius_two"]  # 0.4
+        sa2_max_num_neighbours = self.config["sample_max_neighbor"]  # 64
+        sa2_mlp = make_mlp(128 + 3, [128, 128, 256])
+        self.sa2_module = PointNet2SAModule(
+            sa2_sample_ratio, sa2_radius, sa2_max_num_neighbours, sa2_mlp
+        )
+
+        # SA3
+        sa3_mlp = make_mlp(256 + 3, [256, 512, 1024])
+        self.sa3_module = PointNet2GlobalSAModule(sa3_mlp)
+
+        ##
+        knn_num = self.config["knn_num"] if self.config["knn_num"] else 3
+
+        # FP3, reverse of sa3
+        fp3_knn_num = (
+            1  # After global sa module, there is only one point in point cloud
+        )
+        fp3_mlp = make_mlp(1024 + 256 + 3, [256, 256])
+        self.fp3_module = PointNet2FPModule(fp3_knn_num, fp3_mlp)
+
+        # FP2, reverse of sa2
+        fp2_knn_num = knn_num
+        fp2_mlp = make_mlp(256 + 128 + 3, [256, 128])
+        self.fp2_module = PointNet2FPModule(fp2_knn_num, fp2_mlp)
+
+        # FP1, reverse of sa1
+        fp1_knn_num = knn_num
+        fp1_mlp = make_mlp(128 + 3, [128, 128, 128])
+        self.fp1_module = PointNet2FPModule(fp1_knn_num, fp1_mlp)
+
+        self.fc1 = Linear(self.config["fc_1"], self.config["fc_1"])
+        self.dropout1 = Dropout(p=self.config["dropout"])
+        self.fc2 = Linear(self.config["fc_2"], self.num_classes)
+
+    def forward(self, data):
+        """
+        data: a batch of input, torch.Tensor or torch_geometric.data.Data type
+            - torch.Tensor: (batch_size, 3, num_points), as common batch input
+
+            - torch_geometric.data.Data, as torch_geometric batch input:
+                data.x: (batch_size * ~num_points, C), batch nodes/points feature,
+                    ~num_points means each sample can have different number of points/nodes
+
+                data.pos: (batch_size * ~num_points, 3)
+
+                data.batch: (batch_size * ~num_points,), a column vector of graph/pointcloud
+                    idendifiers for all nodes of all graphs/pointclouds in the batch. See
+                    pytorch_gemometric documentation for more information
+        """
+        dense_input = True if isinstance(data, torch.Tensor) else False
+
+        if dense_input:
+            # Convert to torch_geometric.data.Data type
+            data = data.transpose(1, 2).contiguous()
+            batch_size, N, _ = data.shape  # (batch_size, num_points, 3)
+            pos = data.view(batch_size * N, -1)
+            batch = torch.zeros((batch_size, N), device=pos.device, dtype=torch.long)
+            for i in range(batch_size):
+                batch[i] = i
+            batch = batch.view(-1)
+
+            data = Data()
+            data.pos, data.batch = pos, batch
+
+        if not hasattr(data, "x"):
+            data.x = None
+        data_in = data.x, data.pos, data.batch
+
+        sa1_out = self.sa1_module(data_in)
+        sa2_out = self.sa2_module(sa1_out)
+        sa3_out = self.sa3_module(sa2_out)
+
+        fp3_out = self.fp3_module(sa3_out, sa2_out)
+        fp2_out = self.fp2_module(fp3_out, sa1_out)
+        fp1_out = self.fp1_module(fp2_out, data_in)
+
+        fp1_out_x, fp1_out_pos, fp1_out_batch = fp1_out
+        x = self.fc2(self.dropout1(self.fc1(fp1_out_x)))
+        x = F.log_softmax(x, dim=-1)
+
+        if dense_input:
+            return x.view(batch_size, N, self.num_classes)
+        else:
+            return x, fp1_out_batch
+
+    def configure_optimizers(self):
+        # DeepSpeedCPUAdam provides 5x to 7x speedup over torch.optim.adam(w)
+        # optimizer = torch.optim.adam()
+        return torch.optim.Adam(self.parameters(), lr=self.lr)
+
+    def training_step(self, batch, batch_idx):
+        y_hat = self(batch)
+        loss = self.criterion(y_hat[0], batch.y)
+        self.log("train/loss", loss, on_step=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        y_hat = self(batch)
+        val_loss = self.criterion(y_hat[0], batch.y)
+        self.log("val/loss", val_loss, on_step=True, on_epoch=True)
+        return val_loss
+
+    def test_step(self, batch, batch_idx):
+        y_hat = self(batch)
+        loss = self.criterion(y_hat[0], batch.y)
+        return loss
+
+
+class LitPointNetClassifier(pl.LightningModule):
+
+    def __init__(self, num_classes, lr, config=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.num_classes = num_classes
+        self.config = config
+        self.criterion = F.nll_loss
+        self.lr = lr
+
+        # SA1
+        sa1_sample_ratio = self.config["sample_ratio_one"]  # 0.5
+        sa1_radius = self.config["sample_radius_one"]  # 0.2
+        sa1_max_num_neighbours = self.config["sample_max_neighbor"]  # 64
+        sa1_mlp = make_mlp(3, [64, 64, 128])
+        self.sa1_module = PointNet2SAModule(
+            sa1_sample_ratio, sa1_radius, sa1_max_num_neighbours, sa1_mlp
+        )
+
+        # SA2
+        sa2_sample_ratio = self.config["sample_ratio_two"]  # 0.25
+        sa2_radius = self.config["sample_radius_two"]  # 0.4
+        sa2_max_num_neighbours = self.config["sample_max_neighbor"]  # 64
+        sa2_mlp = make_mlp(128 + 3, [128, 128, 256])
+        self.sa2_module = PointNet2SAModule(
+            sa2_sample_ratio, sa2_radius, sa2_max_num_neighbours, sa2_mlp
+        )
+
+        # SA3
+        sa3_mlp = make_mlp(256 + 3, [256, 512, 1024])
+        self.sa3_module = PointNet2GlobalSAModule(sa3_mlp)
+
+        ##
+        knn_num = self.config["knn_num"] if self.config["knn_num"] else 3
+
+        # FP3, reverse of sa3
+        fp3_knn_num = (
+            1  # After global sa module, there is only one point in point cloud
+        )
+        fp3_mlp = make_mlp(1024 + 256 + 3, [256, 256])
+        self.fp3_module = PointNet2FPModule(fp3_knn_num, fp3_mlp)
+
+        # FP2, reverse of sa2
+        fp2_knn_num = knn_num
+        fp2_mlp = make_mlp(256 + 128 + 3, [256, 128])
+        self.fp2_module = PointNet2FPModule(fp2_knn_num, fp2_mlp)
+
+        # FP1, reverse of sa1
+        fp1_knn_num = knn_num
+        fp1_mlp = make_mlp(128 + 3, [128, 128, 128])
+        self.fp1_module = PointNet2FPModule(fp1_knn_num, fp1_mlp)
+
+        self.fc1 = Linear(self.config["fc_1"], self.config["fc_1"])
+        self.dropout1 = Dropout(p=self.config["dropout"])
+        self.fc2 = Linear(self.config["fc_2"], self.num_classes)
+
+    def forward(self, data):
+        """
+        data: a batch of input, torch.Tensor or torch_geometric.data.Data type
+            - torch.Tensor: (batch_size, 3, num_points), as common batch input
+
+            - torch_geometric.data.Data, as torch_geometric batch input:
+                data.x: (batch_size * ~num_points, C), batch nodes/points feature,
+                    ~num_points means each sample can have different number of points/nodes
+
+                data.pos: (batch_size * ~num_points, 3)
+
+                data.batch: (batch_size * ~num_points,), a column vector of graph/pointcloud
+                    idendifiers for all nodes of all graphs/pointclouds in the batch. See
+                    pytorch_gemometric documentation for more information
+        """
+        dense_input = True if isinstance(data, torch.Tensor) else False
+
+        if dense_input:
+            # Convert to torch_geometric.data.Data type
+            data = data.transpose(1, 2).contiguous()
+            batch_size, N, _ = data.shape  # (batch_size, num_points, 3)
+            pos = data.view(batch_size * N, -1)
+            batch = torch.zeros((batch_size, N), device=pos.device, dtype=torch.long)
+            for i in range(batch_size):
+                batch[i] = i
+            batch = batch.view(-1)
+
+            data = Data()
+            data.pos, data.batch = pos, batch
+
+        if not hasattr(data, "x"):
+            data.x = None
+        data_in = data.x, data.pos, data.batch
+
+        sa1_out = self.sa1_module(data_in)
+        sa2_out = self.sa2_module(sa1_out)
+        sa3_out = self.sa3_module(sa2_out)
+
+        fp3_out = self.fp3_module(sa3_out, sa2_out)
+        fp2_out = self.fp2_module(fp3_out, sa1_out)
+        fp1_out = self.fp1_module(fp2_out, data_in)
+
+        fp1_out_x, fp1_out_pos, fp1_out_batch = fp1_out
+        x = self.fc2(self.dropout1(self.fc1(fp1_out_x)))
+        x = F.log_softmax(x, dim=-1)
+
+        if dense_input:
+            return x.view(batch_size, N, self.num_classes)
+        else:
+            return x, fp1_out_batch
+
+    def configure_optimizers(self):
+        # DeepSpeedCPUAdam provides 5x to 7x speedup over torch.optim.adam(w)
+        # optimizer = torch.optim.adam()
+        return torch.optim.Adam(self.parameters(), lr=self.lr)
+
+    def training_step(self, batch, batch_idx):
+        y_hat = self(batch)
+        loss = self.criterion(y_hat[0], batch.y)
+        self.log("train/loss", loss, on_step=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        y_hat = self(batch)
+        val_loss = self.criterion(y_hat[0], batch.y)
+        self.log("val/loss", val_loss, on_step=True, on_epoch=True)
+        return val_loss
+
+    def test_step(self, batch, batch_idx):
+        y_hat = self(batch)
+        loss = self.criterion(y_hat[0], batch.y)
+        return loss
 
 class PointNet2(torch.nn.Module):
     def __init__(self, num_classes, config=None):

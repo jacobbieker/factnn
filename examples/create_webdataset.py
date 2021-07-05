@@ -66,26 +66,21 @@ def split_data(paths, val_split=0.2, test_split=0.2):
     }
 
 
-def get_single_example(p, q):
-    num = 10
-    import numpy.lib.format
-    import io
-    diffuse = "/run/media/bieker/T7/no_clean/"
-    pdiffuse = "/run/media/bieker/T7/proton/no_clean/"
-    uncleaned = "/run/media/bieker/T7/gamma/no_clean/raw/"
-    core = f"/run/media/bieker/T7/gamma/core{num}/raw/"
-    clump = f"/run/media/bieker/T7/gamma/clump{num}/raw/"
-    puncleaned = "/run/media/bieker/T7/proton/no_clean/raw/"
-    pcore = f"/run/media/bieker/T7/proton/core{num}/raw/"
-    pclump = f"/run/media/bieker/T7/proton/clump{num}/raw/"
-    num_examples_per_shard = 20000
-    max_size = 1e10
-    if os.path.exists(os.path.join(core, p)):
+def get_single_example(p, num, proton_paths, gamma_paths):
+    diffuse = "/run/media/jacob/data/FACT_Torch/no_clean/diffuse_raw/"
+    pdiffuse = "/run/media/jacob/data/FACT_Torch/no_clean/diffuse_raw/"
+    uncleaned = "/run/media/jacob/data/FACT_Torch/no_clean/raw/"
+    core = f"/run/media/jacob/data/FACT_Torch/dumping/gammaFeature/core{num}/"
+    clump = f"/run/media/jacob/data/FACT_Torch/dumping/gammaFeature/clump{num}/"
+    puncleaned = "/run/media/jacob/data/FACT_Torch/no_clean/raw/"
+    pcore = f"/run/media/jacob/data/FACT_Torch/dumping/protonFeature/core{num}/"
+    pclump = f"/run/media/jacob/data/FACT_Torch/dumping/protonFeature/clump{num}/"
+    if os.path.exists(os.path.join(core, p)) and p in gamma_paths:
         raw_path = os.path.join(core, p)
         clump_path = os.path.join(clump, p)
         uncleaned_path = os.path.join(uncleaned, p)
         is_gamma = True
-    elif os.path.exists(os.path.join(pcore, p)):
+    elif os.path.exists(os.path.join(pcore, p)) and p in proton_paths:
         raw_path = os.path.join(pcore, p)
         clump_path = os.path.join(pclump, p)
         uncleaned_path = os.path.join(puncleaned, p)
@@ -229,16 +224,16 @@ def get_single_example(p, q):
                     sign = torch.zeros((1,))
                 points = torch.tensor(uncleaned_cloud, dtype=torch.float).squeeze()
                 print(f"Points: {points.shape}, Points Mask: {point_values.shape}, Values: {np.unique(point_values)} Gamma: {is_gamma}")
-                sample = {"__key__": p, "points.npy": points.numpy(), "mask.npy": point_values.numpy(),
-                          "features.npy": torch.tensor(feature_list, dtype=torch.float).numpy(), "disp.npy": disp.numpy(), "sign.npy": sign.numpy(),
-                          "energy.npy": energy.numpy(), "theta.npy": theta.numpy(), "phi.npy": phi.numpy(), "class.cls": is_gamma, "diffuse.cls": is_diffuse}
-                q.put(sample)
+                sample = {"__key__": p, "points.pth": points, "mask.pth": point_values,
+                          "features.pth": torch.tensor(feature_list, dtype=torch.float), "disp.pth": disp, "sign.pth": sign,
+                          "energy.pth": energy, "theta.pth": theta, "phi.pth": phi, "class.cls": int(is_gamma), "diffuse.cls": int(is_diffuse)}
+                return sample
     except:
         print("Failed")
 
 
 def writer(pattern, q):
-    num_examples_per_shard = 20000
+    num_examples_per_shard = 10000
     with ShardWriter(pattern, maxcount=num_examples_per_shard, compress=True) as sink:
         while True:
             sample = q.get()
@@ -247,8 +242,8 @@ def writer(pattern, q):
             sink.write(sample)
 
 
-def write_dataset(base="/run/media/bieker/T7/", split="train"):
-    num = 10
+def write_dataset(base="/run/media/jacob/data/FACT_Dataset/", split="train"):
+    num = 5
     num_examples_per_shard = 20000
 
     event_dict = pickle.load(  # Only need one
@@ -263,26 +258,35 @@ def write_dataset(base="/run/media/bieker/T7/", split="train"):
     raw_names = list(event_dict["proton"]) + list(event_dict["gamma"])
     random.shuffle(raw_names)
     used_paths = split_data(raw_names)[split]
-    pool = Pool()
-    pattern = os.path.join(base, f"fact-diffuse-{split}-{num}-%07d.tar")
-    import multiprocessing as mp
-    manager = mp.Manager()
-    q = manager.Queue()
-    watcher = pool.apply_async(writer, (pattern, q,))
+    #pool = Pool()
+    proton_paths = list(event_dict['proton'])
+    gamma_paths = list(event_dict['gamma'])
+    pattern = os.path.join(base, f"fact-{split}-{num}-%04d.tar")
+    num_examples_per_shard = 10000
+    with ShardWriter(pattern, maxcount=num_examples_per_shard, compress=True) as sink:
+        for p in used_paths:
+            sample = get_single_example(p, num, proton_paths, gamma_paths)
+            if sample is not None:
+                sink.write(sample)
+    #import multiprocessing as mp
+    #manager = mp.Manager()
+    q = []#manager.Queue()
 
-    jobs = []
-    for p in used_paths:
-        job = pool.apply_async(get_single_example, (p, q))
-        jobs.append(job)
+    #watcher = pool.apply_async(writer, (pattern, q,))
+
+    #jobs = []
+    #for p in used_paths:
+    #    job = pool.apply_async(get_single_example, (p, q))
+    #    jobs.append(job)
 
     # collect results from the workers through the pool result queue
-    for job in jobs:
-        job.get()
+    #for job in jobs:
+    #    job.get()
 
     #now we are done, kill the listener
-    q.put('kill')
-    pool.close()
-    pool.join()
+    #q.put('kill')
+    #pool.close()
+    #pool.join()
 
 
 
