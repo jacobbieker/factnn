@@ -550,6 +550,7 @@ class LitPointNet2(pl.LightningModule):
         self.num_classes = num_classes
         self.config = config
         self.lr = lr
+        self.criterion = F.cross_entropy
 
         # SA1
         sa1_sample_ratio = self.config["sample_ratio_one"]  # 0.5
