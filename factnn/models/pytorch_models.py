@@ -623,7 +623,7 @@ class LitPointNet2(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         y_hat = self(batch)
         val_loss = self.criterion(y_hat, batch.y)
-        self.log("val/loss", val_loss, on_step=True, on_epoch=True)
+        self.log("val/loss", val_loss, on_step=False, on_epoch=True)
         return val_loss
 
     def test_step(self, batch, batch_idx):
