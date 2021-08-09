@@ -131,7 +131,7 @@ class BaseGenerator(object):
                         shape=self.input_shape,
                     )
                     return batch_images, batch_image_label
-                elif self.mode == "validate":
+                if self.mode == "validate":
                     self.validate_steps = int(
                         np.floor(len(self.validate_data) / self.batch_size)
                     )
@@ -153,7 +153,7 @@ class BaseGenerator(object):
                     self.validate_current_step %= self.validate_steps
                     return batch_images, batch_image_label
 
-                elif self.mode == "test":
+                if self.mode == "test":
                     self.test_steps = int(
                         np.floor(len(self.test_data) / self.batch_size)
                     )
@@ -209,7 +209,7 @@ class BaseGenerator(object):
                 )
                 return batch_images, batch_image_label
 
-            elif self.mode == "validate":
+            if self.mode == "validate":
                 if not self.set_gens:
                     if self.as_channels:
                         self.val_training_gen = self.validate_preprocessor.single_processor(
@@ -246,7 +246,7 @@ class BaseGenerator(object):
                     as_channels=self.as_channels,
                 )
                 return batch_images, batch_image_label
-            elif self.mode == "test":
+            if self.mode == "test":
                 if not self.set_gens:
                     if self.as_channels:
                         self.val_training_gen = self.test_preprocessor.single_processor(

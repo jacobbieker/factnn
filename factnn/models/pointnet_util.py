@@ -132,8 +132,7 @@ def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False, knn=
         new_points = grouped_xyz_norm
     if returnfps:
         return new_xyz, new_points, grouped_xyz, fps_idx
-    else:
-        return new_xyz, new_points
+    return new_xyz, new_points
 
 
 def sample_and_group_all(xyz, points):

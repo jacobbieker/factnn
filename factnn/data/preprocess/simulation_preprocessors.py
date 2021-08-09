@@ -303,8 +303,7 @@ class SimulationPreprocessor(BasePreprocessor):
             print("\n")
             self.num_events = count
             return count
-        else:
-            return self.num_events
+        return self.num_events
 
     def format(self, batch):
         pic, energy, zd_deg, az_deg, act_phi, act_theta = zip(*batch)
@@ -610,8 +609,7 @@ class ProtonPreprocessor(BasePreprocessor):
             print("\n")
             self.num_events = count
             return count
-        else:
-            return self.num_events
+        return self.num_events
 
     def format(self, batch):
         pic, energy, zd_deg, az_deg, act_phi, act_theta = zip(*batch)
@@ -913,8 +911,7 @@ class GammaPreprocessor(BasePreprocessor):
             print("\n")
             self.num_events = count
             return count
-        else:
-            return self.num_events
+        return self.num_events
 
     def format(self, batch):
         pic, energy, zd_deg, az_deg, act_phi, act_theta = zip(*batch)
@@ -1373,8 +1370,7 @@ class GammaDiffusePreprocessor(BasePreprocessor):
                     print(str(e))
             self.num_events = count
             return count
-        else:
-            return self.num_events
+        return self.num_events
 
     def format(self, batch):
         (

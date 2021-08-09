@@ -438,8 +438,7 @@ class ObservationPreprocessor(BasePreprocessor):
             print("\n")
             self.num_events = count
             return count
-        else:
-            return self.num_events
+        return self.num_events
 
     def format(self, batch):
         (
