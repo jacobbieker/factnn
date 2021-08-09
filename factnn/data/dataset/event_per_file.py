@@ -5,7 +5,6 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from factnn import ProtonPreprocessor, GammaPreprocessor, GammaDiffusePreprocessor
-import os
 from multiprocessing import Pool
 from functools import partial
 
