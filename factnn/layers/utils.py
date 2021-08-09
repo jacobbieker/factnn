@@ -76,12 +76,14 @@ class Conv2d(Layer):
     def __init__(
         self,
         filters,
-        strides=[1, 1],
+        strides=None,
         activation=tf.nn.relu,
         padding="VALID",
         initializer="glorot_normal",
         bn=False,
     ):
+        if strides is None:
+            strides = [1, 1]
         super(Conv2d, self).__init__()
 
         self.filters = filters
