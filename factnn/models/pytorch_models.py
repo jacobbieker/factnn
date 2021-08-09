@@ -280,8 +280,7 @@ class PointNet2Segmenter(torch.nn.Module):
 
         if dense_input:
             return x.view(batch_size, N, self.num_classes)
-        else:
-            return x, fp1_out_batch
+        return x, fp1_out_batch
 
 
 
@@ -389,8 +388,7 @@ class LitPointNetSegmenter(pl.LightningModule):
 
         if dense_input:
             return x.view(batch_size, N, self.num_classes)
-        else:
-            return x, fp1_out_batch
+        return x, fp1_out_batch
 
     def configure_optimizers(self):
         # DeepSpeedCPUAdam provides 5x to 7x speedup over torch.optim.adam(w)
@@ -518,8 +516,7 @@ class LitPointNetClassifier(pl.LightningModule):
 
         if dense_input:
             return x.view(batch_size, N, self.num_classes)
-        else:
-            return x, fp1_out_batch
+        return x, fp1_out_batch
 
     def configure_optimizers(self):
         # DeepSpeedCPUAdam provides 5x to 7x speedup over torch.optim.adam(w)

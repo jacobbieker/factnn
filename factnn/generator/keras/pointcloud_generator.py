@@ -94,8 +94,7 @@ class PointCloudGenerator(Sequence):
         if self.proton_paths is not None:
             min_paths = np.min([len(self.proton_paths), len(self.paths)])
             return int(np.ceil(min_paths / float(self.batch_size)))
-        else:
-            return int(np.ceil(len(self.paths) / float(self.batch_size)))
+        return int(np.ceil(len(self.paths) / float(self.batch_size)))
 
     def on_epoch_end(self):
         if self.augment:

@@ -200,8 +200,7 @@ class EventDataset(Dataset):
     def raw_file_names(self):
         if self.include_proton:
             return list(self.event_dict["proton"]) + list(self.event_dict["gamma"])
-        else:
-            return list(self.event_dict["gamma"])
+        return list(self.event_dict["gamma"])
 
     @property
     def processed_file_names(self):
@@ -264,28 +263,27 @@ class EventDataset(Dataset):
                     features["extraction"] == 1
                 ):  # Failed extraction, so has no features to use
                     return
-                else:
-                    feature_list = []
-                    feature_list.append(features["head_tail_ratio"])
-                    feature_list.append(features["length"])
-                    feature_list.append(features["width"])
-                    feature_list.append(features["time_gradient"])
-                    feature_list.append(features["number_photons"])
-                    feature_list.append(
-                        features["length"] * features["width"] * np.pi
+                feature_list = []
+                feature_list.append(features["head_tail_ratio"])
+                feature_list.append(features["length"])
+                feature_list.append(features["width"])
+                feature_list.append(features["time_gradient"])
+                feature_list.append(features["number_photons"])
+                feature_list.append(
+                    features["length"] * features["width"] * np.pi
+                )
+                feature_list.append(
+                    (
+                        (features["length"] * features["width"] * np.pi)
+                        / np.log(features["number_photons"]) ** 2
                     )
-                    feature_list.append(
-                        (
-                            (features["length"] * features["width"] * np.pi)
-                            / np.log(features["number_photons"]) ** 2
-                        )
+                )
+                feature_list.append(
+                    (
+                        features["number_photons"]
+                        / (features["length"] * features["width"] * np.pi)
                     )
-                    feature_list.append(
-                        (
-                            features["number_photons"]
-                            / (features["length"] * features["width"] * np.pi)
-                        )
-                    )
+                )
                 # Now make it the node features
                 data.features = torch.tensor(
                     np.asarray(feature_list),
