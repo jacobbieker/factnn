@@ -1,12 +1,9 @@
 import webdataset
 from webdataset.writer import TarWriter, ShardWriter
-import webdataset as wds
 import pickle
 import numpy as np
 import os.path as osp
 import os
-import pickle
-import numpy as np
 from zlib import crc32
 import pkg_resources as res
 from functools import partial
@@ -27,7 +24,7 @@ import photon_stream as ps
 import random
 
 from factnn.utils.augment import euclidean_distance, true_sign
-from multiprocessing import Manager, Queue, Pool
+from multiprocessing import Queue
 
 
 # Function to check test set's identifier.

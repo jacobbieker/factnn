@@ -5,7 +5,6 @@ from os import path
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from factnn import ProtonPreprocessor, GammaPreprocessor, GammaDiffusePreprocessor
-import os
 
 from multiprocessing import Pool
 from functools import partial
